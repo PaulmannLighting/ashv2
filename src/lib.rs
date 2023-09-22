@@ -1,5 +1,7 @@
+mod code;
 pub mod packet;
 
+pub use code::Code;
 use crc::{Crc, CRC_16_IBM_3740};
 
 pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);

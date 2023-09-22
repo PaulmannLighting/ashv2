@@ -1,4 +1,4 @@
-use num_derive::{FromPrimitive, ToPrimitive};
+use crate::code::Code;
 use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
@@ -42,59 +42,29 @@ impl RstAck {
     ///
     /// # Examples
     /// ```
-    /// use ashv2::packet::rst_ack::{ResetCode, RstAck, VERSION};
+    /// use ashv2::packet::rst_ack::RstAck;
+    /// use ashv2::Code;
     ///
     /// let rst_ack = RstAck::new( 0x02, 0x02, 0x9B7B);
-    /// assert_eq!(rst_ack.reset_code(), Some(ResetCode::PowerOn));
+    /// assert_eq!(rst_ack.code(), Some(Code::PowerOn));
     /// ```
     #[must_use]
-    pub fn reset_code(&self) -> Option<ResetCode> {
-        ResetCode::from_u8(self.reset_code)
+    pub fn code(&self) -> Option<Code> {
+        Code::from_u8(self.reset_code)
     }
 }
 
 impl Display for RstAck {
-    /// Formats the RSTACK as a String..
+    /// Formats the RSTACK as a String.
     ///
     /// # Examples
     /// ```
-    /// use ashv2::packet::rst_ack::{ResetCode, RstAck, VERSION};
+    /// use ashv2::packet::rst_ack::RstAck;
     ///
     /// let rst_ack = RstAck::new( 0x02, 0x02, 0x9B7B);
     /// assert_eq!(&rst_ack.to_string(), "RSTACK(0x02, 0x02)");
     /// ```
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "RSTACK({:#04x}, {:#04x})", self.version, self.reset_code)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
-pub enum ResetCode {
-    UnknownReason = 0x00,
-    External = 0x01,
-    PowerOn = 0x02,
-    Watchdog = 0x03,
-    Assert = 0x06,
-    Bootloader = 0x09,
-    Software = 0x0B,
-    ExceededMaximumAckTimeoutCount = 0x51,
-    ChipSpecific = 0x80,
-}
-
-impl Display for ResetCode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UnknownReason => write!(f, "Reset: Unknown reason"),
-            Self::External => write!(f, "Reset: External"),
-            Self::PowerOn => write!(f, "Reset: Power-on"),
-            Self::Watchdog => write!(f, "Reset: Watchdog"),
-            Self::Assert => write!(f, "Reset: Assert"),
-            Self::Bootloader => write!(f, "Reset: Boot loader"),
-            Self::Software => write!(f, "Reset: Software"),
-            Self::ExceededMaximumAckTimeoutCount => {
-                write!(f, "Error: Exceeded maximum ACK timeout count")
-            }
-            Self::ChipSpecific => write!(f, "Chip-specific error reset code"),
-        }
     }
 }
