@@ -108,3 +108,16 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::{Stuffer, Unstuffer};
+
+    #[test]
+    fn stuff_and_unstuff() {
+        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+        let stuffed_and_unstuffed: Vec<u8> =
+            Unstuffer::new(Stuffer::new(original.clone().into_iter())).collect();
+        assert_eq!(stuffed_and_unstuffed, original);
+    }
+}
