@@ -7,6 +7,28 @@ const CANCEL: u8 = 0x1A;
 const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
+/// Trait to allow stuffing and unstuffing of byte iterators.
+///
+/// # Examples
+/// ```
+/// use ashv2::protocol::stuffing::Stuffing;
+///
+/// let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+/// let stuffed_and_unstuffed: Vec<u8> = original.clone().into_iter().stuff().unstuff().collect();
+/// assert_eq!(stuffed_and_unstuffed, original);
+/// ```
+pub trait Stuffing: Iterator<Item = u8> + Sized {
+    fn stuff(self) -> Stuffer<Self> {
+        Stuffer::new(self)
+    }
+
+    fn unstuff(self) -> Unstuffer<Self> {
+        Unstuffer::new(self)
+    }
+}
+
+impl<T> Stuffing for T where T: Iterator<Item = u8> {}
+
 pub struct Stuffer<T>
 where
     T: Iterator<Item = u8>,
@@ -106,18 +128,5 @@ where
                 Some(byte)
             }
         })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::{Stuffer, Unstuffer};
-
-    #[test]
-    fn stuff_and_unstuff() {
-        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
-        let stuffed_and_unstuffed: Vec<u8> =
-            Unstuffer::new(Stuffer::new(original.clone().into_iter())).collect();
-        assert_eq!(stuffed_and_unstuffed, original);
     }
 }
