@@ -4,6 +4,7 @@ pub const HEADER: u8 = 0xC0;
 pub const CRC: u16 = 0x38BC;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Rst;
 
 impl Rst {

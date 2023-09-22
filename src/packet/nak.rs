@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
     header: u8,
     crc: u16,
