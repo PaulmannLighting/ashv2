@@ -1,6 +1,7 @@
 mod code;
 pub mod frame;
 pub mod packet;
+pub mod protocol;
 
 pub use code::Code;
 use crc::{Crc, CRC_16_IBM_3740};
