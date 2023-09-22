@@ -21,7 +21,7 @@ impl Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::Error;
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
     /// assert!(error.is_valid());
     /// ```
     #[must_use]
@@ -37,14 +37,14 @@ impl Error {
 
     /// Returns the protocol version.
     ///
-    /// This is statically set to 0x02 (2) for ASHv2.
+    /// This is statically set to 0x02 (2) for `ASHv2`.
     ///
     /// # Examples
     /// ```
     /// use ashv2::packet::error::Error;
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
-    /// assert_eq!(error.version(), 0x01); // By example data, though invalid
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    /// assert_eq!(error.version(), 2);
     /// ```
     #[must_use]
     pub const fn version(&self) -> u8 {
@@ -55,10 +55,11 @@ impl Error {
     ///
     /// # Examples
     /// ```
+    /// use ashv2::Code;
     /// use ashv2::packet::error::Error;
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
-    /// assert_eq!(error.code(), None); // Invalid error code
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    /// assert_eq!(error.code(), Some(Code::ExceededMaximumAckTimeoutCount));
     #[must_use]
     pub fn code(&self) -> Option<Code> {
         Code::from_u8(self.error_code)
@@ -72,8 +73,8 @@ impl Display for Error {
     /// ```
     /// use ashv2::packet::error::Error;
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
-    /// assert_eq!(&error.to_string(), "ERROR(0x01, 0x52)");
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    /// assert_eq!(&error.to_string(), "ERROR(0x02, 0x51)");
     /// ```
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "ERROR({:#04x}, {:#04x})", self.version, self.error_code)
@@ -88,7 +89,7 @@ impl Frame for Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::{Error, HEADER};
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
     /// assert_eq!(error.header(), 0xC2);
     /// ```
     fn header(&self) -> u8 {
@@ -102,8 +103,8 @@ impl Frame for Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::{Error, HEADER};
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
-    /// assert_eq!(error.payload(), Some(vec![0x01, 0x52]));
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    /// assert_eq!(error.payload(), Some(vec![0x02, 0x51]));
     /// ```
     fn payload(&self) -> Option<Vec<u8>> {
         Some(vec![self.version, self.error_code])
@@ -116,8 +117,8 @@ impl Frame for Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::{Error, HEADER};
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
-    /// assert_eq!(error.crc(), 0xFABD);
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    /// assert_eq!(error.crc(), 0xA8BD);
     /// ```
     fn crc(&self) -> u16 {
         self.crc
@@ -130,7 +131,7 @@ impl Frame for Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::{Error, HEADER};
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
     /// assert_eq!(error.flag(), 0x7E);
     /// ```
     fn flag(&self) -> u8 {
@@ -144,7 +145,7 @@ impl Frame for Error {
     /// use ashv2::Frame;
     /// use ashv2::packet::error::{Error, HEADER};
     ///
-    /// let error = Error::new(0xC2, 0x01, 0x52, 0xFABD, 0x7E);
+    /// let error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
     /// assert!(error.is_header_valid());
     /// ```
     fn is_header_valid(&self) -> bool {
