@@ -136,14 +136,14 @@ impl Frame for Data {
     ///
     /// // EZSP "version" command: 00 00 00 02
     /// let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD, 0x7E);
-    /// assert_eq!(data.payload(), Some([0x00, 0x00, 0x00, 0x02].as_slice()));
+    /// assert_eq!(data.payload(), Some(vec![0x00, 0x00, 0x00, 0x02]));
     ///
     /// // EZSP "version" response: 00 80 00 02 02 11 30
     /// let data = Data::new(0x53 , vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(), 0x6316, 0x7E);
-    /// assert_eq!(data.payload(), Some([0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].as_slice()));
+    /// assert_eq!(data.payload(), Some(vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]));
     /// ```
-    fn payload(&self) -> Option<&[u8]> {
-        Some(&self.payload)
+    fn payload(&self) -> Option<Vec<u8>> {
+        Some(self.payload.to_vec())
     }
 
     /// Returns the CRC checksum.

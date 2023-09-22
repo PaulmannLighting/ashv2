@@ -116,7 +116,7 @@ impl Frame for Ack {
     /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
     /// assert_eq!(ack.payload(), None);
     /// ```
-    fn payload(&self) -> Option<&[u8]> {
+    fn payload(&self) -> Option<Vec<u8>> {
         None
     }
 
