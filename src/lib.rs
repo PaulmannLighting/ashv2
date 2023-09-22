@@ -1,14 +1,6 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod packet;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use crc::{Crc, CRC_16_IBM_3740};
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
+pub const FLAG_BYTE: u8 = 0x7E;
