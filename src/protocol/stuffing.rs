@@ -42,7 +42,7 @@ where
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(byte) = self.bytes.next() {
+        self.bytes.next().and_then(|byte| {
             if byte == ESCAPE {
                 self.bytes.next().map(|byte| {
                     if RESERVED_BYTES.contains(&byte) {
@@ -54,8 +54,6 @@ where
             } else {
                 Some(byte)
             }
-        } else {
-            None
-        }
+        })
     }
 }
