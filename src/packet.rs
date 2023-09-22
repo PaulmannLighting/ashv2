@@ -3,6 +3,7 @@ pub mod nak;
 pub mod rst;
 pub mod rst_ack;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
     Ack(ack::Ack),
     Nak(nak::Nak),
