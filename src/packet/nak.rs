@@ -19,11 +19,11 @@ impl Nak {
     /// ````
     /// use ashv2::packet::nak::Nak;
     ///
-    /// let ack = Nak::new(0xA6, 0x34DC);
-    /// assert!(ack.ready());
+    /// let nak = Nak::new(0xA6, 0x34DC);
+    /// assert!(nak.ready());
     ///
-    /// let ack = Nak::new(0xAD, 0x85B7);
-    /// assert!(!ack.ready());
+    /// let nak = Nak::new(0xAD, 0x85B7);
+    /// assert!(!nak.ready());
     #[must_use]
     pub const fn ready(&self) -> bool {
         (self.header & ACK_RDY_MASK) <= 0x08
@@ -35,11 +35,11 @@ impl Nak {
     /// ````
     /// use ashv2::packet::nak::Nak;
     ///
-    /// let ack = Nak::new(0xA6, 0x34DC);
-    /// assert_eq!(ack.ack_num(), 6);
+    /// let nak = Nak::new(0xA6, 0x34DC);
+    /// assert_eq!(nak.ack_num(), 6);
     ///
-    /// let ack = Nak::new(0xAD, 0x85B7);
-    /// assert_eq!(ack.ack_num(), 5);
+    /// let nak = Nak::new(0xAD, 0x85B7);
+    /// assert_eq!(nak.ack_num(), 5);
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
         (self.header & ACK_RDY_MASK) % 0x08
@@ -53,11 +53,11 @@ impl Display for Nak {
     /// ```
     /// use ashv2::packet::nak::Nak;
     ///
-    /// let ack = Nak::new(0xA6, 0x34DC);
-    /// assert_eq!(&ack.to_string(), "NAK(6)+");
+    /// let nak = Nak::new(0xA6, 0x34DC);
+    /// assert_eq!(&nak.to_string(), "NAK(6)+");
     ///
-    /// let ack = Nak::new(0xAD, 0x85B7);
-    /// assert_eq!(&ack.to_string(), "NAK(5)-");
+    /// let nak = Nak::new(0xAD, 0x85B7);
+    /// assert_eq!(&nak.to_string(), "NAK(5)-");
     /// ```
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
