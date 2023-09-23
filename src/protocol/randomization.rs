@@ -8,12 +8,16 @@ const DEFAULT_SEED: u8 = 0x42;
 /// use ashv2::protocol::randomization::mask;
 ///
 /// let bytes = vec![0x00, 0x00, 0x00, 0x02];
-/// let masked: Vec<_> = mask(bytes.into_iter()).collect();
+/// let masked: Vec<_> = mask(bytes.clone().into_iter()).collect();
 /// assert_eq!(masked, vec![0x42, 0x21, 0xA8, 0x56]);
+/// let unmasked: Vec<_> = mask(masked.into_iter()).collect();
+/// assert_eq!(unmasked, bytes);
 ///
 /// let bytes = vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30];
-/// let masked: Vec<_> = mask(bytes.into_iter()).collect();
+/// let masked: Vec<_> = mask(bytes.clone().into_iter()).collect();
 /// assert_eq!(masked, vec![0x42, 0xA1, 0xA8, 0x56, 0x28, 0x04, 0x82]);
+/// let unmasked: Vec<_> = mask(masked.into_iter()).collect();
+/// assert_eq!(unmasked, bytes);
 pub fn mask(bytes: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
     bytes
         .zip(MaskGenerator::default())
