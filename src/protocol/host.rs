@@ -1,15 +1,19 @@
+use super::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::packet::Packet;
 use serialport::SerialPort;
 use std::io::Error;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::SeqCst;
 
-const MIN_BUF_CAPACITY: usize = 4;
+const MAX_BUF_CAPACITY: usize = 124;
 
 pub struct Host<S>
 where
     S: SerialPort,
 {
     serial_port: S,
-    byte_buf: [u8; 1],
+    byte_buffer: [u8; 1],
+    close: AtomicBool,
 }
 
 impl<S> Host<S>
@@ -19,22 +23,52 @@ where
     pub const fn new(serial_port: S) -> Self {
         Self {
             serial_port,
-            byte_buf: [0],
+            byte_buffer: [0],
+            close: AtomicBool::new(false),
         }
     }
 
-    pub fn read_packet(&mut self) -> Result<Packet, Error> {
-        //let mut buffer = Vec::with_capacity(MIN_BUF_CAPACITY);
+    fn read_packet(&mut self) -> Result<Packet, Error> {
+        let frame = self.read_frame()?;
+        let header = frame.get(0).expect("Read frame does not contain a header.");
 
-        match self.read_byte()? {
-            _ => todo!("Implement byte processing"),
+        match header {}
+    }
+
+    fn read_frame(&mut self) -> Result<Vec<u8>, Error> {
+        self.serial_port.read_exact(&mut self.byte_buffer)?;
+        let mut buffer = Vec::with_capacity(MAX_BUF_CAPACITY);
+        let mut skip_to_next_flag = false;
+
+        while !self.close.load(SeqCst) {
+            match self.byte_buffer[0] {
+                CANCEL => {
+                    buffer.clear();
+                    skip_to_next_flag = false;
+                }
+                FLAG => {
+                    if !skip_to_next_flag && !buffer.is_empty() {
+                        return Ok(buffer);
+                    }
+                    buffer.clear();
+                    skip_to_next_flag = false;
+                }
+                SUBSTITUTE => {
+                    buffer.clear();
+                    skip_to_next_flag = true;
+                }
+                X_ON | X_OFF | TIMEOUT => (),
+                byte => {
+                    if buffer.len() > MAX_BUF_CAPACITY {
+                        buffer.clear();
+                        skip_to_next_flag = true;
+                    }
+
+                    buffer.push(byte);
+                }
+            }
         }
 
         Err(Error::last_os_error())
-    }
-
-    fn read_byte(&mut self) -> Result<u8, Error> {
-        self.serial_port.read_exact(&mut self.byte_buf)?;
-        Ok(self.byte_buf[0])
     }
 }

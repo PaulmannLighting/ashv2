@@ -1,11 +1,7 @@
-const FLAG: u8 = 0x7E;
-const ESCAPE: u8 = 0x7D;
-const X_ON: u8 = 0x11;
-const X_OFF: u8 = 0x13;
-const SUBSTITUTE: u8 = 0x18;
-const CANCEL: u8 = 0x1A;
-const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
-const COMPLEMENT_BIT: u8 = 1 << 5;
+use crate::protocol::{CANCEL, ESCAPE, FLAG, SUBSTITUTE, X_OFF, X_ON};
+
+pub const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
+pub const COMPLEMENT_BIT: u8 = 1 << 5;
 
 /// Trait to allow stuffing and unstuffing of byte iterators.
 pub trait Stuffing: Iterator<Item = u8> + Sized {
