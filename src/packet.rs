@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display, Formatter};
+
 pub mod ack;
 pub mod data;
 pub mod error;
@@ -13,6 +15,19 @@ pub enum Packet {
     Nak(nak::Nak),
     Rst(rst::Rst),
     RstAck(rst_ack::RstAck),
+}
+
+impl Display for Packet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ack(ack) => Display::fmt(ack, f),
+            Self::Data(data) => Display::fmt(data, f),
+            Self::Error(error) => Display::fmt(error, f),
+            Self::Nak(nak) => Display::fmt(nak, f),
+            Self::Rst(rst) => Display::fmt(rst, f),
+            Self::RstAck(rst_ack) => Display::fmt(rst_ack, f),
+        }
+    }
 }
 
 impl TryFrom<&[u8]> for Packet {
