@@ -1,7 +1,6 @@
 use crate::Frame;
 use std::fmt::{Display, Formatter};
 
-pub const CRC: u16 = 0x38BC;
 pub const HEADER: u8 = 0xC0;
 pub const SIZE: usize = 4;
 
