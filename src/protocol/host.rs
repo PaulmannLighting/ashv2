@@ -5,6 +5,7 @@ use crate::packet::error::Error;
 use crate::packet::nak::Nak;
 use crate::packet::rst_ack::RstAck;
 use crate::packet::Packet;
+use crate::protocol::stuffing::Stuffing;
 use anyhow::anyhow;
 use log::debug;
 use serialport::SerialPort;
@@ -90,7 +91,7 @@ where
                 FLAG => {
                     if !skip_to_next_flag && !buffer.is_empty() {
                         buffer.push(FLAG);
-                        return Ok(buffer);
+                        return Ok(buffer.into_iter().unstuff().collect());
                     }
                     buffer.clear();
                     skip_to_next_flag = false;
