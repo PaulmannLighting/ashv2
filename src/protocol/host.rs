@@ -1,5 +1,9 @@
 use super::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::packet::ack::Ack;
+use crate::packet::data::Data;
+use crate::packet::error::Error;
 use crate::packet::nak::Nak;
+use crate::packet::rst_ack::RstAck;
 use crate::packet::Packet;
 use anyhow::anyhow;
 use log::debug;
@@ -46,10 +50,10 @@ where
                     match packet {
                         Packet::Data(data) => self.handle_data(data),
                         Packet::Ack(ack) => self.handle_ack(ack),
-                        Packet::Nak(_) => self.send_retry(),
-                        Packet::RstAck(rst_ack) => self.handle_reset(rst_ack),
+                        Packet::Nak(nak) => self.handle_nak(nak),
+                        Packet::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
                         Packet::Error(error) => self.handle_error(error),
-                        packet => {
+                        packet @ Packet::Rst(_) => {
                             debug!("Ignoring packet: {packet}");
                         }
                     }
@@ -108,5 +112,25 @@ where
         }
 
         Err(anyhow!("Reading aborted."))
+    }
+
+    fn handle_data(&mut self, data: Data) {
+        todo!()
+    }
+
+    fn handle_ack(&mut self, ack: Ack) {
+        todo!()
+    }
+
+    fn handle_nak(&mut self, nak: Nak) {
+        todo!()
+    }
+
+    fn handle_rst_ack(&mut self, rst_ack: RstAck) {
+        todo!()
+    }
+
+    fn handle_error(&mut self, error: Error) {
+        todo!()
     }
 }
