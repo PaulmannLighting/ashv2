@@ -22,9 +22,16 @@ where
     pub fn read_packet(&mut self) -> Result<Packet, Error> {
         //let mut buffer = Vec::with_capacity(MIN_BUF_CAPACITY);
 
-        let mut header: [u8; 1] = [0];
-        self.serial_port.read_exact(&mut header)?;
+        match self.read_byte()? {
+            _ => todo!("Implement byte processing"),
+        }
 
         Err(Error::last_os_error())
+    }
+
+    fn read_byte(&mut self) -> Result<u8, Error> {
+        let mut header: [u8; 1] = [0];
+        self.serial_port.read_exact(&mut header)?;
+        Ok(header[0])
     }
 }
