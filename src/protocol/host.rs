@@ -29,6 +29,7 @@ where
     }
 
     fn read_packet(&mut self) -> anyhow::Result<Packet> {
+        // TODO: Perform unstuffing before try_from() call!
         Ok(Packet::try_from(self.read_frame()?.as_slice())?)
     }
 
