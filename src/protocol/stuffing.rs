@@ -8,20 +8,13 @@ const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
 /// Trait to allow stuffing and unstuffing of byte iterators.
-///
-/// # Examples
-/// ```
-/// use ashv2::protocol::stuffing::Stuffing;
-///
-/// let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
-/// let stuffed_and_unstuffed: Vec<u8> = original.clone().into_iter().stuff().unstuff().collect();
-/// assert_eq!(stuffed_and_unstuffed, original);
-/// ```
 pub trait Stuffing: Iterator<Item = u8> + Sized {
+    /// Stuffs a byte stream.
     fn stuff(self) -> Stuffer<Self> {
         Stuffer::new(self)
     }
 
+    /// Unstuffs a byte stream.
     fn unstuff(self) -> Unstuffer<Self> {
         Unstuffer::new(self)
     }
@@ -38,17 +31,6 @@ where
 }
 
 /// Stuff bytes.
-///
-/// # Examples
-/// ```
-/// use ashv2::protocol::stuffing::Stuffer;
-///
-/// let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
-/// let target = vec![0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D];
-/// let stuffer = Stuffer::new(original.into_iter());
-/// let stuffed: Vec<u8> = stuffer.collect();
-/// assert_eq!(stuffed, target);
-/// ```
 impl<T> Stuffer<T>
 where
     T: Iterator<Item = u8>,
@@ -88,17 +70,6 @@ where
 }
 
 /// Undo byte stuffing.
-///
-/// # Examples
-/// ```
-/// use ashv2::protocol::stuffing::Unstuffer;
-///
-/// let stuffed: [u8; 12] = [0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D];
-/// let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
-/// let unstuffer = Unstuffer::new(stuffed.into_iter());
-/// let unstuffed: Vec<u8> = unstuffer.collect();
-/// assert_eq!(unstuffed, original);
-/// ```
 impl<T> Unstuffer<T>
 where
     T: Iterator<Item = u8>,
@@ -128,5 +99,40 @@ where
                 Some(byte)
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Stuffer, Stuffing, Unstuffer};
+
+    #[test]
+    fn test_stuffing_trait() {
+        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+        let stuffed_and_unstuffed: Vec<u8> =
+            original.clone().into_iter().stuff().unstuff().collect();
+        assert_eq!(stuffed_and_unstuffed, original);
+    }
+
+    #[test]
+    fn test_stuffer() {
+        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+        let target = vec![
+            0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
+        ];
+        let stuffer = Stuffer::new(original.into_iter());
+        let stuffed: Vec<u8> = stuffer.collect();
+        assert_eq!(stuffed, target);
+    }
+
+    #[test]
+    fn test_unstuffer() {
+        let stuffed: [u8; 12] = [
+            0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
+        ];
+        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+        let unstuffer = Unstuffer::new(stuffed.into_iter());
+        let unstuffed: Vec<u8> = unstuffer.collect();
+        assert_eq!(unstuffed, original);
     }
 }

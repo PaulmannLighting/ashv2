@@ -12,50 +12,18 @@ pub struct Ack {
 
 impl Ack {
     /// Creates a new ACK packet.
-    ///
-    /// # Examples
-    /// ````
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert!(ack.is_valid());
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert!(ack.is_valid());
     #[must_use]
     pub const fn new(header: u8, crc: u16, flag: u8) -> Self {
         Self { header, crc, flag }
     }
 
-    /// Determine whether the ready flag is set
-    ///
-    /// # Examples
-    /// ````
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert!(ack.ready());
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert!(!ack.ready());
+    /// Determines whether the ready flag is set.
     #[must_use]
     pub const fn ready(&self) -> bool {
         (self.header & ACK_RDY_MASK) <= 0x08
     }
 
-    /// Return the acknowledgement number
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(ack.ack_num(), 1);
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(ack.ack_num(), 6);
-    /// ```
+    /// Returns the acknowledgement number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
         (self.header & ACK_RDY_MASK) % 0x08
@@ -63,18 +31,6 @@ impl Ack {
 }
 
 impl Display for Ack {
-    /// Display the ACK packet
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(&ack.to_string(), "ACK(1)+");
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(&ack.to_string(), "ACK(6)-");
-    /// ```
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -86,88 +42,86 @@ impl Display for Ack {
 }
 
 impl Frame for Ack {
-    /// Returns the header.
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(ack.header(), 0x81);
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(ack.header(), 0x8E);
-    /// ```
     fn header(&self) -> u8 {
         self.header
     }
 
-    /// Returns the payload.
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(ack.payload(), None);
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(ack.payload(), None);
-    /// ```
     fn payload(&self) -> Option<Vec<u8>> {
         None
     }
 
-    /// Returns the CRC checksum.
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(ack.crc(), 0x6059);
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(ack.crc(), 0x91B6);
-    /// ```
     fn crc(&self) -> u16 {
         self.crc
     }
 
-    /// Returns the flag byte.
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert_eq!(ack.flag(), 0x7E);
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert_eq!(ack.flag(), 0x7E);
-    /// ```
     fn flag(&self) -> u8 {
         self.flag
     }
 
-    /// Determines whether the header is valid.
-    ///
-    /// # Examples
-    /// ```
-    /// use ashv2::Frame;
-    /// use ashv2::packet::ack::Ack;
-    ///
-    /// let ack = Ack::new(0x81, 0x6059, 0x7E);
-    /// assert!(ack.is_header_valid());
-    ///
-    /// let ack = Ack::new(0x8E, 0x91B6, 0x7E);
-    /// assert!(ack.is_header_valid());
-    /// ```
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0x80
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Ack;
+    use crate::Frame;
+
+    const ACK1: Ack = Ack::new(0x81, 0x6059, 0x7E);
+    const ACK2: Ack = Ack::new(0x8E, 0x91B6, 0x7E);
+
+    #[test]
+    fn test_is_valid() {
+        assert!(ACK1.is_valid());
+        assert!(ACK2.is_valid());
+    }
+
+    #[test]
+    fn test_ready() {
+        assert!(ACK1.ready());
+        assert!(!ACK2.ready());
+    }
+
+    #[test]
+    fn test_ack_num() {
+        assert_eq!(ACK1.ack_num(), 1);
+        assert_eq!(ACK2.ack_num(), 6);
+    }
+
+    #[test]
+    fn test_to_string() {
+        assert_eq!(&ACK1.to_string(), "ACK(1)+");
+        assert_eq!(&ACK2.to_string(), "ACK(6)-");
+    }
+
+    #[test]
+    fn test_header() {
+        assert_eq!(ACK1.header(), 0x81);
+        assert_eq!(ACK2.header(), 0x8E);
+    }
+
+    #[test]
+    fn test_payload() {
+        assert_eq!(ACK1.payload(), None);
+        assert_eq!(ACK2.payload(), None);
+    }
+
+    #[test]
+    fn test_crc() {
+        assert_eq!(ACK1.crc(), 0x6059);
+        assert_eq!(ACK2.crc(), 0x91B6);
+    }
+
+    #[test]
+    fn test_flag() {
+        assert_eq!(ACK1.flag(), 0x7E);
+        assert_eq!(ACK2.flag(), 0x7E);
+    }
+
+    #[test]
+    fn test_is_header_valid() {
+        assert!(ACK1.is_header_valid());
+        assert!(ACK2.is_header_valid());
     }
 }
