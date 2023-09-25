@@ -9,6 +9,7 @@ where
     S: SerialPort,
 {
     serial_port: S,
+    byte_buf: [u8; 1],
 }
 
 impl<S> Host<S>
@@ -16,7 +17,10 @@ where
     S: SerialPort,
 {
     pub const fn new(serial_port: S) -> Self {
-        Self { serial_port }
+        Self {
+            serial_port,
+            byte_buf: [0],
+        }
     }
 
     pub fn read_packet(&mut self) -> Result<Packet, Error> {
@@ -30,8 +34,7 @@ where
     }
 
     fn read_byte(&mut self) -> Result<u8, Error> {
-        let mut header: [u8; 1] = [0];
-        self.serial_port.read_exact(&mut header)?;
-        Ok(header[0])
+        self.serial_port.read_exact(&mut self.byte_buf)?;
+        Ok(self.byte_buf[0])
     }
 }
