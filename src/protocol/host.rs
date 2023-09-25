@@ -33,11 +33,12 @@ where
     }
 
     fn read_frame(&mut self) -> Result<Vec<u8>, Error> {
-        self.serial_port.read_exact(&mut self.byte_buffer)?;
         let mut buffer = Vec::with_capacity(MAX_BUF_CAPACITY);
         let mut skip_to_next_flag = false;
 
         while !self.close.load(SeqCst) {
+            self.serial_port.read_exact(&mut self.byte_buffer)?;
+
             match self.byte_buffer[0] {
                 CANCEL => {
                     buffer.clear();
@@ -45,6 +46,7 @@ where
                 }
                 FLAG => {
                     if !skip_to_next_flag && !buffer.is_empty() {
+                        buffer.push(FLAG);
                         return Ok(buffer);
                     }
                     buffer.clear();
