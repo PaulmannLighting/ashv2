@@ -94,6 +94,7 @@ where
                         frame.push(FLAG);
                         return Ok(frame);
                     }
+
                     buffer.clear();
                     skip_to_next_flag = false;
                 }
