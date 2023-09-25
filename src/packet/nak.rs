@@ -58,7 +58,7 @@ impl Nak {
     /// assert_eq!(nak.ack_num(), 5);
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        (self.header & ACK_RDY_MASK) % 0x08
+        self.header % 0x08
     }
 }
 
