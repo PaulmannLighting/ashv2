@@ -1,4 +1,5 @@
-use crate::Frame;
+use crate::protocol::FLAG;
+use crate::{Frame, CRC};
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
@@ -61,6 +62,13 @@ impl Frame for Nak {
 
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0xA0
+    }
+}
+
+impl From<u8> for Nak {
+    fn from(ack_num: u8) -> Self {
+        let header = 0xA0 + (ack_num % 0x08);
+        Self::new(header, CRC.checksum(&[header]), FLAG)
     }
 }
 
