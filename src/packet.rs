@@ -15,19 +15,14 @@ pub enum Packet {
     RstAck(rst_ack::RstAck),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Error {
-    MissingHeader,
-    InvalidHeader(u8),
-    BufferTooSmall(usize),
-    InvalidBufferSize { expected: usize, found: usize },
-}
-
 impl TryFrom<&[u8]> for Packet {
-    type Error = Error;
+    type Error = crate::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Error> {
-        match *buffer.first().ok_or(Error::MissingHeader)? {
+    fn try_from(buffer: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
+        match *buffer
+            .first()
+            .ok_or(<Self as TryFrom<&[u8]>>::Error::MissingHeader)?
+        {
             rst::HEADER => Ok(Self::Rst(rst::Rst::try_from(buffer)?)),
             rst_ack::HEADER => Ok(Self::RstAck(rst_ack::RstAck::try_from(buffer)?)),
             error::HEADER => Ok(Self::Error(error::Error::try_from(buffer)?)),
@@ -39,7 +34,7 @@ impl TryFrom<&[u8]> for Packet {
                 } else if header & 0x60 == 0x20 {
                     Ok(Self::Nak(nak::Nak::try_from(buffer)?))
                 } else {
-                    Err(Error::InvalidHeader(header))
+                    Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(header))
                 }
             }
         }

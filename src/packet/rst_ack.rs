@@ -73,7 +73,7 @@ impl Frame for RstAck {
 }
 
 impl TryFrom<&[u8]> for RstAck {
-    type Error = crate::packet::Error;
+    type Error = crate::Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {

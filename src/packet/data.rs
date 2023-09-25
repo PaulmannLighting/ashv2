@@ -82,7 +82,7 @@ impl Frame for Data {
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = crate::packet::Error;
+    type Error = crate::Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() >= MIN_SIZE {

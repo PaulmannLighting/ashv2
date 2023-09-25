@@ -28,10 +28,8 @@ where
         }
     }
 
-    fn read_packet(&mut self) -> Result<Packet, Error> {
-        let frame = self.read_frame()?;
-        let header = frame.get(0).expect("Read frame does not contain a header.");
-        todo!("Convert header to packet")
+    fn read_packet(&mut self) -> anyhow::Result<Packet> {
+        Ok(Packet::try_from(self.read_frame()?.as_slice())?)
     }
 
     fn read_frame(&mut self) -> Result<Vec<u8>, Error> {
