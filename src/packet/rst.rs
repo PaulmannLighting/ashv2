@@ -1,8 +1,9 @@
 use crate::Frame;
 use std::fmt::{Display, Formatter};
 
-pub const HEADER: u8 = 0xC0;
 pub const CRC: u16 = 0x38BC;
+pub const HEADER: u8 = 0xC0;
+pub const SIZE: usize = 4;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +49,25 @@ impl Frame for Rst {
     }
 }
 
+impl TryFrom<&[u8]> for Rst {
+    type Error = crate::packet::Error;
+
+    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
+        if buffer.len() == SIZE {
+            Ok(Self::new(
+                buffer[0],
+                u16::from_be_bytes([buffer[1], buffer[2]]),
+                buffer[3],
+            ))
+        } else {
+            Err(Self::Error::InvalidBufferSize {
+                expected: SIZE,
+                found: buffer.len(),
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Rst;
@@ -88,5 +108,11 @@ mod tests {
     #[test]
     fn test_is_header_valid() {
         assert!(RST.is_header_valid());
+    }
+
+    #[test]
+    fn test_from_buffer() {
+        let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC, 0x7E];
+        assert_eq!(Rst::try_from(buffer.as_slice()), Ok(RST));
     }
 }

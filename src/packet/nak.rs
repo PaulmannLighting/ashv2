@@ -2,6 +2,7 @@ use crate::Frame;
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
+const SIZE: usize = 4;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
@@ -60,6 +61,25 @@ impl Frame for Nak {
 
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0xA0
+    }
+}
+
+impl TryFrom<&[u8]> for Nak {
+    type Error = crate::packet::Error;
+
+    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
+        if buffer.len() == SIZE {
+            Ok(Self::new(
+                buffer[0],
+                u16::from_be_bytes([buffer[1], buffer[2]]),
+                buffer[3],
+            ))
+        } else {
+            Err(Self::Error::InvalidBufferSize {
+                expected: SIZE,
+                found: buffer.len(),
+            })
+        }
     }
 }
 
@@ -123,5 +143,13 @@ mod tests {
     fn test_is_header_valid() {
         assert!(NAK1.is_header_valid());
         assert!(NAK2.is_header_valid());
+    }
+
+    #[test]
+    fn test_from_buffer() {
+        let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC, 0x7E];
+        assert_eq!(Nak::try_from(buffer1.as_slice()), Ok(NAK1));
+        let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7, 0x7E];
+        assert_eq!(Nak::try_from(buffer2.as_slice()), Ok(NAK2));
     }
 }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 const ACK_NUM_MASK: u8 = 0x0F;
 const FRAME_NUM_MASK: u8 = 0xF0;
 const FRAME_NUM_OFFSET: u8 = 4;
+const MIN_SIZE: usize = 4;
 const RETRANSMIT_MASK: u8 = 0x08;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -77,6 +78,23 @@ impl Frame for Data {
 
     fn is_header_valid(&self) -> bool {
         true
+    }
+}
+
+impl TryFrom<&[u8]> for Data {
+    type Error = crate::packet::Error;
+
+    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
+        if buffer.len() >= MIN_SIZE {
+            Ok(Self::new(
+                buffer[0],
+                buffer[1..(buffer.len() - 3)].into(),
+                u16::from_be_bytes([buffer[buffer.len() - 3], buffer[buffer.len() - 2]]),
+                buffer[buffer.len() - 1],
+            ))
+        } else {
+            Err(Self::Error::BufferTooSmall(MIN_SIZE))
+        }
     }
 }
 
@@ -230,5 +248,26 @@ mod tests {
             0x7E,
         );
         assert!(data.is_header_valid());
+    }
+
+    #[test]
+    fn test_from_buffer() {
+        // EZSP "version" command: 00 00 00 02
+        let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD, 0x7E];
+        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD, 0x7E);
+        assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
+
+        // EZSP "version" response: 00 80 00 02 02 11 30
+        let buffer: Vec<u8> = vec![
+            0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16, 0x7E,
+        ];
+        let data = Data::new(
+            0x53,
+            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            0x6316,
+            0x7E,
+        );
+        assert!(data.is_valid());
+        assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
     }
 }

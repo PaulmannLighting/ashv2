@@ -4,6 +4,7 @@ use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
 pub const HEADER: u8 = 0xC1;
+pub const SIZE: usize = 6;
 pub const VERSION: u8 = 0x02;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -71,6 +72,27 @@ impl Frame for RstAck {
     }
 }
 
+impl TryFrom<&[u8]> for RstAck {
+    type Error = crate::packet::Error;
+
+    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
+        if buffer.len() == SIZE {
+            Ok(Self::new(
+                buffer[0],
+                buffer[1],
+                buffer[2],
+                u16::from_be_bytes([buffer[3], buffer[4]]),
+                buffer[5],
+            ))
+        } else {
+            Err(Self::Error::InvalidBufferSize {
+                expected: SIZE,
+                found: buffer.len(),
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::RstAck;
@@ -121,5 +143,11 @@ mod tests {
     #[test]
     fn test_is_header_valid() {
         assert!(RST_ACK.is_header_valid());
+    }
+
+    #[test]
+    fn test_from_buffer() {
+        let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
+        assert_eq!(RstAck::try_from(buffer.as_slice()), Ok(RST_ACK));
     }
 }
