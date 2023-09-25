@@ -1,7 +1,7 @@
 use super::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::packet::Packet;
+use anyhow::anyhow;
 use serialport::SerialPort;
-use std::io::Error;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -33,7 +33,7 @@ where
         Ok(Packet::try_from(self.read_frame()?.as_slice())?)
     }
 
-    fn read_frame(&mut self) -> Result<Vec<u8>, Error> {
+    fn read_frame(&mut self) -> anyhow::Result<Vec<u8>> {
         let mut buffer = Vec::with_capacity(MAX_BUF_CAPACITY);
         let mut skip_to_next_flag = false;
 
@@ -69,6 +69,6 @@ where
             }
         }
 
-        Err(Error::last_os_error())
+        Err(anyhow!("Reading aborted."))
     }
 }
