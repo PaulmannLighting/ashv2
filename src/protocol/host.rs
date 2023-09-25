@@ -11,7 +11,7 @@ use serialport::SerialPort;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 
-const MAX_BUF_CAPACITY: usize = 124;
+const MAX_BUF_CAPACITY: usize = 132;
 
 pub struct Host<S>
 where
