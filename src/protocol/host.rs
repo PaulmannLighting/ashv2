@@ -1,6 +1,8 @@
 use super::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::packet::nak::Nak;
 use crate::packet::Packet;
 use anyhow::anyhow;
+use log::debug;
 use serialport::SerialPort;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
@@ -25,6 +27,42 @@ where
             serial_port,
             byte_buffer: [0],
             close: AtomicBool::new(false),
+        }
+    }
+
+    fn run(&mut self) {
+        let mut errors: usize = 0;
+        let mut reject = false;
+        let mut ack_num: u8 = 0;
+
+        while !self.close.load(SeqCst) {
+            let response: Packet;
+
+            match self.read_packet() {
+                Ok(packet) => {
+                    debug!("RX ASH frame: {packet}");
+                    errors = 0;
+
+                    match packet {
+                        Packet::Data(data) => self.handle_data(data),
+                        Packet::Ack(ack) => self.handle_ack(ack),
+                        Packet::Nak(_) => self.send_retry(),
+                        Packet::RstAck(rst_ack) => self.handle_reset(rst_ack),
+                        Packet::Error(error) => self.handle_error(error),
+                        packet => {
+                            debug!("Ignoring packet: {packet}");
+                        }
+                    }
+                }
+                Err(error) => {
+                    debug!("Bad packet: {error}");
+
+                    if !reject {
+                        reject = true;
+                        response = Packet::Nak(ack_num.into());
+                    }
+                }
+            }
         }
     }
 
