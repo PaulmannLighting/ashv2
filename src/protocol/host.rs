@@ -11,7 +11,7 @@ use serialport::SerialPort;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 
-const MAX_BUF_CAPACITY: usize = 132;
+const MAX_BUF_CAPACITY: usize = 132 * 2; // Worst case: every byte is escaped.
 
 pub struct Host<S>
 where
