@@ -56,7 +56,7 @@ where
                     buffer.clear();
                     skip_to_next_flag = true;
                 }
-                X_ON | X_OFF | TIMEOUT => (),
+                X_ON | X_OFF | TIMEOUT => continue,
                 byte => {
                     if buffer.len() > MAX_BUF_CAPACITY {
                         buffer.clear();
