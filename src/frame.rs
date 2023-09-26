@@ -1,4 +1,4 @@
-use crate::{CRC, FLAG_BYTE};
+use crate::CRC;
 
 pub trait Frame {
     /// Returns the frame's header.
@@ -12,16 +12,8 @@ pub trait Frame {
     /// Returns the CRC checksum.
     fn crc(&self) -> u16;
 
-    /// Returns the flag byte.
-    fn flag(&self) -> u8;
-
     /// Determines whether the header of the frame is valid.
     fn is_header_valid(&self) -> bool;
-
-    /// Determines whether the flag byte is valid.
-    fn is_flag_valid(&self) -> bool {
-        self.flag() == FLAG_BYTE
-    }
 
     /// Determines whether the CRC checksum is valid.
     fn is_crc_valid(&self) -> bool {
@@ -45,6 +37,6 @@ pub trait Frame {
 
     /// Determines whether the frame is valid.
     fn is_valid(&self) -> bool {
-        self.is_header_valid() && self.is_crc_valid() && self.is_flag_valid()
+        self.is_header_valid() && self.is_crc_valid()
     }
 }

@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
 pub const HEADER: u8 = 0xC1;
-pub const SIZE: usize = 6;
+pub const SIZE: usize = 5;
 pub const VERSION: u8 = 0x02;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -13,19 +13,17 @@ pub struct RstAck {
     version: u8,
     reset_code: u8,
     crc: u16,
-    flag: u8,
 }
 
 impl RstAck {
     /// Creates a new RSTACK packet.
     #[must_use]
-    pub const fn new(header: u8, version: u8, reset_code: u8, crc: u16, flag: u8) -> Self {
+    pub const fn new(header: u8, version: u8, reset_code: u8, crc: u16) -> Self {
         Self {
             header,
             version,
             reset_code,
             crc,
-            flag,
         }
     }
 
@@ -63,10 +61,6 @@ impl Frame for RstAck {
         self.crc
     }
 
-    fn flag(&self) -> u8 {
-        self.flag
-    }
-
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
     }
@@ -82,7 +76,6 @@ impl TryFrom<&[u8]> for RstAck {
                 buffer[1],
                 buffer[2],
                 u16::from_be_bytes([buffer[3], buffer[4]]),
-                buffer[5],
             ))
         } else {
             Err(Self::Error::InvalidBufferSize {
@@ -98,7 +91,7 @@ mod tests {
     use super::RstAck;
     use crate::{Code, Frame};
 
-    const RST_ACK: RstAck = RstAck::new(0xC1, 0x02, 0x02, 0x9B7B, 0x7E);
+    const RST_ACK: RstAck = RstAck::new(0xC1, 0x02, 0x02, 0x9B7B);
 
     #[test]
     fn test_is_valid() {
@@ -136,18 +129,13 @@ mod tests {
     }
 
     #[test]
-    fn test_flag() {
-        assert_eq!(RST_ACK.flag(), 0x7E);
-    }
-
-    #[test]
     fn test_is_header_valid() {
         assert!(RST_ACK.is_header_valid());
     }
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
+        let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B];
         assert_eq!(RstAck::try_from(buffer.as_slice()), Ok(RST_ACK));
     }
 }

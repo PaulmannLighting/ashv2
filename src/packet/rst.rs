@@ -2,21 +2,20 @@ use crate::Frame;
 use std::fmt::{Display, Formatter};
 
 pub const HEADER: u8 = 0xC0;
-pub const SIZE: usize = 4;
+pub const SIZE: usize = 3;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Rst {
     header: u8,
     crc: u16,
-    flag: u8,
 }
 
 impl Rst {
     /// Creates a new RST packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16, flag: u8) -> Self {
-        Self { header, crc, flag }
+    pub const fn new(header: u8, crc: u16) -> Self {
+        Self { header, crc }
     }
 }
 
@@ -39,10 +38,6 @@ impl Frame for Rst {
         self.crc
     }
 
-    fn flag(&self) -> u8 {
-        self.flag
-    }
-
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
     }
@@ -56,7 +51,6 @@ impl TryFrom<&[u8]> for Rst {
             Ok(Self::new(
                 buffer[0],
                 u16::from_be_bytes([buffer[1], buffer[2]]),
-                buffer[3],
             ))
         } else {
             Err(Self::Error::InvalidBufferSize {
@@ -72,7 +66,7 @@ mod tests {
     use super::Rst;
     use crate::Frame;
 
-    const RST: Rst = Rst::new(0xC0, 0x38BC, 0x7E);
+    const RST: Rst = Rst::new(0xC0, 0x38BC);
 
     #[test]
     fn test_is_valid() {
@@ -100,18 +94,13 @@ mod tests {
     }
 
     #[test]
-    fn test_flag() {
-        assert_eq!(RST.flag(), 0x7E);
-    }
-
-    #[test]
     fn test_is_header_valid() {
         assert!(RST.is_header_valid());
     }
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC, 0x7E];
+        let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
         assert_eq!(Rst::try_from(buffer.as_slice()), Ok(RST));
     }
 }

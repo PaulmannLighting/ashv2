@@ -90,9 +90,7 @@ where
                 }
                 FLAG => {
                     if !skip_to_next_flag && !buffer.is_empty() {
-                        let mut frame: Vec<_> = buffer.into_iter().unstuff().collect();
-                        frame.push(FLAG);
-                        return Ok(frame);
+                        return Ok(buffer.into_iter().unstuff().collect());
                     }
 
                     buffer.clear();

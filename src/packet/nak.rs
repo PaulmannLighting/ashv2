@@ -1,22 +1,20 @@
-use crate::protocol::FLAG;
 use crate::{Frame, CRC};
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
-const SIZE: usize = 4;
+const SIZE: usize = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
     header: u8,
     crc: u16,
-    flag: u8,
 }
 
 impl Nak {
     /// Creates a new NAK packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16, flag: u8) -> Self {
-        Self { header, crc, flag }
+    pub const fn new(header: u8, crc: u16) -> Self {
+        Self { header, crc }
     }
 
     /// Determines whether the ready flag is set.
@@ -56,10 +54,6 @@ impl Frame for Nak {
         self.crc
     }
 
-    fn flag(&self) -> u8 {
-        self.flag
-    }
-
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0xA0
     }
@@ -68,7 +62,7 @@ impl Frame for Nak {
 impl From<u8> for Nak {
     fn from(ack_num: u8) -> Self {
         let header = 0xA0 + (ack_num % 0x08);
-        Self::new(header, CRC.checksum(&[header]), FLAG)
+        Self::new(header, CRC.checksum(&[header]))
     }
 }
 
@@ -80,7 +74,6 @@ impl TryFrom<&[u8]> for Nak {
             Ok(Self::new(
                 buffer[0],
                 u16::from_be_bytes([buffer[1], buffer[2]]),
-                buffer[3],
             ))
         } else {
             Err(Self::Error::InvalidBufferSize {
@@ -96,8 +89,8 @@ mod tests {
     use super::Nak;
     use crate::Frame;
 
-    const NAK1: Nak = Nak::new(0xA6, 0x34DC, 0x7E);
-    const NAK2: Nak = Nak::new(0xAD, 0x85B7, 0x7E);
+    const NAK1: Nak = Nak::new(0xA6, 0x34DC);
+    const NAK2: Nak = Nak::new(0xAD, 0x85B7);
 
     #[test]
     fn test_is_valid() {
@@ -142,12 +135,6 @@ mod tests {
     }
 
     #[test]
-    fn test_flag() {
-        assert_eq!(NAK1.flag(), 0x7E);
-        assert_eq!(NAK2.flag(), 0x7E);
-    }
-
-    #[test]
     fn test_is_header_valid() {
         assert!(NAK1.is_header_valid());
         assert!(NAK2.is_header_valid());
@@ -155,9 +142,9 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC, 0x7E];
+        let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC];
         assert_eq!(Nak::try_from(buffer1.as_slice()), Ok(NAK1));
-        let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7, 0x7E];
+        let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7];
         assert_eq!(Nak::try_from(buffer2.as_slice()), Ok(NAK2));
     }
 }

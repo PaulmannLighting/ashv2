@@ -2,20 +2,19 @@ use crate::Frame;
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
-const SIZE: usize = 4;
+const SIZE: usize = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
     header: u8,
     crc: u16,
-    flag: u8,
 }
 
 impl Ack {
     /// Creates a new ACK packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16, flag: u8) -> Self {
-        Self { header, crc, flag }
+    pub const fn new(header: u8, crc: u16) -> Self {
+        Self { header, crc }
     }
 
     /// Determines whether the ready flag is set.
@@ -55,10 +54,6 @@ impl Frame for Ack {
         self.crc
     }
 
-    fn flag(&self) -> u8 {
-        self.flag
-    }
-
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0x80
     }
@@ -72,7 +67,6 @@ impl TryFrom<&[u8]> for Ack {
             Ok(Self::new(
                 buffer[0],
                 u16::from_be_bytes([buffer[1], buffer[2]]),
-                buffer[3],
             ))
         } else {
             Err(Self::Error::InvalidBufferSize {
@@ -88,8 +82,8 @@ mod tests {
     use super::Ack;
     use crate::Frame;
 
-    const ACK1: Ack = Ack::new(0x81, 0x6059, 0x7E);
-    const ACK2: Ack = Ack::new(0x8E, 0x91B6, 0x7E);
+    const ACK1: Ack = Ack::new(0x81, 0x6059);
+    const ACK2: Ack = Ack::new(0x8E, 0x91B6);
 
     #[test]
     fn test_is_valid() {
@@ -134,12 +128,6 @@ mod tests {
     }
 
     #[test]
-    fn test_flag() {
-        assert_eq!(ACK1.flag(), 0x7E);
-        assert_eq!(ACK2.flag(), 0x7E);
-    }
-
-    #[test]
     fn test_is_header_valid() {
         assert!(ACK1.is_header_valid());
         assert!(ACK2.is_header_valid());
@@ -147,9 +135,9 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59, 0x7E];
+        let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
         assert_eq!(Ack::try_from(buffer1.as_slice()), Ok(ACK1));
-        let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6, 0x7E];
+        let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
         assert_eq!(Ack::try_from(buffer2.as_slice()), Ok(ACK2));
     }
 }

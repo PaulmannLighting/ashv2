@@ -3,7 +3,7 @@ use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
 pub const HEADER: u8 = 0xC2;
-pub const SIZE: usize = 6;
+pub const SIZE: usize = 5;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
@@ -11,19 +11,17 @@ pub struct Error {
     version: u8,
     error_code: u8,
     crc: u16,
-    flag: u8,
 }
 
 impl Error {
     /// Creates a new ERROR packet.
     #[must_use]
-    pub const fn new(header: u8, version: u8, error_code: u8, crc: u16, flag: u8) -> Self {
+    pub const fn new(header: u8, version: u8, error_code: u8, crc: u16) -> Self {
         Self {
             header,
             version,
             error_code,
             crc,
-            flag,
         }
     }
 
@@ -61,10 +59,6 @@ impl Frame for Error {
         self.crc
     }
 
-    fn flag(&self) -> u8 {
-        self.flag
-    }
-
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
     }
@@ -80,7 +74,6 @@ impl TryFrom<&[u8]> for Error {
                 buffer[1],
                 buffer[2],
                 u16::from_be_bytes([buffer[3], buffer[4]]),
-                buffer[5],
             ))
         } else {
             Err(Self::Error::InvalidBufferSize {
@@ -96,7 +89,7 @@ mod tests {
     use super::Error;
     use crate::{Code, Frame};
 
-    const ERROR: Error = Error::new(0xC2, 0x02, 0x51, 0xA8BD, 0x7E);
+    const ERROR: Error = Error::new(0xC2, 0x02, 0x51, 0xA8BD);
 
     #[test]
     fn test_is_valid() {
@@ -134,18 +127,13 @@ mod tests {
     }
 
     #[test]
-    fn test_flag() {
-        assert_eq!(ERROR.flag(), 0x7E);
-    }
-
-    #[test]
     fn test_is_header_valid() {
         assert!(ERROR.is_header_valid());
     }
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD, 0x7E];
+        let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
         assert_eq!(Error::try_from(buffer.as_slice()), Ok(ERROR));
     }
 }
