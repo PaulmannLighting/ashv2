@@ -53,16 +53,21 @@ impl Frame for RstAck {
         self.header
     }
 
-    fn payload(&self) -> Option<Vec<u8>> {
-        Some(vec![self.version, self.reset_code])
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
 
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
+    }
+}
+
+impl From<&RstAck> for Vec<u8> {
+    fn from(rst_ack: &RstAck) -> Self {
+        let mut bytes = Vec::with_capacity(SIZE);
+        bytes.extend_from_slice(&[rst_ack.header, rst_ack.version, rst_ack.reset_code]);
+        bytes.extend_from_slice(&rst_ack.crc.to_be_bytes());
+        bytes
     }
 }
 
@@ -116,11 +121,6 @@ mod tests {
     #[test]
     fn test_header() {
         assert_eq!(RST_ACK.header(), 0xC1);
-    }
-
-    #[test]
-    fn test_payload() {
-        assert_eq!(RST_ACK.payload(), Some(vec![0x02, 0x02]));
     }
 
     #[test]

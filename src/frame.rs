@@ -1,13 +1,11 @@
 use crate::CRC;
 
-pub trait Frame {
+pub trait Frame
+where
+    for<'a> &'a Self: Into<Vec<u8>>,
+{
     /// Returns the frame's header.
     fn header(&self) -> u8;
-
-    /// Returns the frame's payload.
-    ///
-    /// This is optional, since not all frames contain payload.
-    fn payload(&self) -> Option<Vec<u8>>;
 
     /// Returns the CRC checksum.
     fn crc(&self) -> u16;
@@ -22,17 +20,8 @@ pub trait Frame {
 
     /// Calculates the CRC checksum of the frame data.
     fn calculate_crc(&self) -> u16 {
-        let mut buffer;
-
-        if let Some(payload) = self.payload() {
-            buffer = Vec::with_capacity(payload.len() + 1);
-            buffer.push(self.header());
-            buffer.extend_from_slice(&payload);
-        } else {
-            buffer = vec![self.header()];
-        }
-
-        CRC.checksum(&buffer)
+        let bytes: Vec<u8> = self.into();
+        CRC.checksum(&bytes[0..bytes.len() - 2])
     }
 
     /// Determines whether the frame is valid.

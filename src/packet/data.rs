@@ -43,6 +43,11 @@ impl Data {
     pub const fn retransmit(&self) -> bool {
         (self.header & RETRANSMIT_MASK) != 0
     }
+
+    /// Returns the payload data.
+    fn payload(&self) -> Vec<u8> {
+        self.payload.to_vec()
+    }
 }
 
 impl Display for Data {
@@ -62,16 +67,22 @@ impl Frame for Data {
         self.header
     }
 
-    fn payload(&self) -> Option<Vec<u8>> {
-        Some(self.payload.to_vec())
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
 
     fn is_header_valid(&self) -> bool {
         true
+    }
+}
+
+impl From<&Data> for Vec<u8> {
+    fn from(data: &Data) -> Self {
+        let mut bytes = Vec::with_capacity(data.payload.len() + MIN_SIZE);
+        bytes.push(data.header);
+        bytes.extend_from_slice(&data.payload);
+        bytes.extend_from_slice(&data.crc.to_be_bytes());
+        bytes
     }
 }
 
@@ -169,24 +180,6 @@ mod tests {
             0x6316,
         );
         assert_eq!(&data.to_string(), "DATA(5, 3, 0)");
-    }
-
-    #[test]
-    fn test_payload() {
-        // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
-        assert_eq!(data.payload(), Some(vec![0x00, 0x00, 0x00, 0x02]));
-
-        // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
-        assert_eq!(
-            data.payload(),
-            Some(vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30])
-        );
     }
 
     #[test]

@@ -51,16 +51,21 @@ impl Frame for Error {
         self.header
     }
 
-    fn payload(&self) -> Option<Vec<u8>> {
-        Some(vec![self.version, self.error_code])
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
 
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
+    }
+}
+
+impl From<&Error> for Vec<u8> {
+    fn from(error: &Error) -> Self {
+        let mut bytes = Vec::with_capacity(SIZE);
+        bytes.extend_from_slice(&[error.header, error.version, error.error_code]);
+        bytes.extend_from_slice(&error.crc.to_be_bytes());
+        bytes
     }
 }
 
@@ -114,11 +119,6 @@ mod tests {
     #[test]
     fn test_header() {
         assert_eq!(ERROR.header(), 0xC2);
-    }
-
-    #[test]
-    fn test_payload() {
-        assert_eq!(ERROR.payload(), Some(vec![0x02, 0x51]));
     }
 
     #[test]

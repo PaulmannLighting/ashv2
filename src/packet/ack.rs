@@ -46,16 +46,20 @@ impl Frame for Ack {
         self.header
     }
 
-    fn payload(&self) -> Option<Vec<u8>> {
-        None
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
 
     fn is_header_valid(&self) -> bool {
         (self.header & 0xF0) == 0x80
+    }
+}
+impl From<&Ack> for Vec<u8> {
+    fn from(ack: &Ack) -> Self {
+        let mut bytes = Vec::with_capacity(SIZE);
+        bytes.push(ack.header);
+        bytes.extend_from_slice(&ack.crc.to_be_bytes());
+        bytes
     }
 }
 
@@ -113,12 +117,6 @@ mod tests {
     fn test_header() {
         assert_eq!(ACK1.header(), 0x81);
         assert_eq!(ACK2.header(), 0x8E);
-    }
-
-    #[test]
-    fn test_payload() {
-        assert_eq!(ACK1.payload(), None);
-        assert_eq!(ACK2.payload(), None);
     }
 
     #[test]

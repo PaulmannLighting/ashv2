@@ -30,16 +30,21 @@ impl Frame for Rst {
         self.header
     }
 
-    fn payload(&self) -> Option<Vec<u8>> {
-        None
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
 
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
+    }
+}
+
+impl From<&Rst> for Vec<u8> {
+    fn from(rst: &Rst) -> Self {
+        let mut bytes = Vec::with_capacity(SIZE);
+        bytes.push(rst.header);
+        bytes.extend_from_slice(&rst.crc.to_be_bytes());
+        bytes
     }
 }
 
@@ -81,11 +86,6 @@ mod tests {
     #[test]
     fn test_header() {
         assert_eq!(RST.header(), 0xC0);
-    }
-
-    #[test]
-    fn test_payload() {
-        assert_eq!(RST.payload(), None);
     }
 
     #[test]
