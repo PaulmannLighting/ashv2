@@ -1,4 +1,4 @@
-use crate::Frame;
+use crate::{Frame, CRC};
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
@@ -73,6 +73,13 @@ impl Frame for Data {
 
     fn is_header_valid(&self) -> bool {
         true
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        let mut bytes = Vec::with_capacity(self.payload.len() + 1);
+        bytes.push(self.header);
+        bytes.extend_from_slice(&self.payload);
+        CRC.checksum(&bytes)
     }
 }
 

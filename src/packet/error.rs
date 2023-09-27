@@ -1,4 +1,4 @@
-use crate::{Code, Frame};
+use crate::{Code, Frame, CRC};
 use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
@@ -57,6 +57,10 @@ impl Frame for Error {
 
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        CRC.checksum(&[self.header, self.version, self.error_code])
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::Frame;
+use crate::{Frame, CRC};
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;

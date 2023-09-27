@@ -1,5 +1,5 @@
 use crate::code::Code;
-use crate::Frame;
+use crate::{Frame, CRC};
 use num_traits::FromPrimitive;
 use std::fmt::{Display, Formatter};
 
@@ -59,6 +59,10 @@ impl Frame for RstAck {
 
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        CRC.checksum(&[self.header, self.version, self.reset_code])
     }
 }
 

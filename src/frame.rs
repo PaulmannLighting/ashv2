@@ -20,9 +20,7 @@ where
 
     /// Calculates the CRC checksum of the frame data.
     fn calculate_crc(&self) -> u16 {
-        let bytes: Vec<u8> = self.into();
-        // Exclude last two bytes which constitute the CRC checksum.
-        CRC.checksum(&bytes[0..bytes.len() - 2])
+        CRC.checksum(&[self.header()])
     }
 
     /// Determines whether the frame is valid.
