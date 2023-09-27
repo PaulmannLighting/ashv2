@@ -45,7 +45,8 @@ impl Data {
     }
 
     /// Returns the payload data.
-    fn payload(&self) -> Vec<u8> {
+    #[must_use]
+    pub fn payload(&self) -> Vec<u8> {
         self.payload.to_vec()
     }
 }
