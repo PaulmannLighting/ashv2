@@ -66,7 +66,7 @@ impl Frame for Error {
 
 impl From<&Error> for Vec<u8> {
     fn from(error: &Error) -> Self {
-        let mut bytes = Vec::with_capacity(SIZE);
+        let mut bytes = Self::with_capacity(SIZE);
         bytes.extend_from_slice(&[error.header, error.version, error.error_code]);
         bytes.extend_from_slice(&error.crc.to_be_bytes());
         bytes

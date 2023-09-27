@@ -57,7 +57,7 @@ impl Frame for Nak {
 
 impl From<&Nak> for Vec<u8> {
     fn from(nak: &Nak) -> Self {
-        let mut bytes = Vec::with_capacity(SIZE);
+        let mut bytes = Self::with_capacity(SIZE);
         bytes.push(nak.header);
         bytes.extend_from_slice(&nak.crc.to_be_bytes());
         bytes

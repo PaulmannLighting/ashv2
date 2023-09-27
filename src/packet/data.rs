@@ -85,7 +85,7 @@ impl Frame for Data {
 
 impl From<&Data> for Vec<u8> {
     fn from(data: &Data) -> Self {
-        let mut bytes = Vec::with_capacity(data.payload.len() + MIN_SIZE);
+        let mut bytes = Self::with_capacity(data.payload.len() + MIN_SIZE);
         bytes.push(data.header);
         bytes.extend_from_slice(&data.payload);
         bytes.extend_from_slice(&data.crc.to_be_bytes());

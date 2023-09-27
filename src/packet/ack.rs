@@ -1,4 +1,4 @@
-use crate::{Frame, CRC};
+use crate::Frame;
 use std::fmt::{Display, Formatter};
 
 const ACK_RDY_MASK: u8 = 0x0F;
@@ -56,7 +56,7 @@ impl Frame for Ack {
 }
 impl From<&Ack> for Vec<u8> {
     fn from(ack: &Ack) -> Self {
-        let mut bytes = Vec::with_capacity(SIZE);
+        let mut bytes = Self::with_capacity(SIZE);
         bytes.push(ack.header);
         bytes.extend_from_slice(&ack.crc.to_be_bytes());
         bytes

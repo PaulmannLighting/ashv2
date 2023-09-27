@@ -41,7 +41,7 @@ impl Frame for Rst {
 
 impl From<&Rst> for Vec<u8> {
     fn from(rst: &Rst) -> Self {
-        let mut bytes = Vec::with_capacity(SIZE);
+        let mut bytes = Self::with_capacity(SIZE);
         bytes.push(rst.header);
         bytes.extend_from_slice(&rst.crc.to_be_bytes());
         bytes

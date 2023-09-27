@@ -68,7 +68,7 @@ impl Frame for RstAck {
 
 impl From<&RstAck> for Vec<u8> {
     fn from(rst_ack: &RstAck) -> Self {
-        let mut bytes = Vec::with_capacity(SIZE);
+        let mut bytes = Self::with_capacity(SIZE);
         bytes.extend_from_slice(&[rst_ack.header, rst_ack.version, rst_ack.reset_code]);
         bytes.extend_from_slice(&rst_ack.crc.to_be_bytes());
         bytes
