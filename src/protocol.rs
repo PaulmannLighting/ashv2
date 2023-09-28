@@ -1,5 +1,6 @@
 pub mod host;
 pub mod randomization;
+mod response;
 pub mod stuffing;
 
 pub const FLAG: u8 = 0x7E;

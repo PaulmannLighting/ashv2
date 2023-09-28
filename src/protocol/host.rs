@@ -9,36 +9,70 @@ use crate::protocol::stuffing::Stuffing;
 use anyhow::anyhow;
 use log::debug;
 use serialport::SerialPort;
+use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 
 const MAX_BUF_CAPACITY: usize = 132 * 2; // Worst case: every byte is escaped.
+type Subscriber = fn(&[u8]) -> Option<Vec<u8>>;
 
 pub struct Host<S>
 where
     S: SerialPort,
 {
-    serial_port: S,
-    byte_buffer: [u8; 1],
+    listener: RefCell<Listener<S>>,
+    byte_buffer: RefCell<[u8; 1]>,
     close: AtomicBool,
+    subscribers: Vec<Subscriber>,
+    queue: HashMap<u8, Option<Vec<u8>>>,
 }
 
 impl<S> Host<S>
 where
     S: SerialPort,
 {
-    pub const fn new(serial_port: S) -> Self {
+    pub fn new(serial_port: S) -> Self {
         Self {
-            serial_port,
-            byte_buffer: [0],
+            listener: RefCell::new(Listener::new(serial_port)),
+            byte_buffer: RefCell::new([0]),
             close: AtomicBool::new(false),
+            subscribers: Vec::new(),
+            queue: HashMap::new(),
         }
     }
 
-    fn run(&mut self) {
+    async fn send(&mut self, bytes: &[u8]) -> Vec<u8> {
+        todo!()
+    }
+}
+
+struct Listener<S>
+where
+    S: SerialPort,
+{
+    serial_port: S,
+    buffer: [u8; 1],
+    close: AtomicBool,
+    ack_num: u8,
+}
+
+impl<S> Listener<S>
+where
+    S: SerialPort,
+{
+    pub fn new(serial_port: S) -> Self {
+        Self {
+            serial_port,
+            buffer: [0],
+            close: AtomicBool::new(false),
+            ack_num: 0,
+        }
+    }
+
+    fn listen(mut self) {
         let mut errors: usize = 0;
         let mut reject = false;
-        let mut ack_num: u8 = 0;
 
         while !self.close.load(SeqCst) {
             let response: Packet;
@@ -64,14 +98,14 @@ where
 
                     if !reject {
                         reject = true;
-                        response = Packet::Nak(ack_num.into());
+                        response = Packet::Nak(self.ack_num.into());
                     }
                 }
             }
         }
     }
 
-    fn read_packet(&mut self) -> anyhow::Result<Packet> {
+    pub fn read_packet(&mut self) -> anyhow::Result<Packet> {
         // TODO: Perform unstuffing before try_from() call!
         Ok(Packet::try_from(self.read_frame()?.as_slice())?)
     }
@@ -81,9 +115,7 @@ where
         let mut skip_to_next_flag = false;
 
         while !self.close.load(SeqCst) {
-            self.serial_port.read_exact(&mut self.byte_buffer)?;
-
-            match self.byte_buffer[0] {
+            match self.read_byte()? {
                 CANCEL => {
                     buffer.clear();
                     skip_to_next_flag = false;
@@ -115,23 +147,28 @@ where
         Err(anyhow!("Reading aborted."))
     }
 
-    fn handle_data(&mut self, data: Data) {
+    fn read_byte(&mut self) -> std::io::Result<u8> {
+        self.serial_port.read_exact(&mut self.buffer)?;
+        Ok(self.buffer[0])
+    }
+
+    fn handle_data(&self, data: Data) {
         todo!()
     }
 
-    fn handle_ack(&mut self, ack: Ack) {
+    fn handle_ack(&self, ack: Ack) {
         todo!()
     }
 
-    fn handle_nak(&mut self, nak: Nak) {
+    fn handle_nak(&self, nak: Nak) {
         todo!()
     }
 
-    fn handle_rst_ack(&mut self, rst_ack: RstAck) {
+    fn handle_rst_ack(&self, rst_ack: RstAck) {
         todo!()
     }
 
-    fn handle_error(&mut self, error: Error) {
+    fn handle_error(&self, error: Error) {
         todo!()
     }
 }
