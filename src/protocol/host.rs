@@ -110,13 +110,13 @@ where
 
     pub fn read_packet(&mut self) -> anyhow::Result<Option<Packet>> {
         // TODO: Perform unstuffing before try_from() call!
-        match self.read_frame()? {
-            Some(frame) => match Packet::try_from(frame.as_slice()) {
+        (self.read_frame()?).map_or_else(
+            || Ok(None),
+            |frame| match Packet::try_from(frame.as_slice()) {
                 Ok(packet) => Ok(Some(packet)),
                 Err(error) => Err(error.into()),
             },
-            None => Ok(None),
-        }
+        )
     }
 
     fn read_frame(&mut self) -> anyhow::Result<Option<Vec<u8>>> {
