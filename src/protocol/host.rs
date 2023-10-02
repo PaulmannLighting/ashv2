@@ -80,19 +80,17 @@ where
 
             match self.read_packet() {
                 Ok(packet) => {
-                    if let Some(packet) = packet {
-                        debug!("RX ASH frame: {packet}");
-                        errors = 0;
+                    debug!("RX ASH frame: {packet}");
+                    errors = 0;
 
-                        match packet {
-                            Packet::Data(data) => self.handle_data(data),
-                            Packet::Ack(ack) => self.handle_ack(ack),
-                            Packet::Nak(nak) => self.handle_nak(nak),
-                            Packet::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
-                            Packet::Error(error) => self.handle_error(error),
-                            packet @ Packet::Rst(_) => {
-                                debug!("Ignoring packet: {packet}");
-                            }
+                    match packet {
+                        Packet::Data(data) => self.handle_data(data),
+                        Packet::Ack(ack) => self.handle_ack(ack),
+                        Packet::Nak(nak) => self.handle_nak(nak),
+                        Packet::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
+                        Packet::Error(error) => self.handle_error(error),
+                        packet @ Packet::Rst(_) => {
+                            debug!("Ignoring packet: {packet}");
                         }
                     }
                 }
@@ -108,62 +106,52 @@ where
         }
     }
 
-    pub fn read_packet(&mut self) -> anyhow::Result<Option<Packet>> {
+    pub fn read_packet(&mut self) -> anyhow::Result<Packet> {
         // TODO: Perform unstuffing before try_from() call!
-        (self.read_frame()?).map_or_else(
-            || Ok(None),
-            |frame| match Packet::try_from(frame.as_slice()) {
-                Ok(packet) => Ok(Some(packet)),
-                Err(error) => Err(error.into()),
-            },
-        )
+        match Packet::try_from(self.read_frame()?.as_slice()) {
+            Ok(packet) => Ok(packet),
+            Err(error) => Err(error.into()),
+        }
     }
 
-    fn read_frame(&mut self) -> anyhow::Result<Option<Vec<u8>>> {
+    fn read_frame(&mut self) -> anyhow::Result<Vec<u8>> {
         let mut buffer = Vec::with_capacity(MAX_BUF_CAPACITY);
         let mut skip_to_next_flag = false;
 
         loop {
-            if let Some(byte) = self.read_byte()? {
-                match byte {
-                    CANCEL => {
-                        buffer.clear();
-                        skip_to_next_flag = false;
+            match self.read_byte()? {
+                CANCEL => {
+                    buffer.clear();
+                    skip_to_next_flag = false;
+                }
+                FLAG => {
+                    if !skip_to_next_flag && !buffer.is_empty() {
+                        return Ok(buffer.into_iter().unstuff().collect());
                     }
-                    FLAG => {
-                        if !skip_to_next_flag && !buffer.is_empty() {
-                            return Ok(Some(buffer.into_iter().unstuff().collect()));
-                        }
 
-                        buffer.clear();
-                        skip_to_next_flag = false;
-                    }
-                    SUBSTITUTE => {
+                    buffer.clear();
+                    skip_to_next_flag = false;
+                }
+                SUBSTITUTE => {
+                    buffer.clear();
+                    skip_to_next_flag = true;
+                }
+                X_ON | X_OFF | TIMEOUT => continue,
+                byte => {
+                    if buffer.len() > MAX_BUF_CAPACITY {
                         buffer.clear();
                         skip_to_next_flag = true;
                     }
-                    X_ON | X_OFF | TIMEOUT => continue,
-                    byte => {
-                        if buffer.len() > MAX_BUF_CAPACITY {
-                            buffer.clear();
-                            skip_to_next_flag = true;
-                        }
 
-                        buffer.push(byte);
-                    }
+                    buffer.push(byte);
                 }
-            } else {
-                return Ok(None);
             }
         }
     }
 
-    fn read_byte(&mut self) -> std::io::Result<Option<u8>> {
-        if self.serial_port.read(&mut self.buffer)? == self.buffer.len() {
-            Ok(Some(self.buffer[0]))
-        } else {
-            Ok(None)
-        }
+    fn read_byte(&mut self) -> std::io::Result<u8> {
+        self.serial_port.read_exact(&mut self.buffer)?;
+        Ok(self.buffer[0])
     }
 
     fn handle_data(&self, data: Data) {
