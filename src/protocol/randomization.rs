@@ -1,5 +1,6 @@
 const DEFAULT_MASK: u8 = 0xB8;
 const DEFAULT_SEED: u8 = 0x42;
+const DEFAULT_FLAG_BIT: u8 = 0x01;
 
 /// Masks a byte stream with pseudo-random numbers.
 pub fn mask(bytes: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
@@ -11,19 +12,24 @@ pub fn mask(bytes: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct MaskGenerator {
     random: u8,
+    flag_bit: u8,
     mask: u8,
 }
 
 impl MaskGenerator {
     #[must_use]
-    pub const fn new(seed: u8, mask: u8) -> Self {
-        Self { random: seed, mask }
+    pub const fn new(seed: u8, flag_bit: u8, mask: u8) -> Self {
+        Self {
+            random: seed,
+            flag_bit,
+            mask,
+        }
     }
 }
 
 impl Default for MaskGenerator {
     fn default() -> Self {
-        Self::new(DEFAULT_SEED, DEFAULT_MASK)
+        Self::new(DEFAULT_SEED, DEFAULT_FLAG_BIT, DEFAULT_MASK)
     }
 }
 
@@ -34,7 +40,7 @@ impl Iterator for MaskGenerator {
     fn next(&mut self) -> Option<Self::Item> {
         let random = self.random;
 
-        self.random = if self.random & 0x01 == 0 {
+        self.random = if self.random & self.flag_bit == 0 {
             self.random >> 1
         } else {
             (self.random >> 1) ^ self.mask
