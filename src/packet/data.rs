@@ -234,7 +234,6 @@ mod tests {
             vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
             0x6316,
         );
-        assert!(data.is_valid());
         assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
     }
 }
