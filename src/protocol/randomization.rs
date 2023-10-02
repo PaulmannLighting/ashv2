@@ -8,6 +8,7 @@ pub fn mask(bytes: impl Iterator<Item = u8>) -> impl Iterator<Item = u8> {
         .map(|(byte, mask)| byte ^ mask)
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct MaskGenerator {
     random: u8,
     mask: u8,

@@ -16,6 +16,7 @@ use std::sync::atomic::Ordering::SeqCst;
 const MAX_BUF_CAPACITY: usize = 132 * 2; // Worst case: every byte is escaped.
 type Subscriber = fn(&[u8]) -> Option<Vec<u8>>;
 
+#[derive(Debug)]
 pub struct Host<S>
 where
     S: SerialPort,
@@ -46,6 +47,7 @@ where
     }
 }
 
+#[derive(Debug)]
 struct Listener<S>
 where
     S: SerialPort,

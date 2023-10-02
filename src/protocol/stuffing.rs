@@ -18,6 +18,7 @@ pub trait Stuffing: Iterator<Item = u8> + Sized {
 
 impl<T> Stuffing for T where T: Iterator<Item = u8> {}
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Stuffer<T>
 where
     T: Iterator<Item = u8>,
@@ -58,6 +59,7 @@ where
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Unstuffer<T>
 where
     T: Iterator<Item = u8>,
