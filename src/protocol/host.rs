@@ -80,17 +80,19 @@ where
 
             match self.read_packet() {
                 Ok(packet) => {
-                    debug!("RX ASH frame: {packet}");
-                    errors = 0;
+                    if let Some(packet) = packet {
+                        debug!("RX ASH frame: {packet}");
+                        errors = 0;
 
-                    match packet {
-                        Packet::Data(data) => self.handle_data(data),
-                        Packet::Ack(ack) => self.handle_ack(ack),
-                        Packet::Nak(nak) => self.handle_nak(nak),
-                        Packet::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
-                        Packet::Error(error) => self.handle_error(error),
-                        packet @ Packet::Rst(_) => {
-                            debug!("Ignoring packet: {packet}");
+                        match packet {
+                            Packet::Data(data) => self.handle_data(data),
+                            Packet::Ack(ack) => self.handle_ack(ack),
+                            Packet::Nak(nak) => self.handle_nak(nak),
+                            Packet::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
+                            Packet::Error(error) => self.handle_error(error),
+                            packet @ Packet::Rst(_) => {
+                                debug!("Ignoring packet: {packet}");
+                            }
                         }
                     }
                 }
