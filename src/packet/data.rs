@@ -243,13 +243,16 @@ mod tests {
     #[test]
     fn test_data_frame() {
         let header = 0x00;
-        let payload: Vec<u8> = vec![0x01, 0x00, 0x00, 0x04].into_iter().mask().collect();
+        let payload: Vec<u8> = vec![0x01, 0x00, 0x00, 0x04];
+        let msaked_payload: Vec<_> = payload.clone().into_iter().mask().collect();
         let mut crc_target = vec![header];
-        crc_target.extend_from_slice(&payload);
+        crc_target.extend_from_slice(&msaked_payload);
         let crc = CRC.checksum(&crc_target);
-        let data = Data::new(0x00, payload.into(), crc);
+        let data = Data::new(0x00, msaked_payload.into(), crc);
         let bytes: Vec<u8> = (&data).into();
         let stuffed_bytes: Vec<_> = bytes.into_iter().stuff().collect();
+        let unmasked_payload: Vec<u8> = data.payload.iter().cloned().mask().collect();
         assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
+        assert_eq!(unmasked_payload, payload);
     }
 }
