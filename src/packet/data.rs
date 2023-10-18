@@ -113,7 +113,10 @@ impl TryFrom<&[u8]> for Data {
 #[cfg(test)]
 mod tests {
     use super::Data;
+    use crate::protocol::randomization::Mask;
+    use crate::protocol::stuffing::Stuffing;
     use crate::Frame;
+    use crate::CRC;
 
     #[test]
     fn test_is_valid() {
@@ -235,5 +238,18 @@ mod tests {
             0x6316,
         );
         assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
+    }
+
+    #[test]
+    fn test_data_frame() {
+        let header = 0x00;
+        let payload: Vec<u8> = vec![0x01, 0x00, 0x00, 0x04].into_iter().mask().collect();
+        let mut crc_target = vec![header];
+        crc_target.extend_from_slice(&payload);
+        let crc = CRC.checksum(&crc_target);
+        let data = Data::new(0x00, payload.into(), crc);
+        let bytes: Vec<u8> = (&data).into();
+        let stuffed_bytes: Vec<_> = bytes.into_iter().stuff().collect();
+        assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
     }
 }
