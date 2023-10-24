@@ -25,3 +25,16 @@ impl Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl From<Error> for std::io::Error {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::InvalidHeader(_) | Error::MissingHeader => {
+                Self::new(std::io::ErrorKind::InvalidData, error)
+            }
+            Error::BufferTooSmall(_) | Error::InvalidBufferSize { .. } => {
+                Self::new(std::io::ErrorKind::Other, error)
+            }
+        }
+    }
+}
