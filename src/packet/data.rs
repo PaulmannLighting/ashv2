@@ -261,7 +261,7 @@ mod tests {
         let data = Data::new(0x00, msaked_payload.into(), crc);
         let bytes: Vec<u8> = (&data).into();
         let stuffed_bytes: Vec<_> = bytes.into_iter().stuff().collect();
-        let unmasked_payload: Vec<u8> = data.payload.iter().cloned().mask().collect();
+        let unmasked_payload: Vec<u8> = data.payload.iter().copied().mask().collect();
         assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
         assert_eq!(unmasked_payload, payload);
     }
