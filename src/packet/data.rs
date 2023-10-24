@@ -1,5 +1,6 @@
 use crate::{Frame, CRC};
 use std::fmt::{Display, Formatter};
+use std::io::{Read, Write};
 use std::sync::Arc;
 
 const ACK_NUM_MASK: u8 = 0x0F;
@@ -91,6 +92,15 @@ impl From<&Data> for Vec<u8> {
         bytes.extend_from_slice(&data.payload);
         bytes.extend_from_slice(&data.crc.to_be_bytes());
         bytes
+    }
+}
+
+impl Read for Data {
+    fn read(&mut self, mut buf: &mut [u8]) -> std::io::Result<usize> {
+        let mut size = buf.write(&self.header.to_be_bytes())?;
+        size += buf.write(&self.payload)?;
+        size += buf.write(&self.crc.to_be_bytes())?;
+        Ok(size)
     }
 }
 
