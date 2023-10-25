@@ -1,7 +1,11 @@
-use crate::Frame;
+use crate::{Frame, CRC};
+use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
+use std::iter::Chain;
 
-const ACK_RDY_MASK: u8 = 0x0F;
+const ACK_RDY_MASK: u8 = 0b0000_1000;
+const ACK_NUM_MASK: u8 = 0b0000_0111;
+const HEADER_PREFIX: u8 = 0x80;
 const SIZE: usize = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -20,13 +24,13 @@ impl Ack {
     /// Determines whether the ready flag is set.
     #[must_use]
     pub const fn ready(&self) -> bool {
-        (self.header & ACK_RDY_MASK) <= 0x08
+        (self.header & ACK_RDY_MASK) == 0
     }
 
     /// Returns the acknowledgement number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        (self.header & ACK_RDY_MASK) % 0x08
+        self.header & ACK_NUM_MASK
     }
 }
 
@@ -51,15 +55,27 @@ impl Frame for Ack {
     }
 
     fn is_header_valid(&self) -> bool {
-        (self.header & 0xF0) == 0x80
+        (self.header & 0xF0) == HEADER_PREFIX
     }
 }
-impl From<&Ack> for Vec<u8> {
-    fn from(ack: &Ack) -> Self {
-        let mut bytes = Self::with_capacity(SIZE);
-        bytes.push(ack.header);
-        bytes.extend_from_slice(&ack.crc.to_be_bytes());
-        bytes
+
+impl From<u8> for Ack {
+    fn from(ack_num: u8) -> Self {
+        let header = HEADER_PREFIX + (ack_num % 8);
+        let crc = CRC.checksum(&[header]);
+        Self::new(header, crc)
+    }
+}
+
+impl IntoIterator for &Ack {
+    type Item = u8;
+    type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.header
+            .to_be_bytes()
+            .into_iter()
+            .chain(self.crc.to_be_bytes())
     }
 }
 
@@ -134,8 +150,8 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
-        assert_eq!(Ack::try_from(buffer1.as_slice()), Ok(ACK1));
+        assert_eq!(Ack::try_from(buffer1.as_slice()).unwrap(), ACK1);
         let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
-        assert_eq!(Ack::try_from(buffer2.as_slice()), Ok(ACK2));
+        assert_eq!(Ack::try_from(buffer2.as_slice()).unwrap(), ACK2);
     }
 }

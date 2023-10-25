@@ -1,8 +1,11 @@
 use crate::Frame;
+use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
+use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC0;
 pub const SIZE: usize = 3;
+const CRC: u16 = 0x38BC;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,6 +19,12 @@ impl Rst {
     #[must_use]
     pub const fn new(header: u8, crc: u16) -> Self {
         Self { header, crc }
+    }
+}
+
+impl Default for Rst {
+    fn default() -> Self {
+        Self::new(HEADER, CRC)
     }
 }
 
@@ -39,12 +48,22 @@ impl Frame for Rst {
     }
 }
 
-impl From<&Rst> for Vec<u8> {
-    fn from(rst: &Rst) -> Self {
-        let mut bytes = Self::with_capacity(SIZE);
-        bytes.push(rst.header);
-        bytes.extend_from_slice(&rst.crc.to_be_bytes());
-        bytes
+impl From<Rst> for [u8; SIZE] {
+    fn from(rst: Rst) -> Self {
+        let [crc0, crc1] = rst.crc.to_be_bytes();
+        [rst.header, crc0, crc1]
+    }
+}
+
+impl IntoIterator for &Rst {
+    type Item = u8;
+    type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.header
+            .to_be_bytes()
+            .into_iter()
+            .chain(self.crc.to_be_bytes())
     }
 }
 
@@ -101,6 +120,6 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
-        assert_eq!(Rst::try_from(buffer.as_slice()), Ok(RST));
+        assert_eq!(Rst::try_from(buffer.as_slice()).unwrap(), RST);
     }
 }

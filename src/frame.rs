@@ -2,7 +2,7 @@ use crate::CRC;
 
 pub trait Frame
 where
-    for<'a> &'a Self: Into<Vec<u8>>,
+    for<'a> &'a Self: IntoIterator<Item = u8>,
 {
     /// Returns the frame's header.
     fn header(&self) -> u8;

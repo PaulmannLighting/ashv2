@@ -1,5 +1,7 @@
 use crate::{Frame, CRC};
+use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
+use std::iter::Chain;
 
 const ACK_RDY_MASK: u8 = 0x0F;
 const SIZE: usize = 3;
@@ -55,19 +57,22 @@ impl Frame for Nak {
     }
 }
 
-impl From<&Nak> for Vec<u8> {
-    fn from(nak: &Nak) -> Self {
-        let mut bytes = Self::with_capacity(SIZE);
-        bytes.push(nak.header);
-        bytes.extend_from_slice(&nak.crc.to_be_bytes());
-        bytes
-    }
-}
-
 impl From<u8> for Nak {
     fn from(ack_num: u8) -> Self {
         let header = 0xA0 + (ack_num % 0x08);
         Self::new(header, CRC.checksum(&[header]))
+    }
+}
+
+impl IntoIterator for &Nak {
+    type Item = u8;
+    type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.header
+            .to_be_bytes()
+            .into_iter()
+            .chain(self.crc.to_be_bytes())
     }
 }
 
@@ -142,8 +147,8 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC];
-        assert_eq!(Nak::try_from(buffer1.as_slice()), Ok(NAK1));
+        assert_eq!(Nak::try_from(buffer1.as_slice()).unwrap(), NAK1);
         let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7];
-        assert_eq!(Nak::try_from(buffer2.as_slice()), Ok(NAK2));
+        assert_eq!(Nak::try_from(buffer2.as_slice()).unwrap(), NAK2);
     }
 }

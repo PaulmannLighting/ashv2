@@ -1,13 +1,19 @@
-use crate::{Frame, CRC};
+use crate::{Error, Frame, CRC};
+use log::warn;
+use std::array;
 use std::fmt::{Display, Formatter};
-use std::io::{Read, Write};
+use std::iter::Chain;
+use std::ops::RangeInclusive;
 use std::sync::Arc;
+use std::vec;
 
-const ACK_NUM_MASK: u8 = 0x0F;
-const FRAME_NUM_MASK: u8 = 0xF0;
+const ACK_NUM_MASK: u8 = 0b0000_0111;
+const FRAME_NUM_MASK: u8 = 0b0111_0000;
+const RETRANSMIT_MASK: u8 = 0b0000_1000;
 const FRAME_NUM_OFFSET: u8 = 4;
 const MIN_SIZE: usize = 3;
-const RETRANSMIT_MASK: u8 = 0x08;
+const MAX_SIZE: usize = 128;
+const VALID_SEQS: RangeInclusive<u8> = 0..=7;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
@@ -33,6 +39,11 @@ impl Data {
         (self.header & FRAME_NUM_MASK) >> FRAME_NUM_OFFSET
     }
 
+    #[must_use]
+    pub const fn is_retransmit(&self) -> bool {
+        (self.header & RETRANSMIT_MASK) != 0
+    }
+
     /// Returns the acknowledgment number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
@@ -47,8 +58,20 @@ impl Data {
 
     /// Returns the payload data.
     #[must_use]
-    pub fn payload(&self) -> Vec<u8> {
-        self.payload.to_vec()
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+
+    fn set_ack_num(&mut self, ack_num: u8) {
+        self.header &= 0xFF & (ack_num & ACK_NUM_MASK)
+    }
+
+    fn set_retransmit(&mut self, retransmit: bool) {
+        self.header = if retransmit {
+            self.header | RETRANSMIT_MASK
+        } else {
+            self.header & (0xFF ^ RETRANSMIT_MASK)
+        }
     }
 }
 
@@ -85,27 +108,24 @@ impl Frame for Data {
     }
 }
 
-impl From<&Data> for Vec<u8> {
-    fn from(data: &Data) -> Self {
-        let mut bytes = Self::with_capacity(data.payload.len() + MIN_SIZE);
-        bytes.push(data.header);
-        bytes.extend_from_slice(&data.payload);
-        bytes.extend_from_slice(&data.crc.to_be_bytes());
-        bytes
-    }
-}
+impl IntoIterator for &Data {
+    type Item = u8;
+    type IntoIter = Chain<
+        Chain<array::IntoIter<Self::Item, 1>, vec::IntoIter<Self::Item>>,
+        array::IntoIter<Self::Item, 2>,
+    >;
 
-impl Read for Data {
-    fn read(&mut self, mut buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut size = buf.write(&self.header.to_be_bytes())?;
-        size += buf.write(&self.payload)?;
-        size += buf.write(&self.crc.to_be_bytes())?;
-        Ok(size)
+    fn into_iter(self) -> Self::IntoIter {
+        self.header
+            .to_be_bytes()
+            .into_iter()
+            .chain(self.payload.to_vec())
+            .chain(self.crc.to_be_bytes())
     }
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = crate::Error;
+    type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() >= MIN_SIZE {
@@ -115,7 +135,29 @@ impl TryFrom<&[u8]> for Data {
                 u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
             ))
         } else {
-            Err(Self::Error::BufferTooSmall(MIN_SIZE))
+            Err(Error::BufferTooSmall(MIN_SIZE))
+        }
+    }
+}
+
+impl TryFrom<(u8, Arc<[u8]>)> for Data {
+    type Error = Error;
+
+    fn try_from((frame_num, payload): (u8, Arc<[u8]>)) -> Result<Self, Self::Error> {
+        if !VALID_SEQS.contains(&frame_num) {
+            warn!("out of range frame number {frame_num} will be truncated");
+        }
+
+        if payload.len() < MIN_SIZE {
+            Err(Error::TooFewData(payload.len()))
+        } else if payload.len() > MAX_SIZE {
+            Err(Error::TooMuchData(payload.len()))
+        } else {
+            let header = (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK;
+            let mut crc_data = Vec::with_capacity(payload.len() + 1);
+            crc_data.push(header);
+            crc_data.extend_from_slice(&payload);
+            Ok(Self::new(header, payload, CRC.checksum(&crc_data)))
         }
     }
 }
@@ -238,7 +280,7 @@ mod tests {
         // EZSP "version" command: 00 00 00 02
         let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
         let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
-        assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
+        assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let buffer: Vec<u8> = vec![0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16];
@@ -247,7 +289,7 @@ mod tests {
             vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
             0x6316,
         );
-        assert_eq!(Data::try_from(buffer.as_slice()), Ok(data));
+        assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
     }
 
     #[test]
@@ -259,10 +301,9 @@ mod tests {
         crc_target.extend_from_slice(&msaked_payload);
         let crc = CRC.checksum(&crc_target);
         let data = Data::new(0x00, msaked_payload.into(), crc);
-        let bytes: Vec<u8> = (&data).into();
-        let stuffed_bytes: Vec<_> = bytes.into_iter().stuff().collect();
-        let unmasked_payload: Vec<u8> = data.payload.iter().copied().mask().collect();
-        assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
+        let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
         assert_eq!(unmasked_payload, payload);
+        let stuffed_bytes: Vec<_> = data.into_iter().stuff().collect();
+        assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
     }
 }

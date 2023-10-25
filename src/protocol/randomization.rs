@@ -6,15 +6,16 @@ const DEFAULT_FLAG_BIT: u8 = 0x01;
 
 type MaskIterator<T> = Map<Zip<T, MaskGenerator>, fn((u8, u8)) -> u8>;
 
-pub trait Mask: Iterator<Item = u8> + Sized {
+pub trait Mask: IntoIterator<Item = u8> + Sized {
     /// Masks a byte stream with pseudo-random numbers.
-    fn mask(self) -> MaskIterator<Self> {
-        self.zip(MaskGenerator::default())
+    fn mask(self) -> MaskIterator<<Self as IntoIterator>::IntoIter> {
+        self.into_iter()
+            .zip(MaskGenerator::default())
             .map(|(byte, mask)| byte ^ mask)
     }
 }
 
-impl<T> Mask for T where T: Iterator<Item = u8> {}
+impl<T> Mask for T where T: IntoIterator<Item = u8> {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MaskGenerator {

@@ -1,6 +1,8 @@
 use crate::{Code, Frame, CRC};
 use num_traits::FromPrimitive;
+use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
+use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC2;
 pub const SIZE: usize = 5;
@@ -64,12 +66,20 @@ impl Frame for Error {
     }
 }
 
-impl From<&Error> for Vec<u8> {
-    fn from(error: &Error) -> Self {
-        let mut bytes = Self::with_capacity(SIZE);
-        bytes.extend_from_slice(&[error.header, error.version, error.error_code]);
-        bytes.extend_from_slice(&error.crc.to_be_bytes());
-        bytes
+impl IntoIterator for &Error {
+    type Item = u8;
+    type IntoIter = Chain<
+        Chain<Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 1>>, IntoIter<Self::Item, 1>>,
+        IntoIter<Self::Item, 2>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.header
+            .to_be_bytes()
+            .into_iter()
+            .chain(self.version.to_be_bytes())
+            .chain(self.error_code.to_be_bytes())
+            .chain(self.crc.to_be_bytes())
     }
 }
 
@@ -138,6 +148,6 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
-        assert_eq!(Error::try_from(buffer.as_slice()), Ok(ERROR));
+        assert_eq!(Error::try_from(buffer.as_slice()).unwrap(), ERROR);
     }
 }
