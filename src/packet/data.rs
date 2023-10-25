@@ -1,11 +1,12 @@
+use crate::protocol::randomization::{Mask, MaskIterator};
 use crate::{Error, Frame, CRC};
 use log::warn;
-use std::array;
+use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
-use std::iter::Chain;
+use std::iter::{Chain, Copied};
 use std::ops::RangeInclusive;
+use std::slice::Iter;
 use std::sync::Arc;
-use std::vec;
 
 const ACK_NUM_MASK: u8 = 0b0000_0111;
 const FRAME_NUM_MASK: u8 = 0b0111_0000;
@@ -63,7 +64,7 @@ impl Data {
     }
 
     fn set_ack_num(&mut self, ack_num: u8) {
-        self.header &= 0xFF & (ack_num & ACK_NUM_MASK)
+        self.header &= 0xFF ^ (ack_num & ACK_NUM_MASK);
     }
 
     fn set_retransmit(&mut self, retransmit: bool) {
@@ -71,7 +72,7 @@ impl Data {
             self.header | RETRANSMIT_MASK
         } else {
             self.header & (0xFF ^ RETRANSMIT_MASK)
-        }
+        };
     }
 }
 
@@ -108,18 +109,18 @@ impl Frame for Data {
     }
 }
 
-impl IntoIterator for &Data {
+impl<'a> IntoIterator for &'a Data {
     type Item = u8;
     type IntoIter = Chain<
-        Chain<array::IntoIter<Self::Item, 1>, vec::IntoIter<Self::Item>>,
-        array::IntoIter<Self::Item, 2>,
+        Chain<IntoIter<Self::Item, 1>, MaskIterator<Copied<Iter<'a, Self::Item>>>>,
+        IntoIter<Self::Item, 2>,
     >;
 
     fn into_iter(self) -> Self::IntoIter {
         self.header
             .to_be_bytes()
             .into_iter()
-            .chain(self.payload.to_vec())
+            .chain(self.payload.iter().copied().mask())
             .chain(self.crc.to_be_bytes())
     }
 }
@@ -276,6 +277,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn test_from_buffer() {
         // EZSP "version" command: 00 00 00 02
         let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];

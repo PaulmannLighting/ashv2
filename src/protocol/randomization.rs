@@ -4,7 +4,7 @@ const DEFAULT_MASK: u8 = 0xB8;
 const DEFAULT_SEED: u8 = 0x42;
 const DEFAULT_FLAG_BIT: u8 = 0x01;
 
-type MaskIterator<T> = Map<Zip<T, MaskGenerator>, fn((u8, u8)) -> u8>;
+pub type MaskIterator<T> = Map<Zip<T, MaskGenerator>, fn((u8, u8)) -> u8>;
 
 pub trait Mask: IntoIterator<Item = u8> + Sized {
     /// Masks a byte stream with pseudo-random numbers.

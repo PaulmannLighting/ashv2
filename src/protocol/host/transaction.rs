@@ -8,7 +8,7 @@ use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Transaction {
     request: Arc<[u8]>,
     result: Arc<Mutex<Option<Result<Arc<[u8]>, Error>>>>,
@@ -31,7 +31,7 @@ impl Transaction {
     }
 
     pub fn chunks(&mut self) -> Result<IntoChunks<Copied<Iter<'_, u8>>>, Error> {
-        self.request.iter().copied().ash_chunks()
+        self.request().iter().copied().ash_chunks()
     }
 
     pub fn resolve(&self, result: Result<Arc<[u8]>, Error>) {

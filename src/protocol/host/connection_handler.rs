@@ -1,4 +1,4 @@
-use super::{Host, SentFrame, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use super::{SentFrame, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::packet::ack::Ack;
 use crate::packet::data::Data;
 use crate::packet::nak::Nak;

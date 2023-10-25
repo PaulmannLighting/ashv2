@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::sync::{Mutex, PoisonError};
 
 #[derive(Debug)]
 pub enum Error {
@@ -12,6 +13,7 @@ pub enum Error {
     CannotFindViableChunkSize(usize),
     Io(std::io::Error),
     Terminated,
+    LockError(String),
 }
 
 impl Display for Error {
@@ -34,6 +36,7 @@ impl Display for Error {
             }
             Self::Io(error) => write!(f, "{error}"),
             Self::Terminated => write!(f, "terminated"),
+            Self::LockError(error) => write!(f, "{error}"),
         }
     }
 }
@@ -43,17 +46,11 @@ impl std::error::Error for Error {}
 impl From<Error> for std::io::Error {
     fn from(error: Error) -> Self {
         match error {
-            Error::InvalidHeader(_)
-            | Error::MissingHeader
-            | Error::NoData
-            | Error::TooMuchData(_)
-            | Error::TooFewData(_)
-            | Error::CannotFindViableChunkSize(_)
-            | Error::Terminated => Self::new(std::io::ErrorKind::InvalidData, error),
             Error::BufferTooSmall(_) | Error::InvalidBufferSize { .. } => {
                 Self::new(std::io::ErrorKind::Other, error)
             }
             Error::Io(error) => error,
+            error => Self::new(std::io::ErrorKind::InvalidData, error),
         }
     }
 }
@@ -61,5 +58,11 @@ impl From<Error> for std::io::Error {
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
         Self::Io(error)
+    }
+}
+
+impl<T> From<PoisonError<T>> for Error {
+    fn from(error: PoisonError<T>) -> Self {
+        Self::LockError(error.to_string())
     }
 }
