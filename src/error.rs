@@ -1,13 +1,12 @@
 use std::fmt::{Display, Formatter};
-use std::sync::{Mutex, PoisonError};
+use std::sync::PoisonError;
 
 #[derive(Debug)]
 pub enum Error {
-    MissingHeader,
-    InvalidHeader(u8),
-    BufferTooSmall(usize),
+    InvalidHeader(Option<u8>),
+    BufferTooSmall { expected: usize, found: usize },
+    BufferTooLarge { expected: usize, found: usize },
     InvalidBufferSize { expected: usize, found: usize },
-    NoData,
     TooMuchData(usize),
     TooFewData(usize),
     CannotFindViableChunkSize(usize),
@@ -19,16 +18,26 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingHeader => write!(f, "Missing header."),
-            Self::InvalidHeader(header) => write!(f, "Invalid header: {header:?}"),
-            Self::BufferTooSmall(min_size) => {
-                write!(f, "Buffer too small. Expected at least {min_size} bytes.")
+            Self::InvalidHeader(header) => match header {
+                Some(id) => write!(f, "Invalid header ID: {}.", *id),
+                None => write!(f, "No header received."),
+            },
+            Self::BufferTooSmall { expected, found } => {
+                write!(
+                    f,
+                    "Buffer too small. Expected at least {expected} bytes but found {found} bytes."
+                )
+            }
+            Self::BufferTooLarge { expected, found } => {
+                write!(
+                    f,
+                    "Buffer too large. Expected at most {expected} bytes but found {found} bytes."
+                )
             }
             Self::InvalidBufferSize { expected, found } => write!(
                 f,
                 "Invalid buffer size. Expected {expected} bytes, but found {found} bytes."
             ),
-            Self::NoData => write!(f, "No data received."),
             Self::TooMuchData(size) => write!(f, "Too much data: {size} bytes"),
             Self::TooFewData(size) => write!(f, "Too few data: {size} bytes"),
             Self::CannotFindViableChunkSize(size) => {
@@ -46,9 +55,9 @@ impl std::error::Error for Error {}
 impl From<Error> for std::io::Error {
     fn from(error: Error) -> Self {
         match error {
-            Error::BufferTooSmall(_) | Error::InvalidBufferSize { .. } => {
-                Self::new(std::io::ErrorKind::Other, error)
-            }
+            Error::BufferTooSmall { .. }
+            | Error::BufferTooLarge { .. }
+            | Error::InvalidBufferSize { .. } => Self::new(std::io::ErrorKind::Other, error),
             Error::Io(error) => error,
             error => Self::new(std::io::ErrorKind::InvalidData, error),
         }

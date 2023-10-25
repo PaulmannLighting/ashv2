@@ -134,7 +134,7 @@ where
     {
         let mut serial_port = self.serial_port.borrow_mut();
 
-        for byte in frame.into_iter() {
+        for byte in frame {
             serial_port.write_all(&[byte])?;
         }
 

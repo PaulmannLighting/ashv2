@@ -1,4 +1,4 @@
-use crate::protocol::randomization::{Mask, MaskIterator};
+use crate::protocol::randomization::Mask;
 use crate::{Error, Frame, CRC};
 use log::warn;
 use std::array::IntoIter;
@@ -112,7 +112,7 @@ impl Frame for Data {
 impl<'a> IntoIterator for &'a Data {
     type Item = u8;
     type IntoIter = Chain<
-        Chain<IntoIter<Self::Item, 1>, MaskIterator<Copied<Iter<'a, Self::Item>>>>,
+        Chain<IntoIter<Self::Item, 1>, Copied<Iter<'a, Self::Item>>>,
         IntoIter<Self::Item, 2>,
     >;
 
@@ -120,7 +120,7 @@ impl<'a> IntoIterator for &'a Data {
         self.header
             .to_be_bytes()
             .into_iter()
-            .chain(self.payload.iter().copied().mask())
+            .chain(self.payload.iter().copied())
             .chain(self.crc.to_be_bytes())
     }
 }
@@ -129,15 +129,25 @@ impl TryFrom<&[u8]> for Data {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() >= MIN_SIZE {
-            Ok(Self::new(
-                buffer[0],
-                buffer[1..(buffer.len() - 2)].into(),
-                u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
-            ))
-        } else {
-            Err(Error::BufferTooSmall(MIN_SIZE))
+        if buffer.len() < MIN_SIZE {
+            return Err(Error::BufferTooSmall {
+                expected: MIN_SIZE,
+                found: buffer.len(),
+            });
         }
+
+        if buffer.len() > MAX_SIZE {
+            return Err(Error::BufferTooLarge {
+                expected: MAX_SIZE,
+                found: buffer.len(),
+            });
+        }
+
+        Ok(Self::new(
+            buffer[0],
+            buffer[1..(buffer.len() - 2)].into(),
+            u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
+        ))
     }
 }
 
@@ -155,10 +165,11 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
             Err(Error::TooMuchData(payload.len()))
         } else {
             let header = (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK;
+            let payload: Vec<u8> = payload.iter().copied().mask().collect();
             let mut crc_data = Vec::with_capacity(payload.len() + 1);
             crc_data.push(header);
             crc_data.extend_from_slice(&payload);
-            Ok(Self::new(header, payload, CRC.checksum(&crc_data)))
+            Ok(Self::new(header, payload.into(), CRC.checksum(&crc_data)))
         }
     }
 }
@@ -167,7 +178,6 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
 mod tests {
     use super::Data;
     use crate::protocol::randomization::Mask;
-    use crate::protocol::stuffing::Stuffing;
     use crate::Frame;
     use crate::CRC;
 
@@ -305,7 +315,7 @@ mod tests {
         let data = Data::new(0x00, msaked_payload.into(), crc);
         let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
         assert_eq!(unmasked_payload, payload);
-        let stuffed_bytes: Vec<_> = data.into_iter().stuff().collect();
-        assert_eq!(stuffed_bytes, vec![0, 67, 33, 168, 80, 155, 152]);
+        let byte_representation: Vec<_> = (&data).into_iter().collect();
+        assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);
     }
 }

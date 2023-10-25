@@ -36,7 +36,7 @@ impl TryFrom<&[u8]> for Packet {
     fn try_from(buffer: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
         match *buffer
             .first()
-            .ok_or(<Self as TryFrom<&[u8]>>::Error::MissingHeader)?
+            .ok_or(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(None))?
         {
             rst::HEADER => Ok(Self::Rst(rst::Rst::try_from(buffer)?)),
             rst_ack::HEADER => Ok(Self::RstAck(rst_ack::RstAck::try_from(buffer)?)),
@@ -49,7 +49,7 @@ impl TryFrom<&[u8]> for Packet {
                 } else if header & 0x60 == 0x20 {
                     Ok(Self::Nak(nak::Nak::try_from(buffer)?))
                 } else {
-                    Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(header))
+                    Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header)))
                 }
             }
         }
