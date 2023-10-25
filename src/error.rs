@@ -11,6 +11,7 @@ pub enum Error {
     TooFewData(usize),
     CannotFindViableChunkSize(usize),
     Io(std::io::Error),
+    Terminated,
 }
 
 impl Display for Error {
@@ -32,6 +33,7 @@ impl Display for Error {
                 write!(f, "Cannot find viable chunk size for {size} bytes")
             }
             Self::Io(error) => write!(f, "{error}"),
+            Self::Terminated => write!(f, "terminated"),
         }
     }
 }
@@ -46,9 +48,8 @@ impl From<Error> for std::io::Error {
             | Error::NoData
             | Error::TooMuchData(_)
             | Error::TooFewData(_)
-            | Error::CannotFindViableChunkSize(_) => {
-                Self::new(std::io::ErrorKind::InvalidData, error)
-            }
+            | Error::CannotFindViableChunkSize(_)
+            | Error::Terminated => Self::new(std::io::ErrorKind::InvalidData, error),
             Error::BufferTooSmall(_) | Error::InvalidBufferSize { .. } => {
                 Self::new(std::io::ErrorKind::Other, error)
             }

@@ -177,20 +177,3 @@ where
         todo!()
     }
 }
-
-impl<S> From<&Host<S>> for ConnectionHandler<S>
-where
-    for<'s> S: SerialPort + 's,
-{
-    fn from(host: &Host<S>) -> Self {
-        Self {
-            serial_port: host.serial_port.clone(),
-            frames: host.frames.clone(),
-            result_buffer: Vec::new(),
-            byte_buffer: [0],
-            t_rx_ack: T_RX_ACK_INIT,
-            ack_num: 0,
-            rejecting: false,
-        }
-    }
-}
