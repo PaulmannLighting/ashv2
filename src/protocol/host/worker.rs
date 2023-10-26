@@ -470,10 +470,13 @@ where
                 .map(|(_, data)| data)
                 .collect_vec()
         );
-        self.received_data
+        let bytes = self
+            .received_data
             .iter()
             .flat_map(|(_, data)| data.payload().iter().copied().mask())
-            .collect()
+            .collect_vec();
+        trace!("Received bytes: {:#02X?}", bytes);
+        bytes.into()
     }
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
