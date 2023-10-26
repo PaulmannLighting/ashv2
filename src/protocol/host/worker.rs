@@ -466,7 +466,7 @@ where
         let last = self.ack_number();
 
         if first == 0 && last == 7 {
-            first..=first
+            last..=first
         } else {
             first..=last
         }
