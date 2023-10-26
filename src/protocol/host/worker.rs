@@ -111,6 +111,7 @@ where
     }
 
     fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, Error> {
+        self.clear_buffers();
         let result = data
             .iter()
             .copied()
@@ -462,21 +463,21 @@ where
         panic!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
     }
 
+    fn clear_buffers(&mut self) {
+        debug!("Clearing buffers.");
+        self.sent_data.clear();
+        self.retransmit.clear();
+        self.received_data.clear();
+        self.receive_buffer.clear();
+        self.byte_buffer = [0];
+        self.send_buffer.clear();
+    }
+
     fn received_bytes(&self) -> Arc<[u8]> {
-        trace!(
-            "Received data: {:#02X?}",
-            self.received_data
-                .iter()
-                .map(|(_, data)| data)
-                .collect_vec()
-        );
-        let bytes = self
-            .received_data
+        self.received_data
             .iter()
             .flat_map(|(_, data)| data.payload().iter().copied().mask())
-            .collect_vec();
-        trace!("Received bytes: {:#02X?}", bytes);
-        bytes.into()
+            .collect()
     }
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
