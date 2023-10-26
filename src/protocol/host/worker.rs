@@ -346,8 +346,9 @@ where
             self.update_t_rx_ack(SystemTime::now().duration_since(*timestamp).ok());
         }
 
-        self.sent_data
-            .retain(|(_, data)| data.frame_num() >= ack_num);
+        self.sent_data.retain(|(_, data)| {
+            data.frame_num() >= ack_num || ((ack_num == 0) && (data.frame_num() == 7))
+        });
     }
 
     fn receive_packet(&mut self) -> Result<Packet, Error> {
