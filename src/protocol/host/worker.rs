@@ -187,6 +187,10 @@ where
         if data.frame_num() == self.ack_number() {
             self.reject = false;
             self.last_received_frame_number = data.frame_num();
+            debug!(
+                "Last received frame number: {}",
+                self.last_received_frame_number
+            );
             self.ack_sent_data(data.ack_num());
             self.received_data.push((SystemTime::now(), data));
         } else if data.is_retransmission() {
@@ -328,6 +332,8 @@ where
     }
 
     fn ack_sent_data(&mut self, ack_num: u8) {
+        debug!("Sent frame acknowledged: {ack_num}");
+
         if let Some((timestamp, _)) = self
             .sent_data
             .iter()
