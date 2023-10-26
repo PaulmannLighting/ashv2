@@ -7,6 +7,7 @@ use crate::packet::rst_ack::RstAck;
 use crate::packet::{error, Packet};
 use crate::protocol::ash_chunks::AshChunks;
 use crate::protocol::host::transaction::Request;
+use crate::protocol::randomization::Mask;
 use crate::protocol::stuffing::Stuffing;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::{Error, Frame};
@@ -459,8 +460,7 @@ where
     fn received_bytes(&self) -> Arc<[u8]> {
         self.received_data
             .iter()
-            .flat_map(|(_, data)| data.payload().iter())
-            .copied()
+            .flat_map(|(_, data)| data.payload().iter().copied().mask())
             .collect()
     }
 
