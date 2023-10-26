@@ -184,6 +184,7 @@ where
         trace!("Frame details: {data:#02X?}");
 
         if !data.is_valid() {
+            debug!("Received invalid data. Rejecting.");
             return Ok(self.reject()?);
         }
 
