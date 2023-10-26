@@ -29,10 +29,10 @@ where
     queue: Arc<Mutex<VecDeque<Transaction>>>,
     terminate: Arc<AtomicBool>,
     /// Local state
-    frame_number: RefCell<u8>,
-    ack_number: RefCell<u8>,
-    unacknowledged_data: RefCell<VecDeque<Data>>,
-    buffer: RefCell<Vec<u8>>,
+    frame_number: u8,
+    ack_number: u8,
+    unacknowledged_data: VecDeque<Data>,
+    buffer: Vec<u8>,
 }
 
 impl<S> Worker<S>
@@ -49,24 +49,32 @@ where
             serial_port: RefCell::new(serial_port),
             queue,
             terminate,
-            frame_number: RefCell::new(0),
-            ack_number: RefCell::new(0),
-            unacknowledged_data: RefCell::new(VecDeque::new()),
-            buffer: RefCell::new(Vec::new()),
+            frame_number: 0,
+            ack_number: 0,
+            unacknowledged_data: VecDeque::new(),
+            buffer: Vec::new(),
         }
     }
 
-    pub fn spawn(self) {
+    pub fn spawn(mut self) {
         while !self.terminate.load(SeqCst) {
-            if let Ok(mut queue) = self.queue.lock() {
-                if let Some(transaction) = queue.pop_back() {
-                    self.process_transaction(transaction);
-                }
+            if let Some(transaction) = self.next_transaction() {
+                self.process_transaction(transaction);
             }
         }
     }
 
-    fn process_transaction(&self, mut transaction: Transaction) {
+    fn next_transaction(&mut self) -> Option<Transaction> {
+        if let Ok(mut queue) = self.queue.lock() {
+            if let Some(next_transaction) = queue.pop_back() {
+                return Some(next_transaction);
+            }
+        }
+
+        None
+    }
+
+    fn process_transaction(&mut self, mut transaction: Transaction) {
         let result = transaction
             .chunks()
             .and_then(|chunks| self.process_chunks(chunks.into_iter().collect_vec()));
@@ -78,7 +86,10 @@ where
         transaction.resolve(result);
     }
 
-    fn process_chunks(&self, mut chunks: Vec<Chunk<Copied<Iter<u8>>>>) -> Result<Arc<[u8]>, Error> {
+    fn process_chunks(
+        &mut self,
+        mut chunks: Vec<Chunk<Copied<Iter<u8>>>>,
+    ) -> Result<Arc<[u8]>, Error> {
         while !self.terminate.load(SeqCst) {
             self.push_chunks(&mut chunks)?;
 
@@ -94,18 +105,18 @@ where
         Err(Error::Terminated)
     }
 
-    fn next_frame_number(&self) -> u8 {
-        let frame_number = self.frame_number.take();
-        self.frame_number.replace((frame_number + 1) % 8);
+    fn next_frame_number(&mut self) -> u8 {
+        let frame_number = self.frame_number;
+        self.frame_number = (frame_number + 1) % 8;
         frame_number
     }
 
-    fn push_chunks(&self, chunks: &mut Vec<Chunk<Copied<Iter<u8>>>>) -> Result<(), Error> {
-        while self.unacknowledged_data.borrow().len() < ACK_TIMEOUTS - 1 {
+    fn push_chunks(&mut self, chunks: &mut Vec<Chunk<Copied<Iter<u8>>>>) -> Result<(), Error> {
+        while self.unacknowledged_data.len() < ACK_TIMEOUTS - 1 {
             if let Some(chunk) = chunks.pop() {
                 let data = Data::try_from((self.next_frame_number(), chunk.collect_vec().into()))?;
                 self.send_frame(&data)?;
-                self.unacknowledged_data.borrow_mut().push_back(data);
+                self.unacknowledged_data.push_back(data);
             } else {
                 break;
             }
@@ -114,21 +125,20 @@ where
         Ok(())
     }
 
-    fn ack_sent_data(&self, ack_num: u8) {
+    fn ack_sent_data(&mut self, ack_num: u8) {
         self.unacknowledged_data
-            .borrow_mut()
             .retain(|data| data.frame_num() != ack_num);
     }
 
-    fn send_ack(&self, ack_num: u8) -> std::io::Result<()> {
+    fn send_ack(&mut self, ack_num: u8) -> std::io::Result<()> {
         self.send_frame(&Ack::from(ack_num))
     }
 
-    fn send_nak(&self, ack_num: u8) -> std::io::Result<()> {
+    fn send_nak(&mut self, ack_num: u8) -> std::io::Result<()> {
         self.send_frame(&Nak::from(ack_num))
     }
 
-    fn send_frame<F>(&self, frame: F) -> std::io::Result<()>
+    fn send_frame<F>(&mut self, frame: F) -> std::io::Result<()>
     where
         F: IntoIterator<Item = u8>,
     {
@@ -141,11 +151,11 @@ where
         serial_port.write_all(&[FLAG])
     }
 
-    fn receive_frame(&self) -> Result<Packet, Error> {
+    fn receive_frame(&mut self) -> Result<Packet, Error> {
         todo!("Implement receiving of frames")
     }
 
-    fn recover_error(&self, error: &Error) {
+    fn recover_error(&mut self, error: &Error) {
         match error {
             Error::Io(error) => {
                 error!("Attempting to recover from I/O error: {error}");
