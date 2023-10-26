@@ -362,12 +362,12 @@ where
             self.update_t_rx_ack(SystemTime::now().duration_since(*timestamp).ok());
         }
 
-        trace!("Current unacknowledged data: {:#02?}", self.sent_data);
+        trace!("Current unacknowledged data: {:#02X?}", self.sent_data);
         self.sent_data.retain(|(_, data)| {
             (data.frame_num() >= ack_num) && !((ack_num == 0) && (data.frame_num() == 7))
         });
         trace!(
-            "Unacknowledged data after clearing: {:#02?}",
+            "Unacknowledged data after clearing: {:#02X?}",
             self.sent_data
         );
     }
