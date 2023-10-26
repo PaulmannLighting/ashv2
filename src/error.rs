@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-use std::sync::PoisonError;
+use std::sync::mpsc::SendError;
+use std::sync::{Arc, PoisonError};
 
 #[derive(Debug)]
 pub enum Error {
@@ -12,7 +13,8 @@ pub enum Error {
     CannotFindViableChunkSize(usize),
     Io(std::io::Error),
     Terminated,
-    LockError(String),
+    LockError(Arc<dyn std::error::Error + Send + Sync>),
+    SendError(Arc<dyn std::error::Error + Send + Sync>),
 }
 
 impl Display for Error {
@@ -45,7 +47,7 @@ impl Display for Error {
             }
             Self::Io(error) => write!(f, "{error}"),
             Self::Terminated => write!(f, "terminated"),
-            Self::LockError(error) => write!(f, "{error}"),
+            Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
         }
     }
 }
@@ -54,6 +56,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Io(error) => Some(error),
+            Self::LockError(error) | Self::SendError(error) => Some(error),
             _ => None,
         }
     }
@@ -77,8 +80,20 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl<T> From<PoisonError<T>> for Error {
+impl<T> From<PoisonError<T>> for Error
+where
+    T: Send + Sync + 'static,
+{
     fn from(error: PoisonError<T>) -> Self {
-        Self::LockError(error.to_string())
+        Self::LockError(Arc::new(error))
+    }
+}
+
+impl<T> From<SendError<T>> for Error
+where
+    T: Send + Sync + 'static,
+{
+    fn from(error: SendError<T>) -> Self {
+        Self::SendError(Arc::new(error))
     }
 }

@@ -12,9 +12,9 @@ use serialport::SerialPort;
 use std::collections::VecDeque;
 use std::iter::Copied;
 use std::slice::Iter;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 
 pub const ACK_TIMEOUTS: usize = 4;
 
@@ -24,7 +24,7 @@ where
     S: SerialPort,
 {
     // Shared state
-    queue: Arc<Mutex<VecDeque<Transaction>>>,
+    receiver: Receiver<Transaction>,
     terminate: Arc<AtomicBool>,
     // Local state
     serial_port: S,
@@ -41,11 +41,11 @@ where
     #[must_use]
     pub fn new(
         serial_port: S,
-        queue: Arc<Mutex<VecDeque<Transaction>>>,
+        receiver: Receiver<Transaction>,
         terminate: Arc<AtomicBool>,
     ) -> Self {
         Self {
-            queue,
+            receiver,
             terminate,
             serial_port,
             frame_number: 0,
@@ -56,21 +56,12 @@ where
     }
 
     pub fn spawn(mut self) {
-        while !self.terminate.load(SeqCst) {
-            if let Some(transaction) = self.next_transaction() {
-                self.process_transaction(transaction);
+        while !self.terminate.load(Ordering::SeqCst) {
+            match self.receiver.recv() {
+                Ok(transaction) => self.process_transaction(transaction),
+                Err(error) => error!("{error}"),
             }
         }
-    }
-
-    fn next_transaction(&mut self) -> Option<Transaction> {
-        if let Ok(mut queue) = self.queue.lock() {
-            if let Some(next_transaction) = queue.pop_back() {
-                return Some(next_transaction);
-            }
-        }
-
-        None
     }
 
     fn process_transaction(&mut self, mut transaction: Transaction) {
@@ -89,7 +80,7 @@ where
         &mut self,
         mut chunks: Vec<Chunk<Copied<Iter<u8>>>>,
     ) -> Result<Arc<[u8]>, Error> {
-        while !self.terminate.load(SeqCst) {
+        while !self.terminate.load(Ordering::SeqCst) {
             self.push_chunks(&mut chunks)?;
 
             match self.receive_frame()? {

@@ -8,10 +8,9 @@ use crate::Error;
 use log::error;
 use sent_frame::SentFrame;
 use serialport::SerialPort;
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 use transaction::Transaction;
@@ -19,7 +18,7 @@ use worker::Worker;
 
 #[derive(Debug)]
 pub struct Host {
-    queue: Arc<Mutex<VecDeque<Transaction>>>,
+    sender: Sender<Transaction>,
     join_handle: Option<JoinHandle<()>>,
     terminate: Arc<AtomicBool>,
 }
@@ -29,11 +28,11 @@ impl Host {
     where
         for<'s> S: SerialPort + 's,
     {
-        let queue = Arc::new(Mutex::new(VecDeque::new()));
         let terminate = Arc::new(AtomicBool::new(false));
-        let worker = Worker::new(serial_port, queue.clone(), terminate.clone());
+        let (sender, receiver) = channel::<Transaction>();
+        let worker = Worker::new(serial_port, receiver, terminate.clone());
         Self {
-            queue,
+            sender,
             join_handle: Some(thread::spawn(move || worker.spawn())),
             terminate,
         }
@@ -43,16 +42,16 @@ impl Host {
     ///
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
-    pub async fn communicate(&self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
+    pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
         let transaction = Transaction::new(payload.into());
-        self.queue.lock()?.push_back(transaction.clone());
+        self.sender.send(transaction.clone())?;
         transaction.await
     }
 }
 
 impl Drop for Host {
     fn drop(&mut self) {
-        self.terminate.store(true, SeqCst);
+        self.terminate.store(true, Ordering::SeqCst);
 
         if let Some(join_handle) = self.join_handle.take() {
             if let Err(error) = join_handle.join() {
