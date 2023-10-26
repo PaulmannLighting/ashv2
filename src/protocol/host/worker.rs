@@ -455,6 +455,10 @@ where
     }
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
+        debug!("Checking whether transaction is complete:");
+        debug!("Pending ACKs: {:?}", self.pending_acks().is_empty());
+        debug!("Sent data empty: {}", self.sent_data.is_empty());
+        debug!("Retransmit queue empty: {}", self.retransmit.is_empty());
         chunks.is_empty()
             && self.pending_acks().is_empty()
             && self.sent_data.is_empty()
