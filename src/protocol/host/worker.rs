@@ -123,6 +123,14 @@ where
             self.receive_and_process_packet()?;
             sleep(T_TX_ACK_DELAY);
             self.send_pending_acks()?;
+
+            if chunks.is_empty()
+                && self.pending_acks().is_empty()
+                && self.sent_data.is_empty()
+                && self.retransmit.is_empty()
+            {
+                return Ok(self.receive_buffer.as_slice().into());
+            }
         }
 
         Err(Error::Terminated)
