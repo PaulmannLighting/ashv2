@@ -461,7 +461,7 @@ where
             && self.retransmit.is_empty()
     }
 
-    const fn pending_acks(&self) -> RangeInclusive<u8> {
+    fn pending_acks(&self) -> RangeInclusive<u8> {
         let first = next_three_bit_number(self.last_sent_ack);
         let last = self.ack_number();
         debug!("Pending ACKs: {first}..{last}");
