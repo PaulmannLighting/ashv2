@@ -246,6 +246,9 @@ where
                 debug!("Retransmitting data frame: {data}");
                 trace!("Frame details: {data:?}");
                 self.send_data(data)?;
+            } else {
+                debug!("No data frames to retransmit.");
+                break;
             }
         }
 
