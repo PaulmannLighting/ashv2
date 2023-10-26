@@ -463,6 +463,13 @@ where
     }
 
     fn received_bytes(&self) -> Arc<[u8]> {
+        trace!(
+            "Received data: {:#02X?}",
+            self.received_data
+                .iter()
+                .map(|(_, data)| data)
+                .collect_vec()
+        );
         self.received_data
             .iter()
             .flat_map(|(_, data)| data.payload().iter().copied().mask())
