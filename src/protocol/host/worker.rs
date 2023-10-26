@@ -314,6 +314,11 @@ where
 
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.send_frame(&data)?;
+        trace!("Sending data frame with payload: {:#02X?}", data.payload());
+        trace!(
+            "Sending data frame with unmasked payload: {:#02X?}",
+            data.payload().iter().copied().mask().collect_vec()
+        );
         self.sent_data.push_back((SystemTime::now(), data));
         Ok(())
     }
