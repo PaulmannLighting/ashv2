@@ -369,11 +369,13 @@ where
         loop {
             match self.receive_packet()? {
                 Packet::RstAck(rst_ack) => {
-                    trace!("NCP sent: {rst_ack}");
+                    debug!("NCP sent: {rst_ack}");
+                    trace!("Packet details: {rst_ack:?}");
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
-                    trace!("NCP sent: {rst}");
+                    debug!("NCP sent: {rst}");
+                    trace!("Packet details: {rst:?}");
                     return Ok(());
                 }
                 packet => trace!("Ignoring non-RstAck packet: {packet}."),
