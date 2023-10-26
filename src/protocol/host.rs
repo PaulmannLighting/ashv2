@@ -1,12 +1,8 @@
-mod connection_handler;
-mod sent_frame;
 mod transaction;
 mod worker;
 
-use super::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::Error;
 use log::error;
-use sent_frame::SentFrame;
 use serialport::SerialPort;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};

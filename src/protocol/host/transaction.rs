@@ -8,10 +8,12 @@ use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
+type ResultType = Result<Arc<[u8]>, Error>;
+
 #[derive(Clone, Debug)]
 pub struct Transaction {
     request: Arc<[u8]>,
-    result: Arc<Mutex<Option<Result<Arc<[u8]>, Error>>>>,
+    result: Arc<Mutex<Option<ResultType>>>,
     waker: Arc<Mutex<Option<Waker>>>,
 }
 

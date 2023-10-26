@@ -40,11 +40,6 @@ impl Data {
         (self.header & FRAME_NUM_MASK) >> FRAME_NUM_OFFSET
     }
 
-    #[must_use]
-    pub const fn is_retransmit(&self) -> bool {
-        (self.header & RETRANSMIT_MASK) != 0
-    }
-
     /// Returns the acknowledgment number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
@@ -53,7 +48,7 @@ impl Data {
 
     /// Returns the retransmit flag.
     #[must_use]
-    pub const fn retransmit(&self) -> bool {
+    pub const fn is_retransmission(&self) -> bool {
         (self.header & RETRANSMIT_MASK) != 0
     }
 
@@ -63,16 +58,12 @@ impl Data {
         &self.payload
     }
 
-    fn set_ack_num(&mut self, ack_num: u8) {
-        self.header &= 0xFF ^ (ack_num & ACK_NUM_MASK);
-    }
-
-    fn set_retransmit(&mut self, retransmit: bool) {
-        self.header = if retransmit {
-            self.header | RETRANSMIT_MASK
+    pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
+        if is_retransmission {
+            self.header |= RETRANSMIT_MASK;
         } else {
-            self.header & (0xFF ^ RETRANSMIT_MASK)
-        };
+            self.header &= 0xFF ^ RETRANSMIT_MASK;
+        }
     }
 }
 
@@ -83,7 +74,7 @@ impl Display for Data {
             "DATA({}, {}, {})",
             self.frame_num(),
             self.ack_num(),
-            u8::from(self.retransmit())
+            u8::from(self.is_retransmission())
         )
     }
 }
@@ -229,16 +220,20 @@ mod tests {
     #[test]
     fn test_retransmit() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
-        assert!(!data.retransmit());
+        let mut data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        assert!(!data.is_retransmission());
+        data.set_is_retransmission(true);
+        assert!(data.is_retransmission());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
+        let mut data = Data::new(
             0x53,
             vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
             0x6316,
         );
-        assert!(!data.retransmit());
+        assert!(!data.is_retransmission());
+        data.set_is_retransmission(true);
+        assert!(data.is_retransmission());
     }
 
     #[test]

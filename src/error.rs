@@ -15,6 +15,7 @@ pub enum Error {
     Terminated,
     LockError(Arc<dyn std::error::Error + Send + Sync>),
     SendError(Arc<dyn std::error::Error + Send + Sync>),
+    SerialConnectionError(serialport::Error),
 }
 
 impl Display for Error {
@@ -48,6 +49,7 @@ impl Display for Error {
             Self::Io(error) => write!(f, "{error}"),
             Self::Terminated => write!(f, "terminated"),
             Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
+            Self::SerialConnectionError(error) => write!(f, "{error}"),
         }
     }
 }
@@ -95,5 +97,11 @@ where
 {
     fn from(error: SendError<T>) -> Self {
         Self::SendError(Arc::new(error))
+    }
+}
+
+impl From<serialport::Error> for Error {
+    fn from(error: serialport::Error) -> Self {
+        Self::SerialConnectionError(error)
     }
 }
