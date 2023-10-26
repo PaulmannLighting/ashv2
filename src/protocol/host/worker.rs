@@ -166,8 +166,8 @@ where
             Packet::Error(ref error) => self.handle_error(error)?,
             Packet::Nak(ref nak) => self.process_nak(nak),
             Packet::Rst(ref rst) => {
-                error!("NCP sent us an unexpected RST.");
-                trace!("NCP message was: {rst}");
+                error!("NCP sent us an unexpected RST: {rst}");
+                trace!("Frame details: {rst:?}");
             }
             Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
         }
@@ -176,10 +176,15 @@ where
     }
 
     fn process_ack(&mut self, ack: &Ack) {
+        debug!("Received frame: {ack}");
+        trace!("Frame details: {ack:?}");
         self.ack_sent_data(ack.ack_num());
     }
 
     fn process_data(&mut self, data: Data) -> Result<(), Error> {
+        debug!("Received frame: {data}");
+        trace!("Frame details: {data:?}");
+
         if !data.is_valid() {
             return Ok(self.reject()?);
         }
@@ -208,6 +213,9 @@ where
     }
 
     fn handle_error(&mut self, error: &error::Error) -> Result<(), Error> {
+        debug!("Received frame: {error}");
+        trace!("Frame details: {error:?}");
+
         error.code().map_or_else(
             || {
                 error!("NCP set error without valid code.");
@@ -222,6 +230,9 @@ where
     }
 
     fn process_nak(&mut self, nak: &Nak) {
+        debug!("Received frame: {nak}");
+        trace!("Frame details: {nak:?}");
+
         let indices: Vec<_> = self
             .sent_data
             .iter()
@@ -232,7 +243,10 @@ where
 
         for index in indices {
             if let Some((_, mut data)) = self.sent_data.remove(index) {
+                debug!("Queueing for retransmit: {data}");
+                trace!("Frame details: {data:?}");
                 data.set_is_retransmission(true);
+                trace!("With retransmit flag set: {data:?}");
                 self.retransmit.push_front(data);
             }
         }
@@ -278,8 +292,6 @@ where
                 debug!("Transmitting chunk.");
                 let data =
                     Data::try_from((self.set_next_frame_number(), chunk.collect_vec().into()))?;
-                debug!("Created data frame from chunk: {data}");
-                trace!("Frame details: {data:?}");
                 self.send_data(data)?;
             } else {
                 debug!("No more chunks to transmit.");
@@ -468,6 +480,8 @@ const fn next_three_bit_number(number: u8) -> u8 {
 }
 
 fn process_rst_ack(rst_ack: &RstAck) {
+    debug!("Received frame: {rst_ack}");
+    trace!("Frame details: {rst_ack:?}");
     rst_ack.code().map_or_else(
         || {
             error!("NCP acknowledged reset with invalid error code.");
