@@ -263,8 +263,9 @@ where
     }
 
     fn set_next_frame_number(&mut self) -> u8 {
+        let frame_number = self.frame_number;
         self.frame_number = self.next_frame_number();
-        self.frame_number
+        frame_number
     }
 
     fn retransmit(&mut self) -> std::io::Result<()> {
