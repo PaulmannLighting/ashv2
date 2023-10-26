@@ -44,7 +44,7 @@ where
     // Local state
     serial_port: S,
     frame_number: u8,
-    last_received_frame_number: u8,
+    last_received_frame_number: Option<u8>,
     last_sent_ack: u8,
     reject: bool,
     transmit: bool,
@@ -72,7 +72,7 @@ where
             terminate,
             serial_port,
             frame_number: 0,
-            last_received_frame_number: 0,
+            last_received_frame_number: None,
             last_sent_ack: 0,
             reject: false,
             transmit: true,
@@ -191,11 +191,8 @@ where
 
         if data.frame_num() == self.ack_number() {
             self.reject = false;
-            self.last_received_frame_number = data.frame_num();
-            debug!(
-                "Last received frame number: {}",
-                self.last_received_frame_number
-            );
+            self.last_received_frame_number = Some(data.frame_num());
+            debug!("Last received frame number: {}", data.frame_num());
             self.ack_sent_data(data.ack_num());
             self.received_data.push((SystemTime::now(), data));
         } else if data.is_retransmission() {
@@ -468,7 +465,11 @@ where
     }
 
     const fn ack_number(&self) -> u8 {
-        next_three_bit_number(self.last_received_frame_number)
+        if let Some(last_received_frame_number) = self.last_received_frame_number {
+            next_three_bit_number(last_received_frame_number)
+        } else {
+            0
+        }
     }
 
     const fn next_frame_number(&self) -> u8 {
