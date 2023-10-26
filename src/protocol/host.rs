@@ -1,8 +1,9 @@
 mod transaction;
 mod worker;
 
+use crate::protocol::host::transaction::Request;
 use crate::Error;
-use log::error;
+use log::{debug, error};
 use serialport::SerialPort;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
@@ -39,7 +40,7 @@ impl Host {
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
     pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
-        let transaction = Transaction::new(payload.into());
+        let transaction = Transaction::from(payload);
         self.sender.send(transaction.clone())?;
         transaction.await
     }
@@ -48,6 +49,11 @@ impl Host {
 impl Drop for Host {
     fn drop(&mut self) {
         self.terminate.store(true, Ordering::SeqCst);
+
+        match self.sender.send(Transaction::new(Request::Terminate)) {
+            Ok(_) => debug!("Successfully sent termination request."),
+            Err(error) => debug!("Failed to send termination request to worker: {error}"),
+        }
 
         if let Some(join_handle) = self.join_handle.take() {
             if let Err(error) = join_handle.join() {

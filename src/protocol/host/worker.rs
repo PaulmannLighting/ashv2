@@ -5,6 +5,8 @@ use crate::packet::nak::Nak;
 use crate::packet::rst::Rst;
 use crate::packet::rst_ack::RstAck;
 use crate::packet::{error, Packet};
+use crate::protocol::ash_chunks::AshChunks;
+use crate::protocol::host::transaction::Request;
 use crate::protocol::stuffing::Stuffing;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::{Error, Frame};
@@ -90,17 +92,26 @@ where
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Waiting for next request.");
             match self.receiver.recv() {
-                Ok(transaction) => self.process_transaction(transaction),
+                Ok(mut transaction) => self.process_transaction(&mut transaction),
                 Err(error) => error!("{error}"),
             }
         }
     }
 
-    fn process_transaction(&mut self, mut transaction: Transaction) {
+    fn process_transaction(&mut self, transaction: &mut Transaction) {
         trace!("Processing transaction: {transaction:?}");
 
-        let result = transaction
-            .chunks()
+        match transaction.request() {
+            Request::Data(data) => transaction.resolve(self.process_data_request(data)),
+            Request::Terminate => (),
+        }
+    }
+
+    fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, Error> {
+        let result = data
+            .iter()
+            .copied()
+            .ash_chunks()
             .and_then(|chunks| self.process_chunks(chunks.into_iter().collect_vec()));
 
         trace!("Transaction result: {result:?}");
@@ -109,7 +120,7 @@ where
             self.recover_error(error);
         }
 
-        transaction.resolve(result);
+        result
     }
 
     fn process_chunks(
@@ -392,7 +403,7 @@ where
                     error!("Failed to reset connection: {error}");
                 }
             }
-            _ => todo!(),
+            error => error!("Recovering from this error type is not implemented: {error}"),
         }
     }
 

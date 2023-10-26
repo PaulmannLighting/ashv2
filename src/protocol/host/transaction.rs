@@ -1,25 +1,27 @@
-use crate::protocol::ash_chunks::AshChunks;
 use crate::Error;
-use itertools::IntoChunks;
 use std::future::Future;
-use std::iter::Copied;
 use std::pin::Pin;
-use std::slice::Iter;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
 type ResultType = Result<Arc<[u8]>, Error>;
 
 #[derive(Clone, Debug)]
+pub enum Request {
+    Data(Arc<[u8]>),
+    Terminate,
+}
+
+#[derive(Clone, Debug)]
 pub struct Transaction {
-    request: Arc<[u8]>,
+    request: Request,
     result: Arc<Mutex<Option<ResultType>>>,
     waker: Arc<Mutex<Option<Waker>>>,
 }
 
 impl Transaction {
     #[must_use]
-    pub fn new(request: Arc<[u8]>) -> Self {
+    pub fn new(request: Request) -> Self {
         Self {
             request,
             result: Arc::new(Mutex::new(None)),
@@ -28,12 +30,8 @@ impl Transaction {
     }
 
     #[must_use]
-    pub fn request(&self) -> &[u8] {
+    pub const fn request(&self) -> &Request {
         &self.request
-    }
-
-    pub fn chunks(&mut self) -> Result<IntoChunks<Copied<Iter<'_, u8>>>, Error> {
-        self.request().iter().copied().ash_chunks()
     }
 
     pub fn resolve(&self, result: Result<Arc<[u8]>, Error>) {
@@ -51,7 +49,7 @@ impl Transaction {
 
 impl From<&[u8]> for Transaction {
     fn from(bytes: &[u8]) -> Self {
-        Self::new(bytes.into())
+        Self::new(Request::Data(bytes.into()))
     }
 }
 
