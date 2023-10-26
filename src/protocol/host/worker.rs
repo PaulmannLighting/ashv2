@@ -261,26 +261,22 @@ where
     }
 
     fn retransmit(&mut self) -> std::io::Result<()> {
-        debug!("Retransmitting.");
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
-            debug!("Slots free. Attempting to retransmit next data frame.");
             if let Some(data) = self.retransmit.pop_back() {
                 debug!("Retransmitting data frame: {data}");
                 trace!("Frame details: {data:?}");
                 self.send_data(data)?;
             } else {
-                debug!("No data frames to retransmit.");
-                break;
+                return Ok(());
             }
         }
 
+        debug!("No transmission slots free.");
         Ok(())
     }
 
     fn push_chunks(&mut self, chunks: &mut Chunks) -> Result<(), Error> {
-        debug!("Pushing chunks.");
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
-            debug!("Slots free. Attempting to transmit next chunk.");
             if let Some(chunk) = chunks.pop() {
                 debug!("Transmitting chunk.");
                 let data =
@@ -288,10 +284,11 @@ where
                 self.send_data(data)?;
             } else {
                 debug!("No more chunks to transmit.");
-                break;
+                return Ok(());
             }
         }
 
+        debug!("No transmission slots free.");
         Ok(())
     }
 
@@ -427,12 +424,12 @@ where
         loop {
             match self.receive_packet()? {
                 Packet::RstAck(rst_ack) => {
-                    debug!("Sent frame: {rst_ack}");
+                    debug!("Received frame: {rst_ack}");
                     trace!("Frame details: {rst_ack:?}");
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
-                    debug!("Sent frame: {rst}");
+                    debug!("Received frame: {rst}");
                     trace!("Frame details: {rst:?}");
                     return Ok(());
                 }
