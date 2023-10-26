@@ -145,7 +145,7 @@ where
             self.send_pending_acks()?;
 
             if self.is_transaction_complete(&chunks) {
-                return Ok(self.receive_buffer.as_slice().into());
+                return Ok(self.received_bytes());
             }
         }
 
@@ -453,6 +453,14 @@ where
         }
 
         panic!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
+    }
+
+    fn received_bytes(&self) -> Arc<[u8]> {
+        self.received_data
+            .iter()
+            .flat_map(|(_, data)| data.payload().iter())
+            .copied()
+            .collect()
     }
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
