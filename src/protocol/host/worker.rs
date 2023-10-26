@@ -383,6 +383,8 @@ where
                 }
                 FLAG => {
                     if !error && !self.receive_buffer.is_empty() {
+                        debug!("Received frame.");
+                        trace!("Frame details: {:#02X?}", self.receive_buffer);
                         return Ok(&self.receive_buffer);
                     }
 
@@ -430,13 +432,13 @@ where
         loop {
             match self.receive_packet()? {
                 Packet::RstAck(rst_ack) => {
-                    debug!("NCP sent: {rst_ack}");
-                    trace!("Packet details: {rst_ack:?}");
+                    debug!("Sent frame: {rst_ack}");
+                    trace!("Frame details: {rst_ack:?}");
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
-                    debug!("NCP sent: {rst}");
-                    trace!("Packet details: {rst:?}");
+                    debug!("Sent frame: {rst}");
+                    trace!("Frame details: {rst:?}");
                     return Ok(());
                 }
                 packet => trace!("Ignoring non-RstAck packet: {packet}."),
