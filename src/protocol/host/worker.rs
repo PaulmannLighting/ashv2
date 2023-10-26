@@ -239,8 +239,12 @@ where
     }
 
     fn retransmit(&mut self) -> std::io::Result<()> {
+        debug!("Retransmitting.");
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
+            debug!("Slots free. Attempting to retransmit next data frame.");
             if let Some(data) = self.retransmit.pop_back() {
+                debug!("Retransmitting data frame: {data}");
+                trace!("Frame details: {data:?}");
                 self.send_data(data)?;
             }
         }
@@ -249,12 +253,18 @@ where
     }
 
     fn push_chunks(&mut self, chunks: &mut Vec<Chunk<Copied<Iter<u8>>>>) -> Result<(), Error> {
+        debug!("Pushing chunks.");
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
+            debug!("Slots free. Attempting to transmit next chunk.");
             if let Some(chunk) = chunks.pop() {
+                debug!("Transmitting chunk.");
                 let data =
                     Data::try_from((self.set_next_frame_number(), chunk.collect_vec().into()))?;
+                debug!("Created data frame from chunk: {data}");
+                trace!("Frame details: {data:?}");
                 self.send_data(data)?;
             } else {
+                debug!("No more chunks to transmit.");
                 break;
             }
         }
