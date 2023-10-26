@@ -330,6 +330,7 @@ where
         self.send_buffer.clear();
         self.send_buffer.extend(frame.into_iter().stuff());
         self.send_buffer.push(FLAG);
+        trace!("Sending bytes: {:#02X?}", self.send_buffer);
         self.serial_port.write_all(&self.send_buffer)
     }
 
