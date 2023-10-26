@@ -33,6 +33,7 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
 const T_TX_ACK_DELAY: Duration = Duration::from_millis(20);
 const T_REMOTE_NOTRDY: Duration = Duration::from_millis(1000);
+const INITIAL_BUFFER_CAPACITY: usize = 220;
 
 type Chunks<'c, 'i> = Vec<Chunk<'c, Copied<Iter<'i, u8>>>>;
 
@@ -82,9 +83,9 @@ where
             sent_data: VecDeque::new(),
             retransmit: VecDeque::new(),
             received_data: Vec::new(),
-            receive_buffer: Vec::new(),
+            receive_buffer: Vec::with_capacity(INITIAL_BUFFER_CAPACITY),
             byte_buffer: [0],
-            send_buffer: Vec::new(),
+            send_buffer: Vec::with_capacity(INITIAL_BUFFER_CAPACITY),
             t_rx_ack: T_RX_ACK_INIT,
         }
     }
