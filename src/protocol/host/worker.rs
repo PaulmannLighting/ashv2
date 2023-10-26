@@ -347,7 +347,7 @@ where
         }
 
         self.sent_data.retain(|(_, data)| {
-            data.frame_num() >= ack_num || ((ack_num == 0) && (data.frame_num() == 7))
+            (data.frame_num() >= ack_num) && !((ack_num == 0) && (data.frame_num() == 7))
         });
     }
 
