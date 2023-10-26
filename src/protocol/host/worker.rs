@@ -131,12 +131,6 @@ where
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
 
-            if self.reject {
-                debug!("Reject condition is active. Sending NAK.");
-                self.send_nak()?;
-                continue;
-            }
-
             if self.transmit {
                 self.retransmit()?;
                 self.push_chunks(&mut chunks)?;
@@ -144,6 +138,13 @@ where
 
             self.receive_and_process_packet()?;
             sleep(T_TX_ACK_DELAY);
+
+            if self.reject {
+                debug!("Reject condition is active. Sending NAK.");
+                self.send_nak()?;
+                continue;
+            }
+
             self.send_pending_acks()?;
 
             if self.is_transaction_complete(&chunks) {
