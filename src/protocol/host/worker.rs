@@ -5,12 +5,14 @@ use crate::packet::nak::Nak;
 use crate::packet::rst::Rst;
 use crate::packet::rst_ack::RstAck;
 use crate::packet::{error, Packet};
+use crate::protocol::stuffing::Stuffing;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use crate::{Error, Frame};
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::collections::VecDeque;
+use std::fmt::{Debug, Display};
 use std::iter::Copied;
 use std::ops::RangeInclusive;
 use std::slice::Iter;
@@ -86,6 +88,7 @@ where
         self.initialize();
 
         while !self.terminate.load(Ordering::SeqCst) {
+            debug!("Waiting for next request.");
             match self.receiver.recv() {
                 Ok(transaction) => self.process_transaction(transaction),
                 Err(error) => error!("{error}"),
@@ -94,9 +97,13 @@ where
     }
 
     fn process_transaction(&mut self, mut transaction: Transaction) {
+        trace!("Processing transaction: {transaction:?}");
+
         let result = transaction
             .chunks()
             .and_then(|chunks| self.process_chunks(chunks.into_iter().collect_vec()));
+
+        trace!("Transaction result: {result:?}");
 
         if let Err(error) = &result {
             self.recover_error(error);
@@ -110,7 +117,10 @@ where
         mut chunks: Vec<Chunk<Copied<Iter<u8>>>>,
     ) -> Result<Arc<[u8]>, Error> {
         while !self.terminate.load(Ordering::SeqCst) {
+            debug!("Processing chunk...");
+
             if self.reject {
+                debug!("Reject condition is active. Sending NAK.");
                 self.send_nak()?;
                 continue;
             }
@@ -137,6 +147,8 @@ where
     }
 
     fn receive_and_process_packet(&mut self) -> Result<(), Error> {
+        debug!("Receiving packet.");
+
         match self.receive_packet()? {
             Packet::Ack(ref ack) => self.process_ack(ack),
             Packet::Data(data) => self.process_data(data)?,
@@ -281,8 +293,10 @@ where
 
     fn send_frame<F>(&mut self, frame: F) -> std::io::Result<()>
     where
-        F: IntoIterator<Item = u8>,
+        F: Debug + Display + IntoIterator<Item = u8>,
     {
+        debug!("Sending frame: {frame}");
+        trace!("Frame details: {frame:?}");
         self.send_buffer.clear();
         self.send_buffer.extend(frame);
         self.send_buffer.push(FLAG);
@@ -305,7 +319,14 @@ where
     }
 
     fn receive_packet(&mut self) -> Result<Packet, Error> {
-        Packet::try_from(self.receive_frame()?)
+        Packet::try_from(
+            self.receive_frame()?
+                .iter()
+                .copied()
+                .unstuff()
+                .collect_vec()
+                .as_slice(),
+        )
     }
 
     fn receive_frame(&mut self) -> Result<&[u8], Error> {
@@ -386,7 +407,10 @@ where
     fn initialize(&mut self) {
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             match self.reset() {
-                Ok(_) => return,
+                Ok(_) => {
+                    debug!("ASH connection initialized after {attempt} attempts.");
+                    return;
+                }
                 Err(error) => warn!("Startup attempt #{attempt} failed: {error}"),
             }
 
