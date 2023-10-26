@@ -462,7 +462,10 @@ where
     }
 
     const fn pending_acks(&self) -> RangeInclusive<u8> {
-        next_three_bit_number(self.last_sent_ack)..=self.ack_number()
+        let first = next_three_bit_number(self.last_sent_ack);
+        let last = self.ack_number();
+        debug!("Pending ACKs: {first}..{last}");
+        first..=last
     }
 
     const fn ack_number(&self) -> u8 {
