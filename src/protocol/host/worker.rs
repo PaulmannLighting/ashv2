@@ -33,6 +33,8 @@ const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
 const T_TX_ACK_DELAY: Duration = Duration::from_millis(20);
 const T_REMOTE_NOTRDY: Duration = Duration::from_millis(1000);
 
+type Chunks<'c, 'i> = Vec<Chunk<'c, Copied<Iter<'i, u8>>>>;
+
 #[derive(Debug)]
 pub struct Worker<S>
 where
@@ -123,10 +125,7 @@ where
         result
     }
 
-    fn process_chunks(
-        &mut self,
-        mut chunks: Vec<Chunk<Copied<Iter<u8>>>>,
-    ) -> Result<Arc<[u8]>, Error> {
+    fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, Error> {
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
 
@@ -145,11 +144,7 @@ where
             sleep(T_TX_ACK_DELAY);
             self.send_pending_acks()?;
 
-            if chunks.is_empty()
-                && self.pending_acks().is_empty()
-                && self.sent_data.is_empty()
-                && self.retransmit.is_empty()
-            {
+            if self.is_transaction_complete(&chunks) {
                 return Ok(self.receive_buffer.as_slice().into());
             }
         }
@@ -282,7 +277,7 @@ where
         Ok(())
     }
 
-    fn push_chunks(&mut self, chunks: &mut Vec<Chunk<Copied<Iter<u8>>>>) -> Result<(), Error> {
+    fn push_chunks(&mut self, chunks: &mut Chunks) -> Result<(), Error> {
         debug!("Pushing chunks.");
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
             debug!("Slots free. Attempting to transmit next chunk.");
@@ -460,6 +455,13 @@ where
         }
 
         panic!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
+    }
+
+    fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
+        chunks.is_empty()
+            && self.pending_acks().is_empty()
+            && self.sent_data.is_empty()
+            && self.retransmit.is_empty()
     }
 
     const fn pending_acks(&self) -> RangeInclusive<u8> {
