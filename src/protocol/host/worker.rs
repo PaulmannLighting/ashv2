@@ -9,7 +9,6 @@ use crate::Error;
 use itertools::{Chunk, Itertools};
 use log::error;
 use serialport::SerialPort;
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter::Copied;
 use std::slice::Iter;
@@ -25,10 +24,10 @@ where
     S: SerialPort,
 {
     /// Shared state
-    serial_port: RefCell<S>,
     queue: Arc<Mutex<VecDeque<Transaction>>>,
     terminate: Arc<AtomicBool>,
     /// Local state
+    serial_port: S,
     frame_number: u8,
     ack_number: u8,
     unacknowledged_data: VecDeque<Data>,
@@ -46,9 +45,9 @@ where
         terminate: Arc<AtomicBool>,
     ) -> Self {
         Self {
-            serial_port: RefCell::new(serial_port),
             queue,
             terminate,
+            serial_port,
             frame_number: 0,
             ack_number: 0,
             unacknowledged_data: VecDeque::new(),
@@ -142,13 +141,11 @@ where
     where
         F: IntoIterator<Item = u8>,
     {
-        let mut serial_port = self.serial_port.borrow_mut();
-
         for byte in frame {
-            serial_port.write_all(&[byte])?;
+            self.serial_port.write_all(&[byte])?;
         }
 
-        serial_port.write_all(&[FLAG])
+        self.serial_port.write_all(&[FLAG])
     }
 
     fn receive_frame(&mut self) -> Result<Packet, Error> {
