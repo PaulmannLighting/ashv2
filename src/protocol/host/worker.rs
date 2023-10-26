@@ -23,10 +23,10 @@ pub struct Worker<S>
 where
     S: SerialPort,
 {
-    /// Shared state
+    // Shared state
     queue: Arc<Mutex<VecDeque<Transaction>>>,
     terminate: Arc<AtomicBool>,
-    /// Local state
+    // Local state
     serial_port: S,
     frame_number: u8,
     ack_number: u8,
