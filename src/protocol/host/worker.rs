@@ -101,7 +101,7 @@ where
     }
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
-        trace!("Processing transaction: {transaction:?}");
+        trace!("Processing transaction: {transaction:#02X?}");
 
         match transaction.request() {
             Request::Data(data) => transaction.resolve(self.process_data_request(data)),
@@ -116,7 +116,7 @@ where
             .ash_chunks()
             .and_then(|chunks| self.process_chunks(chunks.into_iter().collect_vec()));
 
-        trace!("Transaction result: {result:?}");
+        trace!("Transaction result: {result:#02X?}");
 
         if let Err(error) = &result {
             self.recover_error(error);
@@ -162,7 +162,7 @@ where
             Packet::Nak(ref nak) => self.process_nak(nak),
             Packet::Rst(ref rst) => {
                 error!("NCP sent us an unexpected RST: {rst}");
-                trace!("Frame details: {rst:?}");
+                trace!("Frame details: {rst:#02X?}");
             }
             Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
         }
@@ -172,13 +172,13 @@ where
 
     fn process_ack(&mut self, ack: &Ack) {
         debug!("Received frame: {ack}");
-        trace!("Frame details: {ack:?}");
+        trace!("Frame details: {ack:#02X?}");
         self.ack_sent_data(ack.ack_num());
     }
 
     fn process_data(&mut self, data: Data) -> Result<(), Error> {
         debug!("Received frame: {data}");
-        trace!("Frame details: {data:?}");
+        trace!("Frame details: {data:#02X?}");
 
         if !data.is_valid() {
             return Ok(self.reject()?);
@@ -206,7 +206,7 @@ where
 
     fn handle_error(&mut self, error: &error::Error) -> Result<(), Error> {
         debug!("Received frame: {error}");
-        trace!("Frame details: {error:?}");
+        trace!("Frame details: {error:#02X?}");
 
         error.code().map_or_else(
             || {
@@ -223,7 +223,7 @@ where
 
     fn process_nak(&mut self, nak: &Nak) {
         debug!("Received frame: {nak}");
-        trace!("Frame details: {nak:?}");
+        trace!("Frame details: {nak:#02X?}");
 
         let indices: Vec<_> = self
             .sent_data
@@ -236,9 +236,9 @@ where
         for index in indices {
             if let Some((_, mut data)) = self.sent_data.remove(index) {
                 debug!("Queueing for retransmit: {data}");
-                trace!("Frame details: {data:?}");
+                trace!("Frame details: {data:#02X?}");
                 data.set_is_retransmission(true);
-                trace!("With retransmit flag set: {data:?}");
+                trace!("With retransmit flag set: {data:#02X?}");
                 self.retransmit.push_front(data);
             }
         }
@@ -264,7 +264,7 @@ where
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
             if let Some(data) = self.retransmit.pop_back() {
                 debug!("Retransmitting data frame: {data}");
-                trace!("Frame details: {data:?}");
+                trace!("Frame details: {data:#02X?}");
                 self.send_data(data)?;
             } else {
                 return Ok(());
@@ -326,7 +326,7 @@ where
         F: Debug + Display + IntoIterator<Item = u8>,
     {
         debug!("Sending frame: {frame}");
-        trace!("Frame details: {frame:?}");
+        trace!("Frame details: {frame:#02X?}");
         self.send_buffer.clear();
         self.send_buffer.extend(frame.into_iter().stuff());
         self.send_buffer.push(FLAG);
@@ -427,12 +427,12 @@ where
             match self.receive_packet()? {
                 Packet::RstAck(rst_ack) => {
                     debug!("Received frame: {rst_ack}");
-                    trace!("Frame details: {rst_ack:?}");
+                    trace!("Frame details: {rst_ack:#02X?}");
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
                     debug!("Received frame: {rst}");
-                    trace!("Frame details: {rst:?}");
+                    trace!("Frame details: {rst:#02X?}");
                     return Ok(());
                 }
                 packet => trace!("Ignoring non-RstAck packet: {packet}."),
@@ -466,7 +466,7 @@ where
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
         debug!("Checking whether transaction is complete:");
-        debug!("Pending ACKs: {:?}", self.pending_acks().is_empty());
+        debug!("Pending ACKs: {:#02X?}", self.pending_acks().is_empty());
         debug!("Sent data empty: {}", self.sent_data.is_empty());
         debug!("Retransmit queue empty: {}", self.retransmit.is_empty());
         chunks.is_empty()
@@ -505,7 +505,7 @@ const fn next_three_bit_number(number: u8) -> u8 {
 
 fn process_rst_ack(rst_ack: &RstAck) {
     debug!("Received frame: {rst_ack}");
-    trace!("Frame details: {rst_ack:?}");
+    trace!("Frame details: {rst_ack:#02X?}");
     rst_ack.code().map_or_else(
         || {
             error!("NCP acknowledged reset with invalid error code.");
