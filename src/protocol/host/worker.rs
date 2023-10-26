@@ -327,7 +327,13 @@ where
     }
 
     fn send_nak(&mut self) -> std::io::Result<()> {
-        self.send_frame(&Nak::from(self.ack_number()))
+        self.last_received_frame_number.map_or_else(
+            || {
+                error!("No frame received yet. Nothing to reject.");
+                Ok(())
+            },
+            |last_received_frame_number| self.send_frame(&Nak::from(last_received_frame_number)),
+        )
     }
 
     fn send_frame<F>(&mut self, frame: F) -> std::io::Result<()>
