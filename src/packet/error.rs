@@ -45,7 +45,7 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ERROR({:#04x}, {:#04x})", self.version, self.error_code)
+        write!(f, "ERROR({:#04X}, {:#04X})", self.version, self.error_code)
     }
 }
 

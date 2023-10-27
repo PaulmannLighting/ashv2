@@ -47,7 +47,7 @@ impl RstAck {
 
 impl Display for RstAck {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "RSTACK({:#04x}, {:#04x})", self.version, self.reset_code)
+        write!(f, "RSTACK({:#04X}, {:#04X})", self.version, self.reset_code)
     }
 }
 

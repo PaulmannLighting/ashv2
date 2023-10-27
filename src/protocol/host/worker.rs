@@ -97,7 +97,7 @@ where
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
         trace!(
-            "Processing transaction request: {:#02X?}",
+            "Processing transaction request: {:#04X?}",
             transaction.request()
         );
 
@@ -127,7 +127,7 @@ where
             .ash_chunks()
             .and_then(|chunks| self.process_chunks(chunks.into_iter().collect_vec()));
 
-        trace!("Transaction result: {result:#02X?}");
+        trace!("Transaction result: {result:#04X?}");
 
         if let Err(error) = &result {
             self.recover_error(error);
@@ -175,7 +175,7 @@ where
             Packet::Nak(ref nak) => self.process_nak(nak),
             Packet::Rst(ref rst) => {
                 error!("NCP sent us an unexpected RST: {rst}");
-                trace!("Frame details: {rst:#02X?}");
+                trace!("Frame details: {rst:#04X?}");
             }
             Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
         }
@@ -185,13 +185,13 @@ where
 
     fn process_ack(&mut self, ack: &Ack) {
         debug!("Received frame: {ack}");
-        trace!("Frame details: {ack:#02X?}");
+        trace!("Frame details: {ack:#04X?}");
         self.ack_sent_data(ack.ack_num());
     }
 
     fn process_data(&mut self, data: Data) -> Result<(), crate::Error> {
         debug!("Received frame: {data}");
-        trace!("Frame details: {data:#02X?}");
+        trace!("Frame details: {data:#04X?}");
 
         if !data.is_valid() {
             debug!("Received invalid data. Rejecting.");
@@ -220,7 +220,7 @@ where
 
     fn handle_error(&mut self, error: &Error) -> Result<(), crate::Error> {
         debug!("Received frame: {error}");
-        trace!("Frame details: {error:#02X?}");
+        trace!("Frame details: {error:#04X?}");
 
         error.code().map_or_else(
             || {
@@ -237,7 +237,7 @@ where
 
     fn process_nak(&mut self, nak: &Nak) {
         debug!("Received frame: {nak}");
-        trace!("Frame details: {nak:#02X?}");
+        trace!("Frame details: {nak:#04X?}");
 
         for (_, data) in self
             .sent_data
@@ -246,7 +246,7 @@ where
             .sorted_by_key(|(_, data)| data.frame_num())
         {
             debug!("Queueing for retransmit: {data}");
-            trace!("Frame details: {data:#02X?}");
+            trace!("Frame details: {data:#04X?}");
             self.retransmit.push_back(data);
         }
     }
@@ -259,7 +259,7 @@ where
                 .map_or(false, |duration| duration > self.t_rx_ack)
         }) {
             warn!("Frame {data} has not been acked in time. Queueing for retransmit.");
-            trace!("Frame details: {data:#02X?}");
+            trace!("Frame details: {data:#04X?}");
             self.retransmit.push_back(data);
         }
     }
@@ -285,7 +285,7 @@ where
             if let Some(mut data) = self.retransmit.pop_front() {
                 data.set_is_retransmission(true);
                 debug!("Retransmitting data frame: {data}");
-                trace!("Frame details: {data:#02X?}");
+                trace!("Frame details: {data:#04X?}");
                 self.send_data(data)?;
             } else {
                 return Ok(());
@@ -334,9 +334,9 @@ where
 
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.send_frame(&data)?;
-        trace!("Sending data frame with payload: {:#02X?}", data.payload());
+        trace!("Sending data frame with payload: {:#04X?}", data.payload());
         trace!(
-            "Sending data frame with unmasked payload: {:#02X?}",
+            "Sending data frame with unmasked payload: {:#04X?}",
             data.payload().iter().copied().mask().collect_vec()
         );
         self.sent_data.push((SystemTime::now(), data));
@@ -360,11 +360,11 @@ where
         F: Debug + Display + IntoIterator<Item = u8>,
     {
         debug!("Sending frame: {frame}");
-        trace!("Frame details: {frame:#02X?}");
+        trace!("Frame details: {frame:#04X?}");
         self.send_buffer.clear();
         self.send_buffer.extend(frame.into_iter().stuff());
         self.send_buffer.push(FLAG);
-        trace!("Sending bytes: {:#02X?}", self.send_buffer);
+        trace!("Sending bytes: {:#04X?}", self.send_buffer);
         self.serial_port.write_all(&self.send_buffer)
     }
 
@@ -384,7 +384,7 @@ where
         self.sent_data.retain(|(_, data)| {
             (data.frame_num() >= ack_num) && !((ack_num == 0) && (data.frame_num() == 7))
         });
-        trace!("Unacknowledged data after ACK: {:#02X?}", self.sent_data);
+        trace!("Unacknowledged data after ACK: {:#04X?}", self.sent_data);
     }
 
     fn receive_packet(&mut self) -> Result<Packet, crate::Error> {
@@ -413,7 +413,7 @@ where
                 FLAG => {
                     if !error && !self.receive_buffer.is_empty() {
                         debug!("Received frame.");
-                        trace!("Frame details: {:#02X?}", self.receive_buffer);
+                        trace!("Frame details: {:#04X?}", self.receive_buffer);
                         return Ok(&self.receive_buffer);
                     }
 
@@ -462,13 +462,13 @@ where
             match self.receive_packet()? {
                 Packet::RstAck(rst_ack) => {
                     debug!("Received frame: {rst_ack}");
-                    trace!("Frame details: {rst_ack:#02X?}");
+                    trace!("Frame details: {rst_ack:#04X?}");
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
                     error!("NCP sent us a RST instead of a RSTACK.");
                     debug!("Received frame: {rst}");
-                    trace!("Frame details: {rst:#02X?}");
+                    trace!("Frame details: {rst:#04X?}");
                     return Ok(());
                 }
                 packet => trace!("Ignoring packet: {packet}."),
@@ -513,7 +513,7 @@ where
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
         debug!("Checking whether transaction is complete:");
-        debug!("Pending ACKs: {:#02X?}", self.pending_acks().is_empty());
+        debug!("Pending ACKs: {:#04X?}", self.pending_acks().is_empty());
         debug!("Sent data empty: {}", self.sent_data.is_empty());
         debug!("Retransmit queue empty: {}", self.retransmit.is_empty());
         chunks.is_empty()
@@ -552,7 +552,7 @@ const fn next_three_bit_number(number: u8) -> u8 {
 
 fn process_rst_ack(rst_ack: &RstAck) {
     debug!("Received frame: {rst_ack}");
-    trace!("Frame details: {rst_ack:#02X?}");
+    trace!("Frame details: {rst_ack:#04X?}");
     rst_ack.code().map_or_else(
         || {
             error!("NCP acknowledged reset with invalid error code.");
