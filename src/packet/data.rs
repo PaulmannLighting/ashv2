@@ -1,5 +1,6 @@
+use crate::frame::Frame;
 use crate::protocol::randomization::Mask;
-use crate::{Error, Frame, CRC};
+use crate::{Error, CRC};
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -168,8 +169,8 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
 #[cfg(test)]
 mod tests {
     use super::Data;
+    use crate::frame::Frame;
     use crate::protocol::randomization::Mask;
-    use crate::Frame;
     use crate::CRC;
 
     #[test]

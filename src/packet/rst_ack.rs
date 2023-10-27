@@ -1,5 +1,6 @@
 use crate::code::Code;
-use crate::{Frame, CRC};
+use crate::frame::Frame;
+use crate::CRC;
 use num_traits::FromPrimitive;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -108,7 +109,8 @@ impl TryFrom<&[u8]> for RstAck {
 #[cfg(test)]
 mod tests {
     use super::RstAck;
-    use crate::{Code, Frame};
+    use crate::frame::Frame;
+    use crate::Code;
 
     const RST_ACK: RstAck = RstAck::new(0xC1, 0x02, 0x02, 0x9B7B);
 

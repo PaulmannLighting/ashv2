@@ -1,4 +1,5 @@
-use crate::{Frame, CRC};
+use crate::frame::Frame;
+use crate::CRC;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
@@ -100,7 +101,7 @@ impl TryFrom<&[u8]> for Ack {
 #[cfg(test)]
 mod tests {
     use super::Ack;
-    use crate::Frame;
+    use crate::frame::Frame;
 
     const ACK1: Ack = Ack::new(0x81, 0x6059);
     const ACK2: Ack = Ack::new(0x8E, 0x91B6);

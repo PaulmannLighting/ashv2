@@ -1,4 +1,4 @@
-use crate::Frame;
+use crate::frame::Frame;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
@@ -88,7 +88,7 @@ impl TryFrom<&[u8]> for Rst {
 #[cfg(test)]
 mod tests {
     use super::Rst;
-    use crate::Frame;
+    use crate::frame::Frame;
 
     const RST: Rst = Rst::new(0xC0, 0x38BC);
 

@@ -1,4 +1,5 @@
-use crate::{Code, Frame, CRC};
+use crate::frame::Frame;
+use crate::{Code, CRC};
 use num_traits::FromPrimitive;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -106,7 +107,8 @@ impl TryFrom<&[u8]> for Error {
 #[cfg(test)]
 mod tests {
     use super::Error;
-    use crate::{Code, Frame};
+    use crate::frame::Frame;
+    use crate::Code;
 
     const ERROR: Error = Error::new(0xC2, 0x02, 0x51, 0xA8BD);
 

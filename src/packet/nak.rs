@@ -1,4 +1,5 @@
-use crate::{Frame, CRC};
+use crate::frame::Frame;
+use crate::CRC;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
@@ -97,7 +98,7 @@ impl TryFrom<&[u8]> for Nak {
 #[cfg(test)]
 mod tests {
     use super::Nak;
-    use crate::Frame;
+    use crate::frame::Frame;
 
     const NAK1: Nak = Nak::new(0xA6, 0x34DC);
     const NAK2: Nak = Nak::new(0xAD, 0x85B7);

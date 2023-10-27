@@ -1,4 +1,5 @@
 use super::transaction::Transaction;
+use crate::frame::Frame;
 use crate::packet::ack::Ack;
 use crate::packet::data::Data;
 use crate::packet::nak::Nak;
@@ -10,7 +11,7 @@ use crate::protocol::host::transaction::Request;
 use crate::protocol::randomization::Mask;
 use crate::protocol::stuffing::Stuffing;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
-use crate::{Error, Frame};
+use crate::Error;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
