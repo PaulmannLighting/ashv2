@@ -544,7 +544,7 @@ fn process_rst_ack(rst_ack: &RstAck) {
             trace!("NCP response was: {rst_ack}");
         },
         |code| {
-            warn!("NCP acknowledged reset due to: {code}");
+            debug!("NCP acknowledged reset due to: {code}");
         },
     );
 }
