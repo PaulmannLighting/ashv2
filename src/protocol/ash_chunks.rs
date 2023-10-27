@@ -37,3 +37,27 @@ where
     <T as IntoIterator>::IntoIter: ExactSizeIterator,
 {
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AshChunks;
+    use crate::protocol::ash_chunks::{FRAME_MAX_SIZE, FRAME_MIN_SIZE};
+    use itertools::Itertools;
+
+    #[test]
+    fn test_ash_chunks() {
+        let bytes = (u8::MIN..=u8::MAX).collect_vec();
+
+        for chunk in &bytes
+            .into_iter()
+            .ash_chunks()
+            .expect("Could not distribute chunks")
+        {
+            let chunk = chunk.collect_vec();
+            assert_eq!(
+                chunk.len(),
+                chunk.len().clamp(FRAME_MIN_SIZE, FRAME_MAX_SIZE)
+            );
+        }
+    }
+}
