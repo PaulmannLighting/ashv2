@@ -366,14 +366,10 @@ where
             self.update_t_rx_ack(SystemTime::now().duration_since(*timestamp).ok());
         }
 
-        trace!("Current unacknowledged data: {:#02X?}", self.sent_data);
         self.sent_data.retain(|(_, data)| {
             (data.frame_num() >= ack_num) && !((ack_num == 0) && (data.frame_num() == 7))
         });
-        trace!(
-            "Unacknowledged data after clearing: {:#02X?}",
-            self.sent_data
-        );
+        trace!("Unacknowledged data after ACK: {:#02X?}", self.sent_data);
     }
 
     fn receive_packet(&mut self) -> Result<Packet, Error> {
@@ -433,7 +429,7 @@ where
     fn recover_error(&mut self, error: &Error) {
         match error {
             Error::Io(error) => {
-                error!("Attempting to recover from I/O error: {error}");
+                debug!("Attempting to recover from I/O error: {error}");
 
                 if let Err(error) = self.reset() {
                     error!("Failed to reset connection: {error}");
