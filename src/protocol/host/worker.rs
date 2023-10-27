@@ -415,9 +415,8 @@ where
         loop {
             if let Some(packet) = self.receive_packet()? {
                 match packet {
-                    Packet::RstAck(rst_ack) => {
-                        debug!("Received frame: {rst_ack}");
-                        trace!("Frame details: {rst_ack:#04X?}");
+                    Packet::RstAck(ref rst_ack) => {
+                        self.process_rst_ack(rst_ack);
                         return Ok(());
                     }
                     packet => trace!("Ignoring packet: {packet}."),
