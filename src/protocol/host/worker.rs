@@ -11,6 +11,7 @@ use crate::protocol::host::transaction::Request;
 use crate::protocol::randomization::Mask;
 use crate::protocol::stuffing::Stuffing;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::util::Extract;
 use crate::Error;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
@@ -234,43 +235,31 @@ where
         debug!("Received frame: {nak}");
         trace!("Frame details: {nak:#02X?}");
 
-        let indices: Vec<_> = self
+        for (_, data) in self
             .sent_data
-            .iter()
-            .filter(|(_, data)| data.frame_num() >= nak.ack_num())
+            .extract(|(_, data)| data.frame_num() >= nak.ack_num())
+            .into_iter()
             .sorted_by_key(|(_, data)| data.frame_num())
-            .positions(|_| true)
-            .collect();
-
-        for index in indices {
-            if let Some((_, data)) = self.sent_data.remove(index) {
-                debug!("Queueing for retransmit: {data}");
-                trace!("Frame details: {data:#02X?}");
-                self.retransmit.push_front(data);
-            }
+        {
+            debug!("Queueing for retransmit: {data}");
+            trace!("Frame details: {data:#02X?}");
+            self.retransmit.push_front(data);
         }
     }
 
     fn reevaluate_retransmits(&mut self) {
         let now = SystemTime::now();
-        let indices: Vec<_> = self
-            .sent_data
-            .iter()
-            .positions(|(timestamp, _)| {
-                if let Ok(duration) = now.duration_since(*timestamp) {
-                    duration < self.t_rx_ack
-                } else {
-                    false
-                }
-            })
-            .collect();
 
-        for index in indices {
-            if let Some((_, data)) = self.sent_data.remove(index) {
-                warn!("Frame {data} has not been acked in time. Queueing for retransmit.");
-                trace!("Frame details: {data:#02X?}");
-                self.retransmit.push_back(data);
+        for (_, data) in self.sent_data.extract(|(timestamp, _)| {
+            if let Ok(duration) = now.duration_since(*timestamp) {
+                duration < self.t_rx_ack
+            } else {
+                false
             }
+        }) {
+            warn!("Frame {data} has not been acked in time. Queueing for retransmit.");
+            trace!("Frame details: {data:#02X?}");
+            self.retransmit.push_back(data);
         }
     }
 
