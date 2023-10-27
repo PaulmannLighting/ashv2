@@ -168,16 +168,20 @@ where
     fn receive_and_process_packet(&mut self) -> Result<(), crate::Error> {
         debug!("Receiving packet.");
 
-        match self.receive_packet()? {
-            Packet::Ack(ref ack) => self.process_ack(ack),
-            Packet::Data(data) => self.process_data(data)?,
-            Packet::Error(ref error) => self.handle_error(error)?,
-            Packet::Nak(ref nak) => self.process_nak(nak),
-            Packet::Rst(ref rst) => {
-                error!("NCP sent us an unexpected RST: {rst}");
-                trace!("Frame details: {rst:#04X?}");
+        if let Some(packet) = self.receive_packet()? {
+            match packet {
+                Packet::Ack(ref ack) => self.process_ack(ack),
+                Packet::Data(data) => self.process_data(data)?,
+                Packet::Error(ref error) => self.handle_error(error)?,
+                Packet::Nak(ref nak) => self.process_nak(nak),
+                Packet::Rst(ref rst) => {
+                    error!("NCP sent us an unexpected RST: {rst}");
+                    trace!("Frame details: {rst:#04X?}");
+                }
+                Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
             }
-            Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
+        } else {
+            self.send_nak()?;
         }
 
         Ok(())
@@ -196,11 +200,6 @@ where
             "Unmasked payload: {:#04X?}",
             data.payload().iter().copied().mask().collect_vec()
         );
-
-        if !data.is_valid() {
-            debug!("Received invalid data. Rejecting.");
-            return Ok(self.reject()?);
-        }
 
         if data.frame_num() == self.ack_number() {
             self.reject = false;
@@ -391,15 +390,25 @@ where
         trace!("Unacknowledged data after ACK: {:#04X?}", self.sent_data);
     }
 
-    fn receive_packet(&mut self) -> Result<Packet, crate::Error> {
-        Ok(Packet::try_from(
+    fn receive_packet(&mut self) -> Result<Option<Packet>, crate::Error> {
+        Packet::try_from(
             self.receive_frame()?
                 .iter()
                 .copied()
                 .unstuff()
                 .collect_vec()
                 .as_slice(),
-        )?)
+        )
+        .map(|packet| {
+            if packet.is_crc_valid() {
+                Some(packet)
+            } else {
+                warn!("Received frame with invalid CRC: {packet}");
+                trace!("Frame details: {packet:#04X?}");
+                None
+            }
+        })
+        .map_err(crate::Error::Frame)
     }
 
     fn receive_frame(&mut self) -> Result<&[u8], crate::Error> {
@@ -463,19 +472,15 @@ where
         self.send_frame(&Rst::default())?;
 
         loop {
-            match self.receive_packet()? {
-                Packet::RstAck(rst_ack) => {
-                    debug!("Received frame: {rst_ack}");
-                    trace!("Frame details: {rst_ack:#04X?}");
-                    return Ok(());
+            if let Some(packet) = self.receive_packet()? {
+                match packet {
+                    Packet::RstAck(rst_ack) => {
+                        debug!("Received frame: {rst_ack}");
+                        trace!("Frame details: {rst_ack:#04X?}");
+                        return Ok(());
+                    }
+                    packet => trace!("Ignoring packet: {packet}."),
                 }
-                Packet::Rst(rst) => {
-                    error!("NCP sent us a RST instead of a RSTACK.");
-                    debug!("Received frame: {rst}");
-                    trace!("Frame details: {rst:#04X?}");
-                    return Ok(());
-                }
-                packet => trace!("Ignoring packet: {packet}."),
             }
         }
     }
