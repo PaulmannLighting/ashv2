@@ -23,8 +23,11 @@ pub struct Host {
 }
 
 impl Host {
-    #[must_use]
-    pub fn new(path: String, baud_rate: BaudRate) -> Self {
+    /// Creates a new ASHv2 host.
+    ///
+    /// # Errors
+    /// Returns a [`serialport::Error`] if the serial port could not be created.
+    pub fn new(path: String, baud_rate: BaudRate) -> Result<Self, serialport::Error> {
         let mut host = Self {
             path,
             baud_rate,
@@ -32,8 +35,8 @@ impl Host {
             join_handle: None,
             terminate: Arc::new(AtomicBool::new(false)),
         };
-        host.spawn_worker();
-        host
+        host.spawn_worker()?;
+        Ok(host)
     }
 
     /// Communicate with the NCP.
@@ -43,7 +46,7 @@ impl Host {
     pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
         while self.terminate.load(Ordering::SeqCst) {
             error!("Worker has terminated. Attempting to restart.");
-            self.restart_worker();
+            self.restart_worker()?;
         }
 
         let transaction = Transaction::from(payload);
@@ -57,21 +60,22 @@ impl Host {
         transaction.await
     }
 
-    fn restart_worker(&mut self) {
+    fn restart_worker(&mut self) -> Result<(), serialport::Error> {
         self.join_thread();
         self.terminate.store(false, Ordering::SeqCst);
-        self.spawn_worker();
+        self.spawn_worker()
     }
 
-    fn spawn_worker(&mut self) {
+    fn spawn_worker(&mut self) -> Result<(), serialport::Error> {
         let (sender, receiver) = channel::<Transaction>();
         let worker = Worker::new(
-            open(&self.path, self.baud_rate.clone()).expect("Could not open serial port"),
+            open(&self.path, self.baud_rate.clone())?,
             receiver,
             self.terminate.clone(),
         );
         self.join_handle = Some(thread::spawn(move || worker.spawn()));
         self.sender = Some(sender);
+        Ok(())
     }
 
     fn stop_worker(&mut self) {
