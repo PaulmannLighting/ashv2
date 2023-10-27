@@ -135,16 +135,25 @@ impl TryFrom<&[u8]> for Data {
             });
         }
 
+        let payload = buffer[1..(buffer.len() - 2)].into();
+
+        if buffer.len() < MIN_SIZE {
+            return Err(Self::Error::PayloadTooSmall {
+                min: MIN_SIZE,
+                size: buffer.len(),
+            });
+        }
+
         if buffer.len() > MAX_SIZE {
-            return Err(Self::Error::BufferTooLarge {
-                expected: MAX_SIZE,
-                found: buffer.len(),
+            return Err(Self::Error::PayloadTooLarge {
+                max: MAX_SIZE,
+                size: buffer.len(),
             });
         }
 
         Ok(Self {
             header: buffer[0],
-            payload: buffer[1..(buffer.len() - 2)].into(),
+            payload,
             crc: u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
         })
     }
