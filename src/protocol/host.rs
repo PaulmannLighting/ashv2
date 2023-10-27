@@ -1,7 +1,6 @@
 mod transaction;
 mod worker;
 
-use crate::protocol::host::transaction::Request;
 use crate::serial_port::open;
 use crate::{BaudRate, Error};
 use log::{debug, error};
@@ -10,8 +9,8 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-use transaction::Transaction;
-use worker::Worker;
+pub use transaction::{Request, Transaction};
+pub use worker::Worker;
 
 #[derive(Debug)]
 pub struct Host {

@@ -157,8 +157,14 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
-        assert_eq!(Ack::try_from(buffer1.as_slice()).unwrap(), ACK1);
+        assert_eq!(
+            Ack::try_from(buffer1.as_slice()).expect("Could not create ACK"),
+            ACK1
+        );
         let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
-        assert_eq!(Ack::try_from(buffer2.as_slice()).unwrap(), ACK2);
+        assert_eq!(
+            Ack::try_from(buffer2.as_slice()).expect("Could not create ACK"),
+            ACK2
+        );
     }
 }

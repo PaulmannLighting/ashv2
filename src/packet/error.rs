@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC2;
-pub const SIZE: usize = 5;
+const SIZE: usize = 5;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {

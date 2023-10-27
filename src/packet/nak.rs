@@ -156,8 +156,14 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC];
-        assert_eq!(Nak::try_from(buffer1.as_slice()).unwrap(), NAK1);
+        assert_eq!(
+            Nak::try_from(buffer1.as_slice()).expect("Could not create NAK"),
+            NAK1
+        );
         let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7];
-        assert_eq!(Nak::try_from(buffer2.as_slice()).unwrap(), NAK2);
+        assert_eq!(
+            Nak::try_from(buffer2.as_slice()).expect("Could not create NAK"),
+            NAK2
+        );
     }
 }

@@ -1,21 +1,27 @@
-use crate::FrameError;
-use std::fmt::{Debug, Display, Formatter};
+mod ack;
+mod data;
+mod error;
+mod nak;
+mod rst;
+mod rst_ack;
 
-pub mod ack;
-pub mod data;
-pub mod error;
-pub mod nak;
-pub mod rst;
-pub mod rst_ack;
+use crate::FrameError;
+pub use ack::Ack;
+pub use data::Data;
+pub use error::Error;
+pub use nak::Nak;
+pub use rst::Rst;
+pub use rst_ack::RstAck;
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
-    Ack(ack::Ack),
-    Data(data::Data),
-    Error(error::Error),
-    Nak(nak::Nak),
-    Rst(rst::Rst),
-    RstAck(rst_ack::RstAck),
+    Ack(Ack),
+    Data(Data),
+    Error(Error),
+    Nak(Nak),
+    Rst(Rst),
+    RstAck(RstAck),
 }
 
 impl Display for Packet {
@@ -39,16 +45,16 @@ impl TryFrom<&[u8]> for Packet {
             .first()
             .ok_or(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(None))?
         {
-            rst::HEADER => Ok(Self::Rst(rst::Rst::try_from(buffer)?)),
-            rst_ack::HEADER => Ok(Self::RstAck(rst_ack::RstAck::try_from(buffer)?)),
-            error::HEADER => Ok(Self::Error(error::Error::try_from(buffer)?)),
+            rst::HEADER => Ok(Self::Rst(Rst::try_from(buffer)?)),
+            rst_ack::HEADER => Ok(Self::RstAck(RstAck::try_from(buffer)?)),
+            error::HEADER => Ok(Self::Error(Error::try_from(buffer)?)),
             header => {
                 if header & 0x80 == 0x00 {
-                    Ok(Self::Data(data::Data::try_from(buffer)?))
+                    Ok(Self::Data(Data::try_from(buffer)?))
                 } else if header & 0x60 == 0x00 {
-                    Ok(Self::Ack(ack::Ack::try_from(buffer)?))
+                    Ok(Self::Ack(Ack::try_from(buffer)?))
                 } else if header & 0x60 == 0x20 {
-                    Ok(Self::Nak(nak::Nak::try_from(buffer)?))
+                    Ok(Self::Nak(Nak::try_from(buffer)?))
                 } else {
                     Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header)))
                 }

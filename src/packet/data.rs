@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::protocol::randomization::Mask;
+use crate::protocol::Mask;
 use crate::{FrameError, CRC};
 use itertools::Itertools;
 use log::warn;
@@ -181,7 +181,7 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
 mod tests {
     use super::Data;
     use crate::frame::Frame;
-    use crate::protocol::randomization::Mask;
+    use crate::protocol::Mask;
     use crate::CRC;
 
     #[test]

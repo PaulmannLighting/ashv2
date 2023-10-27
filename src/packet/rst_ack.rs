@@ -7,8 +7,8 @@ use std::fmt::{Display, Formatter};
 use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC1;
-pub const SIZE: usize = 5;
-pub const VERSION: u8 = 0x02;
+const SIZE: usize = 5;
+const VERSION: u8 = 0x02;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RstAck {
@@ -21,12 +21,12 @@ pub struct RstAck {
 impl RstAck {
     /// Creates a new RSTACK packet.
     #[must_use]
-    pub fn new(header: u8, version: u8, reset_code: Code) -> Self {
+    pub fn new(header: u8, reset_code: Code) -> Self {
         Self {
             header,
-            version,
+            version: VERSION,
             reset_code: reset_code.clone().into(),
-            crc: CRC.checksum(&[header, version, reset_code.into()]),
+            crc: CRC.checksum(&[header, VERSION, reset_code.into()]),
         }
     }
 
@@ -157,6 +157,9 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B];
-        assert_eq!(RstAck::try_from(buffer.as_slice()).unwrap(), RST_ACK);
+        assert_eq!(
+            RstAck::try_from(buffer.as_slice()).expect("Could not create RSTACK"),
+            RST_ACK
+        );
     }
 }

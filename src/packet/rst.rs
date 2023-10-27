@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC0;
-pub const SIZE: usize = 3;
+const SIZE: usize = 3;
 const CRC: u16 = 0x38BC;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
@@ -120,6 +120,9 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
-        assert_eq!(Rst::try_from(buffer.as_slice()).unwrap(), RST);
+        assert_eq!(
+            Rst::try_from(buffer.as_slice()).expect("Could not create RST"),
+            RST
+        );
     }
 }

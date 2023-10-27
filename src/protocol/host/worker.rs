@@ -1,18 +1,9 @@
-use super::transaction::Transaction;
 use crate::frame::Frame;
-use crate::packet::ack::Ack;
-use crate::packet::data::Data;
-use crate::packet::nak::Nak;
-use crate::packet::rst::Rst;
-use crate::packet::rst_ack::RstAck;
-use crate::packet::{error, Packet};
-use crate::protocol::ash_chunks::AshChunks;
-use crate::protocol::host::transaction::Request;
-use crate::protocol::randomization::Mask;
-use crate::protocol::stuffing::Stuffing;
-use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
+use crate::protocol::{
+    AshChunks, Mask, Request, Stuffing, Transaction, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON,
+};
 use crate::util::Extract;
-use crate::Error;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
@@ -128,7 +119,7 @@ where
         }
     }
 
-    fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, Error> {
+    fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, crate::Error> {
         self.clear_buffers();
         let result = data
             .iter()
@@ -145,7 +136,7 @@ where
         result
     }
 
-    fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, Error> {
+    fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, crate::Error> {
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
             self.reevaluate_retransmits();
@@ -171,10 +162,10 @@ where
             }
         }
 
-        Err(Error::Terminated)
+        Err(crate::Error::Terminated)
     }
 
-    fn receive_and_process_packet(&mut self) -> Result<(), Error> {
+    fn receive_and_process_packet(&mut self) -> Result<(), crate::Error> {
         debug!("Receiving packet.");
 
         match self.receive_packet()? {
@@ -198,7 +189,7 @@ where
         self.ack_sent_data(ack.ack_num());
     }
 
-    fn process_data(&mut self, data: Data) -> Result<(), Error> {
+    fn process_data(&mut self, data: Data) -> Result<(), crate::Error> {
         debug!("Received frame: {data}");
         trace!("Frame details: {data:#02X?}");
 
@@ -227,7 +218,7 @@ where
         Ok(())
     }
 
-    fn handle_error(&mut self, error: &error::Error) -> Result<(), Error> {
+    fn handle_error(&mut self, error: &Error) -> Result<(), crate::Error> {
         debug!("Received frame: {error}");
         trace!("Frame details: {error:#02X?}");
 
@@ -308,7 +299,7 @@ where
         Ok(())
     }
 
-    fn push_chunks(&mut self, chunks: &mut Chunks) -> Result<(), Error> {
+    fn push_chunks(&mut self, chunks: &mut Chunks) -> Result<(), crate::Error> {
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
             if let Some(chunk) = chunks.pop() {
                 debug!("Transmitting chunk.");
@@ -399,7 +390,7 @@ where
         trace!("Unacknowledged data after ACK: {:#02X?}", self.sent_data);
     }
 
-    fn receive_packet(&mut self) -> Result<Packet, Error> {
+    fn receive_packet(&mut self) -> Result<Packet, crate::Error> {
         Ok(Packet::try_from(
             self.receive_frame()?
                 .iter()
@@ -410,7 +401,7 @@ where
         )?)
     }
 
-    fn receive_frame(&mut self) -> Result<&[u8], Error> {
+    fn receive_frame(&mut self) -> Result<&[u8], crate::Error> {
         self.receive_buffer.clear();
         let mut error = false;
 
@@ -450,12 +441,12 @@ where
             }
         }
 
-        Err(Error::Terminated)
+        Err(crate::Error::Terminated)
     }
 
-    fn recover_error(&mut self, error: &Error) {
+    fn recover_error(&mut self, error: &crate::Error) {
         match error {
-            Error::Io(error) => {
+            crate::Error::Io(error) => {
                 debug!("Attempting to recover from I/O error: {error}");
 
                 if let Err(error) = self.reset() {
@@ -466,7 +457,7 @@ where
         }
     }
 
-    fn reset(&mut self) -> Result<(), Error> {
+    fn reset(&mut self) -> Result<(), crate::Error> {
         self.serial_port.set_timeout(T_RSTACK_MAX)?;
         self.send_frame(&Rst::default())?;
 
@@ -488,7 +479,7 @@ where
         }
     }
 
-    fn initialize(&mut self) -> Result<(), Error> {
+    fn initialize(&mut self) -> Result<(), crate::Error> {
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             match self.reset() {
                 Ok(_) => {
@@ -502,7 +493,7 @@ where
         }
 
         error!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
-        Err(Error::InitializationFailed)
+        Err(crate::Error::InitializationFailed)
     }
 
     fn clear_buffers(&mut self) {
