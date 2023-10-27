@@ -72,14 +72,11 @@ where
     }
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
-        trace!(
-            "Processing transaction request: {:#04X?}",
-            transaction.request()
-        );
+        trace!("Processing request: {:#04X?}", transaction.request());
 
-        if !self.state.initialized {
+        if !self.state.initialized() {
             match self.initialize() {
-                Ok(_) => self.state.initialized = true,
+                Ok(_) => self.state.set_initialized(),
                 Err(error) => {
                     self.terminate.store(true, Ordering::SeqCst);
                     transaction.resolve(Err(error));
@@ -123,7 +120,7 @@ where
                 self.state.update_t_rx_ack(None);
             }
 
-            if self.state.transmit {
+            if self.state.is_transmitting() {
                 self.retransmit()?;
                 self.push_chunks(&mut chunks)?;
             }
@@ -131,7 +128,7 @@ where
             self.receive_and_process_packet()?;
             sleep(T_TX_ACK_DELAY);
 
-            if self.state.reject {
+            if self.state.is_rejecting() {
                 debug!("Reject condition is active. Sending NAK.");
                 self.send_nak()?;
                 continue;
@@ -160,7 +157,7 @@ where
                     error!("NCP sent us an unexpected RST: {rst}");
                     trace!("Frame details: {rst:#04X?}");
                 }
-                Packet::RstAck(ref rst_ack) => process_rst_ack(rst_ack),
+                Packet::RstAck(ref rst_ack) => self.process_rst_ack(rst_ack),
             }
         } else {
             self.send_nak()?;
@@ -184,7 +181,7 @@ where
         );
 
         if data.frame_num() == self.state.ack_number() {
-            self.state.reject = false;
+            self.state.set_rejecting(false);
             self.state.set_last_received_frame_number(data.frame_num());
             debug!("Last received frame number: {}", data.frame_num());
             self.ack_sent_data(data.ack_num())?;
@@ -195,7 +192,7 @@ where
         } else {
             debug!("Received out-of-sequence data frame: {data}");
 
-            if !self.state.reject {
+            if !self.state.is_rejecting() {
                 self.reject()?;
             }
         }
@@ -224,6 +221,21 @@ where
         debug!("Received frame: {nak}");
         trace!("Frame details: {nak:#04X?}");
         self.buffers.output.queue_retransmit_nak(nak.ack_num());
+    }
+
+    fn process_rst_ack(&mut self, rst_ack: &RstAck) {
+        debug!("Received frame: {rst_ack}");
+        trace!("Frame details: {rst_ack:#04X?}");
+        self.state.set_transmitting(true);
+        rst_ack.code().map_or_else(
+            || {
+                error!("NCP acknowledged reset with invalid error code.");
+                trace!("NCP response was: {rst_ack}");
+            },
+            |code| {
+                debug!("NCP acknowledged reset due to: {code}");
+            },
+        );
     }
 
     fn retransmit(&mut self) -> std::io::Result<()> {
@@ -268,13 +280,13 @@ where
     }
 
     fn reject(&mut self) -> std::io::Result<()> {
-        self.state.reject = true;
+        self.state.set_rejecting(true);
         self.send_nak()
     }
 
     fn send_ack(&mut self, ack_number: u8) -> std::io::Result<()> {
         self.send_frame(&Ack::from_ack_num(ack_number))?;
-        self.state.last_sent_ack = ack_number;
+        self.state.set_last_sent_ack(ack_number);
         Ok(())
     }
 
@@ -376,11 +388,11 @@ where
                 }
                 X_ON => {
                     info!("NCP requested to stop transmission.");
-                    self.state.transmit = true;
+                    self.state.set_transmitting(true);
                 }
                 X_OFF => {
                     info!("NCP requested to resume transmission.");
-                    self.state.transmit = false;
+                    self.state.set_transmitting(false);
                 }
                 TIMEOUT => {
                     warn!("Received timeout byte not specified in protocol definition.");
@@ -447,18 +459,4 @@ where
             && self.state.pending_acks().is_empty()
             && self.buffers.output.queues_are_empty()
     }
-}
-
-fn process_rst_ack(rst_ack: &RstAck) {
-    debug!("Received frame: {rst_ack}");
-    trace!("Frame details: {rst_ack:#04X?}");
-    rst_ack.code().map_or_else(
-        || {
-            error!("NCP acknowledged reset with invalid error code.");
-            trace!("NCP response was: {rst_ack}");
-        },
-        |code| {
-            debug!("NCP acknowledged reset due to: {code}");
-        },
-    );
 }

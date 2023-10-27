@@ -7,12 +7,12 @@ const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct State {
-    pub initialized: bool,
+    initialized: bool,
     frame_number: u8,
     last_received_frame_number: Option<u8>,
-    pub last_sent_ack: u8,
-    pub reject: bool,
-    pub transmit: bool,
+    last_sent_ack: u8,
+    reject: bool,
+    transmit: bool,
     t_rx_ack: Duration,
 }
 
@@ -23,6 +23,18 @@ impl State {
         } else {
             0
         }
+    }
+
+    pub const fn initialized(&self) -> bool {
+        self.initialized
+    }
+
+    pub const fn is_rejecting(&self) -> bool {
+        self.reject
+    }
+
+    pub const fn is_transmitting(&self) -> bool {
+        self.transmit
     }
 
     pub const fn last_received_frame_number(&self) -> Option<u8> {
@@ -46,8 +58,24 @@ impl State {
         }
     }
 
+    pub fn set_initialized(&mut self) {
+        self.initialized = true;
+    }
+
     pub fn set_last_received_frame_number(&mut self, frame_number: u8) {
         self.last_received_frame_number = Some(frame_number);
+    }
+
+    pub fn set_last_sent_ack(&mut self, ack_num: u8) {
+        self.last_sent_ack = ack_num;
+    }
+
+    pub fn set_rejecting(&mut self, reject: bool) {
+        self.reject = reject;
+    }
+
+    pub fn set_transmitting(&mut self, transmit: bool) {
+        self.transmit = transmit;
     }
 
     pub const fn t_rx_ack(&self) -> Duration {
