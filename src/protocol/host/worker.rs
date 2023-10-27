@@ -192,6 +192,10 @@ where
     fn process_data(&mut self, data: Data) -> Result<(), crate::Error> {
         debug!("Received frame: {data}");
         trace!("Frame details: {data:#04X?}");
+        trace!(
+            "Unmasked payload: {:#04X?}",
+            data.payload().iter().copied().mask().collect_vec()
+        );
 
         if !data.is_valid() {
             debug!("Received invalid data. Rejecting.");
