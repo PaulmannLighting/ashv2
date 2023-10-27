@@ -1,3 +1,4 @@
+use crate::FrameError;
 use std::fmt::{Debug, Display, Formatter};
 
 pub mod ack;
@@ -31,7 +32,7 @@ impl Display for Packet {
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = crate::Error;
+    type Error = FrameError;
 
     fn try_from(buffer: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
         match *buffer

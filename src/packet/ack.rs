@@ -81,7 +81,7 @@ impl IntoIterator for &Ack {
 }
 
 impl TryFrom<&[u8]> for Ack {
-    type Error = crate::Error;
+    type Error = crate::FrameError;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {

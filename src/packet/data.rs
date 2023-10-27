@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::protocol::randomization::Mask;
-use crate::{Error, CRC};
+use crate::{FrameError, CRC};
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -118,18 +118,18 @@ impl<'a> IntoIterator for &'a Data {
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = Error;
+    type Error = FrameError;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() < MIN_SIZE {
-            return Err(Error::BufferTooSmall {
+            return Err(Self::Error::BufferTooSmall {
                 expected: MIN_SIZE,
                 found: buffer.len(),
             });
         }
 
         if buffer.len() > MAX_SIZE {
-            return Err(Error::BufferTooLarge {
+            return Err(Self::Error::BufferTooLarge {
                 expected: MAX_SIZE,
                 found: buffer.len(),
             });
@@ -144,7 +144,7 @@ impl TryFrom<&[u8]> for Data {
 }
 
 impl TryFrom<(u8, Arc<[u8]>)> for Data {
-    type Error = Error;
+    type Error = FrameError;
 
     fn try_from((frame_num, payload): (u8, Arc<[u8]>)) -> Result<Self, Self::Error> {
         if !VALID_SEQS.contains(&frame_num) {
@@ -152,12 +152,12 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
         }
 
         if payload.len() < MIN_SIZE {
-            Err(Error::PayloadTooSmall {
+            Err(Self::Error::PayloadTooSmall {
                 min: MIN_SIZE,
                 size: payload.len(),
             })
         } else if payload.len() > MAX_SIZE {
-            Err(Error::PayloadTooLarge {
+            Err(Self::Error::PayloadTooLarge {
                 max: MAX_SIZE,
                 size: payload.len(),
             })

@@ -1,59 +1,37 @@
+mod frame;
+
+#[allow(clippy::module_name_repetitions)]
+pub use frame::Error as FrameError;
 use std::fmt::{Display, Formatter};
 use std::sync::mpsc::SendError;
 use std::sync::{Arc, PoisonError};
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidHeader(Option<u8>),
-    BufferTooSmall { expected: usize, found: usize },
-    BufferTooLarge { expected: usize, found: usize },
-    InvalidBufferSize { expected: usize, found: usize },
-    PayloadTooLarge { max: usize, size: usize },
-    PayloadTooSmall { min: usize, size: usize },
-    CannotFindViableChunkSize(usize),
+    Frame(FrameError),
     Io(std::io::Error),
-    Terminated,
     LockError(Arc<dyn std::error::Error + Send + Sync>),
     SendError(Arc<dyn std::error::Error + Send + Sync>),
     SerialConnectionError(serialport::Error),
+    CannotFindViableChunkSize(usize),
     WorkerNotRunning,
     InitializationFailed,
+    Terminated,
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidHeader(header) => match header {
-                Some(id) => write!(f, "Invalid header ID: {}.", *id),
-                None => write!(f, "No header received."),
-            },
-            Self::BufferTooSmall { expected, found } => {
-                write!(
-                    f,
-                    "Buffer too small. Expected at least {expected} bytes but found {found} bytes."
-                )
-            }
-            Self::BufferTooLarge { expected, found } => {
-                write!(
-                    f,
-                    "Buffer too large. Expected at most {expected} bytes but found {found} bytes."
-                )
-            }
-            Self::InvalidBufferSize { expected, found } => write!(
-                f,
-                "Invalid buffer size. Expected {expected} bytes, but found {found} bytes."
-            ),
-            Self::PayloadTooLarge { max, size } => write!(f, "Payload too large: {size} > {max}"),
-            Self::PayloadTooSmall { min, size } => write!(f, "Payload too small: {size} < {min}"),
+            Self::Frame(error) => write!(f, "{error}"),
+            Self::Io(error) => write!(f, "{error}"),
+            Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
+            Self::SerialConnectionError(error) => write!(f, "{error}"),
             Self::CannotFindViableChunkSize(size) => {
                 write!(f, "Cannot find viable chunk size for {size} bytes")
             }
-            Self::Io(error) => write!(f, "{error}"),
-            Self::Terminated => write!(f, "Worker terminated."),
-            Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
-            Self::SerialConnectionError(error) => write!(f, "{error}"),
             Self::WorkerNotRunning => write!(f, "Worker is not running."),
             Self::InitializationFailed => write!(f, "ASH protocol initialization failed."),
+            Self::Terminated => write!(f, "Worker terminated."),
         }
     }
 }
@@ -61,22 +39,18 @@ impl Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Self::Frame(error) => Some(error),
             Self::Io(error) => Some(error),
             Self::LockError(error) | Self::SendError(error) => Some(error),
+            Self::SerialConnectionError(error) => Some(error),
             _ => None,
         }
     }
 }
 
-impl From<Error> for std::io::Error {
-    fn from(error: Error) -> Self {
-        match error {
-            Error::BufferTooSmall { .. }
-            | Error::BufferTooLarge { .. }
-            | Error::InvalidBufferSize { .. } => Self::new(std::io::ErrorKind::Other, error),
-            Error::Io(error) => error,
-            error => Self::new(std::io::ErrorKind::InvalidData, error),
-        }
+impl From<FrameError> for Error {
+    fn from(error: FrameError) -> Self {
+        Self::Frame(error)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::{Code, CRC};
+use crate::{Code, FrameError, CRC};
 use num_traits::FromPrimitive;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -85,7 +85,7 @@ impl IntoIterator for &Error {
 }
 
 impl TryFrom<&[u8]> for Error {
-    type Error = crate::Error;
+    type Error = FrameError;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {

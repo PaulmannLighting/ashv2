@@ -398,14 +398,14 @@ where
     }
 
     fn receive_packet(&mut self) -> Result<Packet, Error> {
-        Packet::try_from(
+        Ok(Packet::try_from(
             self.receive_frame()?
                 .iter()
                 .copied()
                 .unstuff()
                 .collect_vec()
                 .as_slice(),
-        )
+        )?)
     }
 
     fn receive_frame(&mut self) -> Result<&[u8], Error> {
