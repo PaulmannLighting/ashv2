@@ -92,7 +92,9 @@ where
     }
 
     pub fn spawn(mut self) {
-        self.initialize();
+        if !self.initialize() {
+            self.terminate.store(true, Ordering::SeqCst);
+        }
 
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Waiting for next request.");
@@ -463,12 +465,12 @@ where
         }
     }
 
-    fn initialize(&mut self) {
+    fn initialize(&mut self) -> bool {
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             match self.reset() {
                 Ok(_) => {
                     debug!("ASH connection initialized after {attempt} attempts.");
-                    return;
+                    return true;
                 }
                 Err(error) => warn!("Startup attempt #{attempt} failed: {error}"),
             }
@@ -476,7 +478,8 @@ where
             sleep(T_REMOTE_NOTRDY);
         }
 
-        panic!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
+        error!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
+        false
     }
 
     fn clear_buffers(&mut self) {
