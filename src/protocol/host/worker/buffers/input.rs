@@ -1,5 +1,5 @@
 use crate::packet::Data;
-use crate::protocol::Mask;
+use crate::protocol::{Mask, Stuffing};
 use itertools::Itertools;
 use log::debug;
 use std::io;
@@ -30,6 +30,10 @@ impl Input {
         self.data.clear();
         self.buffer.clear();
         self.byte = [0];
+    }
+
+    pub fn frame_bytes(&self) -> Vec<u8> {
+        self.buffer.iter().copied().unstuff().collect()
     }
 
     pub fn read_byte<R>(&mut self, src: &mut R) -> io::Result<u8>

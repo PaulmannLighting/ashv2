@@ -341,27 +341,20 @@ where
     }
 
     fn receive_packet(&mut self) -> Result<Option<Packet>, crate::Error> {
-        Packet::try_from(
-            self.receive_frame()?
-                .iter()
-                .copied()
-                .unstuff()
-                .collect_vec()
-                .as_slice(),
-        )
-        .map(|packet| {
-            if packet.is_crc_valid() {
-                Some(packet)
-            } else {
-                warn!("Received frame with invalid CRC: {packet}");
-                trace!("Frame details: {packet:#04X?}");
-                None
-            }
-        })
-        .map_err(crate::Error::Frame)
+        Packet::try_from(self.receive_frame()?.as_slice())
+            .map(|packet| {
+                if packet.is_crc_valid() {
+                    Some(packet)
+                } else {
+                    warn!("Received frame with invalid CRC: {packet}");
+                    trace!("Frame details: {packet:#04X?}");
+                    None
+                }
+            })
+            .map_err(crate::Error::Frame)
     }
 
-    fn receive_frame(&mut self) -> Result<&[u8], crate::Error> {
+    fn receive_frame(&mut self) -> Result<Vec<u8>, crate::Error> {
         self.buffers.input.buffer.clear();
         let mut error = false;
 
@@ -375,7 +368,7 @@ where
                     if !error && !self.buffers.input.buffer.is_empty() {
                         debug!("Received frame.");
                         trace!("Frame details: {:#04X?}", self.buffers.input.buffer);
-                        return Ok(&self.buffers.input.buffer);
+                        return Ok(self.buffers.input.frame_bytes());
                     }
 
                     self.buffers.input.buffer.clear();
