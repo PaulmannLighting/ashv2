@@ -49,6 +49,7 @@ where
     terminate: Arc<AtomicBool>,
     // Local state
     serial_port: S,
+    initialized: bool,
     frame_number: u8,
     last_received_frame_number: Option<u8>,
     last_sent_ack: u8,
@@ -77,6 +78,7 @@ where
             receiver,
             terminate,
             serial_port,
+            initialized: false,
             frame_number: 0,
             last_received_frame_number: None,
             last_sent_ack: 0,
@@ -93,10 +95,6 @@ where
     }
 
     pub fn spawn(mut self) {
-        if !self.initialize() {
-            self.terminate.store(true, Ordering::SeqCst);
-        }
-
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Waiting for next request.");
             match self.receiver.recv() {
@@ -108,6 +106,16 @@ where
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
         trace!("Processing transaction: {transaction:#02X?}");
+
+        if !self.initialized {
+            if self.initialize() {
+                self.initialized = true;
+            } else {
+                self.terminate.store(true, Ordering::SeqCst);
+                transaction.resolve(Err(Error::InitializationFailed));
+                return;
+            }
+        }
 
         match transaction.request() {
             Request::Data(data) => transaction.resolve(self.process_data_request(data)),

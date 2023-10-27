@@ -17,6 +17,7 @@ pub enum Error {
     SendError(Arc<dyn std::error::Error + Send + Sync>),
     SerialConnectionError(serialport::Error),
     WorkerNotRunning,
+    InitializationFailed,
 }
 
 impl Display for Error {
@@ -48,10 +49,11 @@ impl Display for Error {
                 write!(f, "Cannot find viable chunk size for {size} bytes")
             }
             Self::Io(error) => write!(f, "{error}"),
-            Self::Terminated => write!(f, "terminated"),
+            Self::Terminated => write!(f, "Worker terminated."),
             Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
             Self::SerialConnectionError(error) => write!(f, "{error}"),
-            Self::WorkerNotRunning => write!(f, "Worker is not running"),
+            Self::WorkerNotRunning => write!(f, "Worker is not running."),
+            Self::InitializationFailed => write!(f, "ASH protocol initialization failed."),
         }
     }
 }
