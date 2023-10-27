@@ -9,7 +9,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-pub use transaction::{Request, Transaction};
+pub use transaction::{Request, ResultType, Transaction};
 pub use worker::Worker;
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl Host {
     ///
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
-    pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
+    pub async fn communicate(&mut self, payload: &[u8]) -> ResultType {
         self.ensure_worker_is_running()?;
         let transaction = Transaction::from(payload);
         self.send_transaction(transaction.clone())?;

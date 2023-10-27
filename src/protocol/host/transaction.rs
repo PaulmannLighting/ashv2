@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
-type ResultType = Result<Arc<[u8]>, Error>;
+pub type ResultType = Result<Arc<[u8]>, Error>;
 
 #[derive(Clone, Debug)]
 pub enum Request {

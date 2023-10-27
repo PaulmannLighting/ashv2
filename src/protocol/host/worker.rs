@@ -1,7 +1,8 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
 use crate::protocol::{
-    AshChunks, Mask, Request, Stuffing, Transaction, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON,
+    AshChunks, Mask, Request, ResultType, Stuffing, Transaction, CANCEL, FLAG, SUBSTITUTE, TIMEOUT,
+    X_OFF, X_ON,
 };
 use crate::util::Extract;
 use itertools::{Chunk, Itertools};
@@ -119,7 +120,7 @@ where
         }
     }
 
-    fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, crate::Error> {
+    fn process_data_request(&mut self, data: &Arc<[u8]>) -> ResultType {
         self.clear_buffers();
         let result = data
             .iter()
@@ -136,7 +137,7 @@ where
         result
     }
 
-    fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, crate::Error> {
+    fn process_chunks(&mut self, mut chunks: Chunks) -> ResultType {
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
             self.reevaluate_retransmits();
@@ -521,10 +522,10 @@ where
     }
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
-        debug!("Checking whether transaction is complete:");
-        debug!("Pending ACKs: {:#04X?}", self.pending_acks().is_empty());
-        debug!("Sent data empty: {}", self.sent_data.is_empty());
-        debug!("Retransmit queue empty: {}", self.retransmit.is_empty());
+        trace!("Chunks empty: {}", chunks.is_empty());
+        trace!("Pending ACKs: {}", self.pending_acks().is_empty());
+        trace!("Sent data empty: {}", self.sent_data.is_empty());
+        trace!("Retransmit queue empty: {}", self.retransmit.is_empty());
         chunks.is_empty()
             && self.pending_acks().is_empty()
             && self.sent_data.is_empty()
