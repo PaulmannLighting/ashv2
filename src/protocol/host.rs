@@ -2,7 +2,8 @@ mod transaction;
 mod worker;
 
 use crate::protocol::host::transaction::Request;
-use crate::{open, BaudRate, Error};
+use crate::serial_port::open;
+use crate::{BaudRate, Error};
 use log::{debug, error};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
@@ -78,7 +79,10 @@ impl Host {
 
         if let Some(sender) = &self.sender {
             match sender.send(Transaction::new(Request::Terminate)) {
-                Ok(_) => debug!("Successfully sent termination request."),
+                Ok(_) => {
+                    self.sender = None;
+                    debug!("Successfully sent termination request.");
+                }
                 Err(error) => debug!("Failed to send termination request to worker: {error}"),
             }
         }
