@@ -491,6 +491,7 @@ where
     fn received_bytes(&self) -> Arc<[u8]> {
         self.received_data
             .iter()
+            .dedup_by(|(_, lhs), (_, rhs)| lhs.frame_num() == rhs.frame_num())
             .flat_map(|(_, data)| data.payload().iter().copied().mask())
             .collect()
     }
