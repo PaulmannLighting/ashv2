@@ -105,15 +105,19 @@ where
     }
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
-        trace!("Processing transaction: {transaction:#02X?}");
+        trace!(
+            "Processing transaction request: {:#02X?}",
+            transaction.request()
+        );
 
         if !self.initialized {
-            if self.initialize() {
-                self.initialized = true;
-            } else {
-                self.terminate.store(true, Ordering::SeqCst);
-                transaction.resolve(Err(Error::InitializationFailed));
-                return;
+            match self.initialize() {
+                Ok(_) => self.initialized = true,
+                Err(error) => {
+                    self.terminate.store(true, Ordering::SeqCst);
+                    transaction.resolve(Err(error));
+                    return;
+                }
             }
         }
 
@@ -481,12 +485,12 @@ where
         }
     }
 
-    fn initialize(&mut self) -> bool {
+    fn initialize(&mut self) -> Result<(), Error> {
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             match self.reset() {
                 Ok(_) => {
                     debug!("ASH connection initialized after {attempt} attempts.");
-                    return true;
+                    return Ok(());
                 }
                 Err(error) => warn!("Startup attempt #{attempt} failed: {error}"),
             }
@@ -495,7 +499,7 @@ where
         }
 
         error!("Startup failed after {MAX_STARTUP_ATTEMPTS} tries.");
-        false
+        Err(Error::InitializationFailed)
     }
 
     fn clear_buffers(&mut self) {
