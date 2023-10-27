@@ -14,3 +14,21 @@ impl From<BaudRate> for u32 {
             .expect("could not convert baud rate to u32")
     }
 }
+
+#[cfg(feature = "clap")]
+impl clap::ValueEnum for BaudRate {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::RstCts, Self::XOnXOff]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        Some(match self {
+            Self::RstCts => clap::builder::PossibleValue::new("RST/CTS")
+                .alias("RST_CTS")
+                .alias("RstCts"),
+            Self::XOnXOff => clap::builder::PossibleValue::new("XON/XOFF")
+                .alias("XON_XOFF")
+                .alias("XOnXOff"),
+        })
+    }
+}
