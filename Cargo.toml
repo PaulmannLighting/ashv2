@@ -17,3 +17,4 @@ log = "0.4.20"
 num-derive = "0.4.1"
 num-traits = "0.2.17"
 serialport = "4.2.2"
+strum = { version = "0.25.0", features = ["derive"] }

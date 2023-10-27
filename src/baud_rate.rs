@@ -1,30 +1,18 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use strum::IntoStaticStr;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive)]
+#[derive(
+    Clone, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive, IntoStaticStr,
+)]
 pub enum BaudRate {
     RstCts = 115_200,
     XOnXOff = 57_600,
 }
 
-impl Display for BaudRate {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        u32::from(self).fmt(f)
-    }
-}
-
 impl From<BaudRate> for u32 {
     fn from(baud_rate: BaudRate) -> Self {
-        baud_rate
-            .to_u32()
-            .expect("could not convert baud rate to u32")
-    }
-}
-
-impl From<&BaudRate> for u32 {
-    fn from(baud_rate: &BaudRate) -> Self {
         baud_rate
             .to_u32()
             .expect("could not convert baud rate to u32")
