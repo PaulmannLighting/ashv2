@@ -9,6 +9,7 @@ type ResultType = Result<Arc<[u8]>, Error>;
 #[derive(Clone, Debug)]
 pub enum Request {
     Data(Arc<[u8]>),
+    Reset,
     Terminate,
 }
 
@@ -34,7 +35,7 @@ impl Transaction {
         &self.request
     }
 
-    pub fn resolve(&self, result: Result<Arc<[u8]>, Error>) {
+    pub fn resolve(&self, result: ResultType) {
         if let Ok(mut lock) = self.result.lock() {
             lock.replace(result);
 
@@ -54,7 +55,7 @@ impl From<&[u8]> for Transaction {
 }
 
 impl Future for Transaction {
-    type Output = Result<Arc<[u8]>, Error>;
+    type Output = ResultType;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Ok(mut result) = self.result.lock() {

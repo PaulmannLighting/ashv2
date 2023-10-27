@@ -44,20 +44,40 @@ impl Host {
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
     pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
+        self.ensure_worker_is_running()?;
+        let transaction = Transaction::from(payload);
+        self.send_transaction(transaction.clone())?;
+        transaction.await
+    }
+
+    /// Reset the NCP.
+    ///
+    /// # Errors
+    /// This function will return an [`Error`] if any error happen during communication.
+    pub async fn reset(&mut self) -> Result<(), Error> {
+        self.ensure_worker_is_running()?;
+        let transaction = Transaction::new(Request::Reset);
+        self.send_transaction(transaction.clone())?;
+        transaction.await.map(|_| ())
+    }
+
+    fn ensure_worker_is_running(&mut self) -> Result<(), Error> {
         while self.terminate.load(Ordering::SeqCst) {
             error!("Worker has terminated. Attempting to restart.");
             self.restart_worker()?;
         }
 
-        let transaction = Transaction::from(payload);
+        Ok(())
+    }
 
+    fn send_transaction(&mut self, transaction: Transaction) -> Result<(), Error> {
         if let Some(sender) = &self.sender {
-            sender.send(transaction.clone())?;
+            sender.send(transaction)?;
         } else {
             transaction.resolve(Err(Error::WorkerNotRunning));
         }
 
-        transaction.await
+        Ok(())
     }
 
     fn restart_worker(&mut self) -> Result<(), serialport::Error> {

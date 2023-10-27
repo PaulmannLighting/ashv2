@@ -123,6 +123,7 @@ where
 
         match transaction.request() {
             Request::Data(data) => transaction.resolve(self.process_data_request(data)),
+            Request::Reset => transaction.resolve(self.reset().map(|_| Vec::new().into())),
             Request::Terminate => (),
         }
     }
