@@ -255,11 +255,8 @@ where
         let now = SystemTime::now();
 
         for (_, data) in self.sent_data.extract(|(timestamp, _)| {
-            if let Ok(duration) = now.duration_since(*timestamp) {
-                duration < self.t_rx_ack
-            } else {
-                false
-            }
+            now.duration_since(*timestamp)
+                .map_or(false, |duration| duration > self.t_rx_ack)
         }) {
             warn!("Frame {data} has not been acked in time. Queueing for retransmit.");
             trace!("Frame details: {data:#02X?}");
