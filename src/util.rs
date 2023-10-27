@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use std::collections::VecDeque;
 
 pub trait Extract<T, P>
@@ -13,13 +12,12 @@ where
 
 impl<T, P> Extract<T, P> for Vec<T>
 where
-    P: FnMut(&T) -> bool,
+    P: FnMut(&T) -> bool + Clone,
 {
     fn extract(&mut self, predicate: P) -> Self {
-        let indices = self.iter().positions(predicate).collect_vec();
-        let mut result = Self::with_capacity(self.capacity());
+        let mut result = Self::with_capacity(self.len());
 
-        for index in indices {
+        while let Some(index) = self.iter().position(predicate.clone()) {
             result.push(self.remove(index));
         }
 
@@ -29,13 +27,12 @@ where
 
 impl<T, P> Extract<T, P> for VecDeque<T>
 where
-    P: FnMut(&T) -> bool,
+    P: FnMut(&T) -> bool + Clone,
 {
     fn extract(&mut self, predicate: P) -> Self {
-        let indices = self.iter().positions(predicate).collect_vec();
-        let mut result = Self::with_capacity(self.capacity());
+        let mut result = Self::with_capacity(self.len());
 
-        for index in indices {
+        while let Some(index) = self.iter().position(predicate.clone()) {
             if let Some(item) = self.remove(index) {
                 result.push_back(item);
             }
