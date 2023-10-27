@@ -13,7 +13,7 @@ const INITIAL_BUFFER_CAPACITY: usize = 220;
 pub struct Input {
     pub data: Vec<(SystemTime, Data)>,
     pub buffer: Vec<u8>,
-    pub byte: [u8; 1],
+    byte: [u8; 1],
 }
 
 impl Input {

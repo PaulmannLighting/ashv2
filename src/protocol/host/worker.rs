@@ -366,8 +366,6 @@ where
         let mut error = false;
 
         while !self.terminate.load(Ordering::SeqCst) {
-            self.serial_port.read_exact(&mut self.buffers.input.byte)?;
-
             match self.buffers.input.read_byte(&mut self.serial_port)? {
                 CANCEL => {
                     self.buffers.input.buffer.clear();
