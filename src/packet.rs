@@ -7,7 +7,7 @@ mod rst_ack;
 
 use crate::FrameError;
 pub use ack::Ack;
-pub use data::Data;
+pub use data::{Data, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;

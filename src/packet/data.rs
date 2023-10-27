@@ -14,8 +14,9 @@ const ACK_NUM_MASK: u8 = 0b0000_0111;
 const FRAME_NUM_MASK: u8 = 0b0111_0000;
 const RETRANSMIT_MASK: u8 = 0b0000_1000;
 const FRAME_NUM_OFFSET: u8 = 4;
+pub const MIN_PAYLOAD_SIZE: usize = 3;
 const MIN_SIZE: usize = 3;
-const MAX_SIZE: usize = 128;
+pub const MAX_PAYLOAD_SIZE: usize = 128;
 const VALID_SEQS: RangeInclusive<u8> = 0..=7;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -135,20 +136,14 @@ impl TryFrom<&[u8]> for Data {
             });
         }
 
-        let payload = buffer[1..(buffer.len() - 2)].into();
+        let payload: Arc<[u8]> = buffer[1..(buffer.len() - 2)].into();
 
-        if buffer.len() < MIN_SIZE {
-            return Err(Self::Error::PayloadTooSmall {
-                min: MIN_SIZE,
-                size: buffer.len(),
-            });
+        if payload.len() < MIN_PAYLOAD_SIZE {
+            warn!("Payload too small: {} < {MIN_PAYLOAD_SIZE}", payload.len());
         }
 
-        if buffer.len() > MAX_SIZE {
-            return Err(Self::Error::PayloadTooLarge {
-                max: MAX_SIZE,
-                size: buffer.len(),
-            });
+        if payload.len() > MAX_PAYLOAD_SIZE {
+            warn!("Payload too large: {} > {MAX_PAYLOAD_SIZE}", payload.len());
         }
 
         Ok(Self {
@@ -167,14 +162,14 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
             warn!("out of range frame number {frame_num} will be truncated");
         }
 
-        if payload.len() < MIN_SIZE {
+        if payload.len() < MIN_PAYLOAD_SIZE {
             Err(Self::Error::PayloadTooSmall {
-                min: MIN_SIZE,
+                min: MIN_PAYLOAD_SIZE,
                 size: payload.len(),
             })
-        } else if payload.len() > MAX_SIZE {
+        } else if payload.len() > MAX_PAYLOAD_SIZE {
             Err(Self::Error::PayloadTooLarge {
-                max: MAX_SIZE,
+                max: MAX_PAYLOAD_SIZE,
                 size: payload.len(),
             })
         } else {

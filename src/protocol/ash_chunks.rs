@@ -1,8 +1,6 @@
+use crate::packet::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 use crate::Error;
 use itertools::{IntoChunks, Itertools};
-
-const FRAME_MIN_SIZE: usize = 3;
-const FRAME_MAX_SIZE: usize = 128;
 
 pub trait AshChunks: IntoIterator<Item = u8>
 where
@@ -15,12 +13,10 @@ where
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
     fn ash_chunks(self) -> Result<IntoChunks<Self::IntoIter>, Error> {
         let iterator = self.into_iter();
-        let mut frame_size = FRAME_MAX_SIZE;
+        let mut frame_size = MAX_PAYLOAD_SIZE;
 
         loop {
-            if iterator.len() % FRAME_MAX_SIZE == 0
-                || iterator.len() % FRAME_MAX_SIZE >= FRAME_MIN_SIZE
-            {
+            if iterator.len() % frame_size == 0 || iterator.len() % frame_size >= MIN_PAYLOAD_SIZE {
                 return Ok(iterator.chunks(frame_size));
             }
 
@@ -41,7 +37,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::AshChunks;
-    use crate::protocol::ash_chunks::{FRAME_MAX_SIZE, FRAME_MIN_SIZE};
+    use crate::protocol::ash_chunks::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
     use itertools::Itertools;
 
     #[test]
@@ -56,7 +52,7 @@ mod tests {
             let chunk = chunk.collect_vec();
             assert_eq!(
                 chunk.len(),
-                chunk.len().clamp(FRAME_MIN_SIZE, FRAME_MAX_SIZE)
+                chunk.len().clamp(MIN_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE)
             );
         }
     }
