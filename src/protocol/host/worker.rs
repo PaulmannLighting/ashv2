@@ -453,11 +453,12 @@ where
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
+                    error!("NCP sent us a RST instead of a RST_ACK.");
                     debug!("Received frame: {rst}");
                     trace!("Frame details: {rst:#02X?}");
                     return Ok(());
                 }
-                packet => trace!("Ignoring non-RstAck packet: {packet}."),
+                packet => trace!("Ignoring packet: {packet}."),
             }
         }
     }
