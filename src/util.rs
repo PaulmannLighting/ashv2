@@ -13,8 +13,6 @@ where
 
 impl<T, P> Extract<T, P> for Vec<T>
 where
-    Self: IntoIterator<Item = T>,
-
     P: FnMut(&T) -> bool,
 {
     fn extract(&mut self, predicate: P) -> Self {
@@ -31,8 +29,6 @@ where
 
 impl<T, P> Extract<T, P> for VecDeque<T>
 where
-    Self: IntoIterator<Item = T>,
-
     P: FnMut(&T) -> bool,
 {
     fn extract(&mut self, predicate: P) -> Self {
