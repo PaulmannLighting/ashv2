@@ -26,7 +26,7 @@ where
 
             frame_size = frame_size
                 .checked_sub(1)
-                .ok_or_else(|| Error::TooFewData(iterator.len()))?;
+                .ok_or_else(|| Error::CannotFindViableChunkSize(iterator.len()))?;
         }
     }
 }

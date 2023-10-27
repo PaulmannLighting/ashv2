@@ -152,9 +152,15 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
         }
 
         if payload.len() < MIN_SIZE {
-            Err(Error::TooFewData(payload.len()))
+            Err(Error::PayloadTooSmall {
+                min: MIN_SIZE,
+                size: payload.len(),
+            })
         } else if payload.len() > MAX_SIZE {
-            Err(Error::TooMuchData(payload.len()))
+            Err(Error::PayloadTooLarge {
+                max: MAX_SIZE,
+                size: payload.len(),
+            })
         } else {
             let header = (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK;
             let payload: Vec<u8> = payload.iter().copied().mask().collect();

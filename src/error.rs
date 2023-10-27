@@ -8,8 +8,8 @@ pub enum Error {
     BufferTooSmall { expected: usize, found: usize },
     BufferTooLarge { expected: usize, found: usize },
     InvalidBufferSize { expected: usize, found: usize },
-    TooMuchData(usize),
-    TooFewData(usize),
+    PayloadTooLarge { max: usize, size: usize },
+    PayloadTooSmall { min: usize, size: usize },
     CannotFindViableChunkSize(usize),
     Io(std::io::Error),
     Terminated,
@@ -43,8 +43,8 @@ impl Display for Error {
                 f,
                 "Invalid buffer size. Expected {expected} bytes, but found {found} bytes."
             ),
-            Self::TooMuchData(size) => write!(f, "Too much data: {size} bytes"),
-            Self::TooFewData(size) => write!(f, "Too few data: {size} bytes"),
+            Self::PayloadTooLarge { max, size } => write!(f, "Payload too large: {size} > {max}"),
+            Self::PayloadTooSmall { min, size } => write!(f, "Payload too small: {size} < {min}"),
             Self::CannotFindViableChunkSize(size) => {
                 write!(f, "Cannot find viable chunk size for {size} bytes")
             }
