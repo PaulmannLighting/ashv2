@@ -134,6 +134,7 @@ where
     fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, Error> {
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
+            self.reevaluate_retransmits();
 
             if self.transmit {
                 self.retransmit()?;
@@ -242,12 +243,33 @@ where
             .collect();
 
         for index in indices {
-            if let Some((_, mut data)) = self.sent_data.remove(index) {
+            if let Some((_, data)) = self.sent_data.remove(index) {
                 debug!("Queueing for retransmit: {data}");
                 trace!("Frame details: {data:#02X?}");
-                data.set_is_retransmission(true);
-                trace!("With retransmit flag set: {data:#02X?}");
                 self.retransmit.push_front(data);
+            }
+        }
+    }
+
+    fn reevaluate_retransmits(&mut self) {
+        let now = SystemTime::now();
+        let indices: Vec<_> = self
+            .sent_data
+            .iter()
+            .positions(|(timestamp, _)| {
+                if let Ok(duration) = now.duration_since(*timestamp) {
+                    duration < self.t_rx_ack
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        for index in indices {
+            if let Some((_, data)) = self.sent_data.remove(index) {
+                warn!("Frame {data} has not been acked in time. Queueing for retransmit.");
+                trace!("Frame details: {data:#02X?}");
+                self.retransmit.push_back(data);
             }
         }
     }
@@ -270,7 +292,8 @@ where
 
     fn retransmit(&mut self) -> std::io::Result<()> {
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
-            if let Some(data) = self.retransmit.pop_back() {
+            if let Some(mut data) = self.retransmit.pop_back() {
+                data.set_is_retransmission(true);
                 debug!("Retransmitting data frame: {data}");
                 trace!("Frame details: {data:#02X?}");
                 self.send_data(data)?;
