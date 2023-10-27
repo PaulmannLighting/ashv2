@@ -1,4 +1,5 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::ToPrimitive;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
@@ -29,5 +30,11 @@ impl Display for Code {
             }
             Self::ChipSpecific => write!(f, "Chip-specific error reset code"),
         }
+    }
+}
+
+impl From<Code> for u8 {
+    fn from(code: Code) -> Self {
+        code.to_u8().expect("Could not convert Code to u8.")
     }
 }

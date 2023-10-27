@@ -18,8 +18,16 @@ pub struct Ack {
 impl Ack {
     /// Creates a new ACK packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16) -> Self {
-        Self { header, crc }
+    pub const fn new(header: u8) -> Self {
+        Self {
+            header,
+            crc: CRC.checksum(&[header]),
+        }
+    }
+
+    #[must_use]
+    pub const fn from_ack_num(ack_num: u8) -> Self {
+        Self::new(HEADER_PREFIX + (ack_num % 8))
     }
 
     /// Determines whether the ready flag is set.
@@ -60,14 +68,6 @@ impl Frame for Ack {
     }
 }
 
-impl From<u8> for Ack {
-    fn from(ack_num: u8) -> Self {
-        let header = HEADER_PREFIX + (ack_num % 8);
-        let crc = CRC.checksum(&[header]);
-        Self::new(header, crc)
-    }
-}
-
 impl IntoIterator for &Ack {
     type Item = u8;
     type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
@@ -85,10 +85,10 @@ impl TryFrom<&[u8]> for Ack {
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {
-            Ok(Self::new(
-                buffer[0],
-                u16::from_be_bytes([buffer[1], buffer[2]]),
-            ))
+            Ok(Self {
+                header: buffer[0],
+                crc: u16::from_be_bytes([buffer[1], buffer[2]]),
+            })
         } else {
             Err(Self::Error::InvalidBufferSize {
                 expected: SIZE,
@@ -103,8 +103,14 @@ mod tests {
     use super::Ack;
     use crate::frame::Frame;
 
-    const ACK1: Ack = Ack::new(0x81, 0x6059);
-    const ACK2: Ack = Ack::new(0x8E, 0x91B6);
+    const ACK1: Ack = Ack {
+        header: 0x81,
+        crc: 0x6059,
+    };
+    const ACK2: Ack = Ack {
+        header: 0x8E,
+        crc: 0x91B6,
+    };
 
     #[test]
     fn test_is_valid() {

@@ -339,7 +339,7 @@ where
     }
 
     fn send_ack(&mut self, ack_number: u8) -> std::io::Result<()> {
-        self.send_frame(&Ack::from(ack_number))?;
+        self.send_frame(&Ack::from_ack_num(ack_number))?;
         self.last_sent_ack = ack_number;
         Ok(())
     }
@@ -361,7 +361,9 @@ where
                 error!("No frame received yet. Nothing to reject.");
                 Ok(())
             },
-            |last_received_frame_number| self.send_frame(&Nak::from(last_received_frame_number)),
+            |last_received_frame_number| {
+                self.send_frame(&Nak::from_ack_num(last_received_frame_number))
+            },
         )
     }
 
@@ -476,7 +478,7 @@ where
                     return Ok(());
                 }
                 Packet::Rst(rst) => {
-                    error!("NCP sent us a RST instead of a RST_ACK.");
+                    error!("NCP sent us a RST instead of a RSTACK.");
                     debug!("Received frame: {rst}");
                     trace!("Frame details: {rst:#02X?}");
                     return Ok(());

@@ -21,12 +21,12 @@ pub struct RstAck {
 impl RstAck {
     /// Creates a new RSTACK packet.
     #[must_use]
-    pub const fn new(header: u8, version: u8, reset_code: u8, crc: u16) -> Self {
+    pub fn new(header: u8, version: u8, reset_code: Code) -> Self {
         Self {
             header,
             version,
-            reset_code,
-            crc,
+            reset_code: reset_code.clone().into(),
+            crc: CRC.checksum(&[header, version, reset_code.into()]),
         }
     }
 
@@ -91,12 +91,12 @@ impl TryFrom<&[u8]> for RstAck {
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {
-            Ok(Self::new(
-                buffer[0],
-                buffer[1],
-                buffer[2],
-                u16::from_be_bytes([buffer[3], buffer[4]]),
-            ))
+            Ok(Self {
+                header: buffer[0],
+                version: buffer[1],
+                reset_code: buffer[2],
+                crc: u16::from_be_bytes([buffer[3], buffer[4]]),
+            })
         } else {
             Err(Self::Error::InvalidBufferSize {
                 expected: SIZE,
@@ -112,7 +112,12 @@ mod tests {
     use crate::frame::Frame;
     use crate::Code;
 
-    const RST_ACK: RstAck = RstAck::new(0xC1, 0x02, 0x02, 0x9B7B);
+    const RST_ACK: RstAck = RstAck {
+        header: 0xC1,
+        version: 0x02,
+        reset_code: 0x02,
+        crc: 0x9B7B,
+    };
 
     #[test]
     fn test_is_valid() {

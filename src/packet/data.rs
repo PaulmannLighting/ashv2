@@ -1,6 +1,7 @@
 use crate::frame::Frame;
 use crate::protocol::randomization::Mask;
 use crate::{FrameError, CRC};
+use itertools::Itertools;
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -27,11 +28,17 @@ pub struct Data {
 impl Data {
     /// Creates a new data packet.
     #[must_use]
-    pub const fn new(header: u8, payload: Arc<[u8]>, crc: u16) -> Self {
+    pub fn new(header: u8, payload: &[u8]) -> Self {
         Self {
             header,
-            payload,
-            crc,
+            payload: payload.into(),
+            crc: CRC.checksum(
+                &header
+                    .to_be_bytes()
+                    .into_iter()
+                    .chain(payload.iter().copied())
+                    .collect_vec(),
+            ),
         }
     }
 
@@ -135,11 +142,11 @@ impl TryFrom<&[u8]> for Data {
             });
         }
 
-        Ok(Self::new(
-            buffer[0],
-            buffer[1..(buffer.len() - 2)].into(),
-            u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
-        ))
+        Ok(Self {
+            header: buffer[0],
+            payload: buffer[1..(buffer.len() - 2)].into(),
+            crc: u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
+        })
     }
 }
 
@@ -162,12 +169,10 @@ impl TryFrom<(u8, Arc<[u8]>)> for Data {
                 size: payload.len(),
             })
         } else {
-            let header = (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK;
-            let payload: Vec<u8> = payload.iter().copied().mask().collect();
-            let mut crc_data = Vec::with_capacity(payload.len() + 1);
-            crc_data.push(header);
-            crc_data.extend_from_slice(&payload);
-            Ok(Self::new(header, payload.into(), CRC.checksum(&crc_data)))
+            Ok(Self::new(
+                (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK,
+                payload.iter().copied().mask().collect_vec().as_slice(),
+            ))
         }
     }
 }
@@ -182,62 +187,78 @@ mod tests {
     #[test]
     fn test_is_valid() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert!(data.is_valid());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert!(data.is_valid());
     }
 
     #[test]
     fn test_frame_num() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert_eq!(data.frame_num(), 2);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert_eq!(data.frame_num(), 5);
     }
 
     #[test]
     fn test_ack_num() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert_eq!(data.ack_num(), 5);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert_eq!(data.ack_num(), 3);
     }
 
     #[test]
     fn test_retransmit() {
         // EZSP "version" command: 00 00 00 02
-        let mut data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let mut data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let mut data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let mut data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
@@ -246,45 +267,57 @@ mod tests {
     #[test]
     fn test_to_string() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert_eq!(&data.to_string(), "DATA(2, 5, 0)");
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert_eq!(&data.to_string(), "DATA(5, 3, 0)");
     }
 
     #[test]
     fn test_crc() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert_eq!(data.crc(), 0x1AAD);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert_eq!(data.crc(), 0x6316);
     }
 
     #[test]
     fn test_is_header_valid() {
         // EZSP "version" command: 00 00 00 02
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert!(data.is_header_valid());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert!(data.is_header_valid());
     }
 
@@ -293,16 +326,20 @@ mod tests {
     fn test_from_buffer() {
         // EZSP "version" command: 00 00 00 02
         let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
-        let data = Data::new(0x25, vec![0x00, 0x00, 0x00, 0x02].into(), 0x1AAD);
+        let data = Data {
+            header: 0x25,
+            payload: vec![0x00, 0x00, 0x00, 0x02].into(),
+            crc: 0x1AAD,
+        };
         assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let buffer: Vec<u8> = vec![0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16];
-        let data = Data::new(
-            0x53,
-            vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
-            0x6316,
-        );
+        let data = Data {
+            header: 0x53,
+            payload: vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30].into(),
+            crc: 0x6316,
+        };
         assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
     }
 
@@ -314,7 +351,11 @@ mod tests {
         let mut crc_target = vec![header];
         crc_target.extend_from_slice(&msaked_payload);
         let crc = CRC.checksum(&crc_target);
-        let data = Data::new(0x00, msaked_payload.into(), crc);
+        let data = Data {
+            header: 0x00,
+            payload: msaked_payload.into(),
+            crc,
+        };
         let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
         assert_eq!(unmasked_payload, payload);
         let byte_representation: Vec<_> = (&data).into_iter().collect();

@@ -23,7 +23,7 @@ pub struct Host {
 }
 
 impl Host {
-    /// Creates a new ASHv2 host.
+    /// Creates a new `ASHv2` host.
     ///
     /// # Errors
     /// Returns a [`serialport::Error`] if the serial port could not be created.

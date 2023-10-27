@@ -18,14 +18,17 @@ pub struct Rst {
 impl Rst {
     /// Creates a new RST packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16) -> Self {
-        Self { header, crc }
+    pub const fn new() -> Self {
+        Self {
+            header: HEADER,
+            crc: CRC,
+        }
     }
 }
 
 impl Default for Rst {
     fn default() -> Self {
-        Self::new(HEADER, CRC)
+        Self::new()
     }
 }
 
@@ -49,13 +52,6 @@ impl Frame for Rst {
     }
 }
 
-impl From<Rst> for [u8; SIZE] {
-    fn from(rst: Rst) -> Self {
-        let [crc0, crc1] = rst.crc.to_be_bytes();
-        [rst.header, crc0, crc1]
-    }
-}
-
 impl IntoIterator for &Rst {
     type Item = u8;
     type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
@@ -73,10 +69,10 @@ impl TryFrom<&[u8]> for Rst {
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {
-            Ok(Self::new(
-                buffer[0],
-                u16::from_be_bytes([buffer[1], buffer[2]]),
-            ))
+            Ok(Self {
+                header: buffer[0],
+                crc: u16::from_be_bytes([buffer[1], buffer[2]]),
+            })
         } else {
             Err(Self::Error::InvalidBufferSize {
                 expected: SIZE,
@@ -91,7 +87,10 @@ mod tests {
     use super::Rst;
     use crate::frame::Frame;
 
-    const RST: Rst = Rst::new(0xC0, 0x38BC);
+    const RST: Rst = Rst {
+        header: 0xC0,
+        crc: 0x38BC,
+    };
 
     #[test]
     fn test_is_valid() {

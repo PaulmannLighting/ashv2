@@ -5,6 +5,7 @@ use std::fmt::{Display, Formatter};
 use std::iter::Chain;
 
 const ACK_RDY_MASK: u8 = 0x0F;
+const HEADER_PREFIX: u8 = 0xA0;
 const SIZE: usize = 3;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,8 +17,16 @@ pub struct Nak {
 impl Nak {
     /// Creates a new NAK packet.
     #[must_use]
-    pub const fn new(header: u8, crc: u16) -> Self {
-        Self { header, crc }
+    pub const fn new(header: u8) -> Self {
+        Self {
+            header,
+            crc: CRC.checksum(&[header]),
+        }
+    }
+
+    #[must_use]
+    pub const fn from_ack_num(ack_num: u8) -> Self {
+        Self::new(HEADER_PREFIX + (ack_num % 0x08))
     }
 
     /// Determines whether the ready flag is set.
@@ -58,13 +67,6 @@ impl Frame for Nak {
     }
 }
 
-impl From<u8> for Nak {
-    fn from(ack_num: u8) -> Self {
-        let header = 0xA0 + (ack_num % 0x08);
-        Self::new(header, CRC.checksum(&[header]))
-    }
-}
-
 impl IntoIterator for &Nak {
     type Item = u8;
     type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
@@ -82,10 +84,10 @@ impl TryFrom<&[u8]> for Nak {
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {
-            Ok(Self::new(
-                buffer[0],
-                u16::from_be_bytes([buffer[1], buffer[2]]),
-            ))
+            Ok(Self {
+                header: buffer[0],
+                crc: u16::from_be_bytes([buffer[1], buffer[2]]),
+            })
         } else {
             Err(Self::Error::InvalidBufferSize {
                 expected: SIZE,
@@ -100,8 +102,14 @@ mod tests {
     use super::Nak;
     use crate::frame::Frame;
 
-    const NAK1: Nak = Nak::new(0xA6, 0x34DC);
-    const NAK2: Nak = Nak::new(0xAD, 0x85B7);
+    const NAK1: Nak = Nak {
+        header: 0xA6,
+        crc: 0x34DC,
+    };
+    const NAK2: Nak = Nak {
+        header: 0xAD,
+        crc: 0x85B7,
+    };
 
     #[test]
     fn test_is_valid() {

@@ -19,12 +19,12 @@ pub struct Error {
 impl Error {
     /// Creates a new ERROR packet.
     #[must_use]
-    pub const fn new(header: u8, version: u8, error_code: u8, crc: u16) -> Self {
+    pub const fn new(header: u8, version: u8, error_code: u8) -> Self {
         Self {
             header,
             version,
             error_code,
-            crc,
+            crc: CRC.checksum(&[header, version, error_code]),
         }
     }
 
@@ -89,12 +89,12 @@ impl TryFrom<&[u8]> for Error {
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {
-            Ok(Self::new(
-                buffer[0],
-                buffer[1],
-                buffer[2],
-                u16::from_be_bytes([buffer[3], buffer[4]]),
-            ))
+            Ok(Self {
+                header: buffer[0],
+                version: buffer[1],
+                error_code: buffer[2],
+                crc: u16::from_be_bytes([buffer[3], buffer[4]]),
+            })
         } else {
             Err(Self::Error::InvalidBufferSize {
                 expected: SIZE,
@@ -110,7 +110,12 @@ mod tests {
     use crate::frame::Frame;
     use crate::Code;
 
-    const ERROR: Error = Error::new(0xC2, 0x02, 0x51, 0xA8BD);
+    const ERROR: Error = Error {
+        header: 0xC2,
+        version: 0x02,
+        error_code: 0x51,
+        crc: 0xA8BD,
+    };
 
     #[test]
     fn test_is_valid() {
@@ -150,6 +155,9 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
-        assert_eq!(Error::try_from(buffer.as_slice()).unwrap(), ERROR);
+        assert_eq!(
+            Error::try_from(buffer.as_slice()).expect("Could not create error frame"),
+            ERROR
+        );
     }
 }
