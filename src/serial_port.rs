@@ -1,5 +1,6 @@
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::ToPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::str::FromStr;
 
 #[cfg(windows)]
 use serialport::COMPort as SerialPort;
@@ -18,6 +19,15 @@ impl From<BaudRate> for u32 {
         baud_rate
             .to_u32()
             .expect("could not convert baud rate to u32")
+    }
+}
+
+impl FromStr for BaudRate {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_u32(s.parse::<u32>().map_err(|error| error.to_string())?)
+            .ok_or_else(|| "unsupported baud rate".to_string())
     }
 }
 
