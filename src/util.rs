@@ -37,7 +37,7 @@ where
 
         for index in indices {
             if let Some(item) = self.remove(index) {
-                result.push_front(item);
+                result.push_back(item);
             }
         }
 

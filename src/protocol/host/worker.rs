@@ -54,7 +54,7 @@ where
     last_sent_ack: u8,
     reject: bool,
     transmit: bool,
-    sent_data: VecDeque<(SystemTime, Data)>,
+    sent_data: Vec<(SystemTime, Data)>,
     retransmit: VecDeque<Data>,
     received_data: Vec<(SystemTime, Data)>,
     receive_buffer: Vec<u8>,
@@ -82,7 +82,7 @@ where
             last_sent_ack: 0,
             reject: false,
             transmit: true,
-            sent_data: VecDeque::new(),
+            sent_data: Vec::new(),
             retransmit: VecDeque::new(),
             received_data: Vec::new(),
             receive_buffer: Vec::with_capacity(INITIAL_BUFFER_CAPACITY),
@@ -243,7 +243,7 @@ where
         {
             debug!("Queueing for retransmit: {data}");
             trace!("Frame details: {data:#02X?}");
-            self.retransmit.push_front(data);
+            self.retransmit.push_back(data);
         }
     }
 
@@ -281,7 +281,7 @@ where
 
     fn retransmit(&mut self) -> std::io::Result<()> {
         while self.sent_data.len() < ACK_TIMEOUTS - 1 {
-            if let Some(mut data) = self.retransmit.pop_back() {
+            if let Some(mut data) = self.retransmit.pop_front() {
                 data.set_is_retransmission(true);
                 debug!("Retransmitting data frame: {data}");
                 trace!("Frame details: {data:#02X?}");
@@ -338,7 +338,7 @@ where
             "Sending data frame with unmasked payload: {:#02X?}",
             data.payload().iter().copied().mask().collect_vec()
         );
-        self.sent_data.push_back((SystemTime::now(), data));
+        self.sent_data.push((SystemTime::now(), data));
         Ok(())
     }
 
