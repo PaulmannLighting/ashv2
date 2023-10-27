@@ -16,6 +16,7 @@ pub enum Error {
     LockError(Arc<dyn std::error::Error + Send + Sync>),
     SendError(Arc<dyn std::error::Error + Send + Sync>),
     SerialConnectionError(serialport::Error),
+    WorkerNotRunning,
 }
 
 impl Display for Error {
@@ -50,6 +51,7 @@ impl Display for Error {
             Self::Terminated => write!(f, "terminated"),
             Self::LockError(error) | Self::SendError(error) => write!(f, "{error}"),
             Self::SerialConnectionError(error) => write!(f, "{error}"),
+            Self::WorkerNotRunning => write!(f, "Worker is not running"),
         }
     }
 }
