@@ -1,73 +1,38 @@
+mod inner;
+
 use crate::Error;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Waker};
+use inner::Inner;
+use std::sync::Arc;
 
-pub type ResultType = Result<Arc<[u8]>, Error>;
+type BytesIO = Inner<Arc<[u8]>, Arc<[u8]>>;
 
-#[derive(Clone, Debug)]
-pub enum Request {
-    Data(Arc<[u8]>),
-    Reset,
+#[derive(Debug)]
+pub enum Transaction {
+    Data(BytesIO),
+    Reset(Inner<(), ()>),
     Terminate,
 }
 
-#[derive(Clone, Debug)]
-pub struct Transaction {
-    request: Request,
-    result: Arc<Mutex<Option<ResultType>>>,
-    waker: Arc<Mutex<Option<Waker>>>,
-}
-
 impl Transaction {
-    #[must_use]
-    pub fn new(request: Request) -> Self {
-        Self {
-            request,
-            result: Arc::new(Mutex::new(None)),
-            waker: Arc::new(Mutex::new(None)),
-        }
+    pub fn new_data(request: &[u8]) -> (Self, BytesIO) {
+        let inner = Inner::new(request.into());
+        (Self::Data(inner.clone()), inner)
     }
 
-    #[must_use]
-    pub const fn request(&self) -> &Request {
-        &self.request
+    pub fn new_reset() -> (Self, Inner<(), ()>) {
+        let inner = Inner::new(());
+        (Self::Reset(inner.clone()), inner)
     }
 
-    pub fn resolve(&self, result: ResultType) {
-        if let Ok(mut lock) = self.result.lock() {
-            lock.replace(result);
-
-            if let Ok(mut waker) = self.waker.lock() {
-                if let Some(waker) = waker.take() {
-                    waker.wake();
-                }
-            }
-        }
+    pub const fn new_terminate() -> Self {
+        Self::Terminate
     }
-}
 
-impl From<&[u8]> for Transaction {
-    fn from(bytes: &[u8]) -> Self {
-        Self::new(Request::Data(bytes.into()))
-    }
-}
-
-impl Future for Transaction {
-    type Output = ResultType;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Ok(mut result) = self.result.lock() {
-            if let Some(result) = result.take() {
-                return Poll::Ready(result);
-            }
+    pub fn resolve_error(&self, error: Error) {
+        match self {
+            Self::Data(future) => future.resolve(Err(error)),
+            Self::Reset(future) => future.resolve(Err(error)),
+            Self::Terminate => (),
         }
-
-        if let Ok(mut waker) = self.waker.lock() {
-            waker.replace(cx.waker().clone());
-        }
-
-        Poll::Pending
     }
 }

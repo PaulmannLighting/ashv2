@@ -11,6 +11,6 @@ pub const SUBSTITUTE: u8 = 0x18;
 pub const CANCEL: u8 = 0x1A;
 pub const TIMEOUT: u8 = 0xFF;
 pub use ash_chunks::AshChunks;
-pub use host::{Host, Request, ResultType, Transaction, Worker};
+pub use host::Host;
 pub use randomization::{Mask, MaskGenerator, MaskIterator};
 pub use stuffing::{Stuffer, Stuffing, Unstuffer};

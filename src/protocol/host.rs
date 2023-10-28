@@ -9,8 +9,8 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-pub use transaction::{Request, ResultType, Transaction};
-pub use worker::Worker;
+use transaction::Transaction;
+use worker::Worker;
 
 #[derive(Debug)]
 pub struct Host {
@@ -42,11 +42,11 @@ impl Host {
     ///
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
-    pub async fn communicate(&mut self, payload: &[u8]) -> ResultType {
+    pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
         self.ensure_worker_is_running()?;
-        let transaction = Transaction::from(payload);
-        self.send_transaction(transaction.clone())?;
-        transaction.await
+        let (transaction, future) = Transaction::new_data(payload);
+        self.send_transaction(transaction)?;
+        future.await
     }
 
     /// Reset the NCP.
@@ -55,9 +55,9 @@ impl Host {
     /// This function will return an [`Error`] if any error happen during communication.
     pub async fn reset(&mut self) -> Result<(), Error> {
         self.ensure_worker_is_running()?;
-        let transaction = Transaction::new(Request::Reset);
-        self.send_transaction(transaction.clone())?;
-        transaction.await.map(|_| ())
+        let (transaction, future) = Transaction::new_reset();
+        self.send_transaction(transaction)?;
+        future.await
     }
 
     fn ensure_worker_is_running(&mut self) -> Result<(), Error> {
@@ -73,7 +73,7 @@ impl Host {
         if let Some(sender) = &self.sender {
             sender.send(transaction)?;
         } else {
-            transaction.resolve(Err(Error::WorkerNotRunning));
+            transaction.resolve_error(Error::WorkerNotRunning);
         }
 
         Ok(())
@@ -101,7 +101,7 @@ impl Host {
         self.terminate.store(true, Ordering::SeqCst);
 
         if let Some(sender) = &self.sender {
-            match sender.send(Transaction::new(Request::Terminate)) {
+            match sender.send(Transaction::new_terminate()) {
                 Ok(_) => {
                     self.sender = None;
                     debug!("Successfully sent termination request.");

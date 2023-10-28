@@ -1,12 +1,10 @@
 mod buffers;
 mod state;
 
+use super::Transaction;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
-use crate::protocol::{
-    AshChunks, Mask, Request, ResultType, Stuffing, Transaction, CANCEL, FLAG, SUBSTITUTE, TIMEOUT,
-    X_OFF, X_ON,
-};
+use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
 use buffers::Buffers;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
@@ -72,27 +70,30 @@ where
     }
 
     fn process_transaction(&mut self, transaction: &mut Transaction) {
-        trace!("Processing request: {:#04X?}", transaction.request());
+        trace!("Processing transaction: {:#04X?}", transaction);
 
         if !self.state.initialized() {
+            debug!("NCP not initialized.");
             match self.initialize() {
                 Ok(_) => self.state.set_initialized(),
                 Err(error) => {
                     self.terminate.store(true, Ordering::SeqCst);
-                    transaction.resolve(Err(error));
+                    transaction.resolve_error(error);
                     return;
                 }
             }
         }
 
-        match transaction.request() {
-            Request::Data(data) => transaction.resolve(self.process_data_request(data)),
-            Request::Reset => transaction.resolve(self.reset().map(|_| Vec::new().into())),
-            Request::Terminate => (),
+        match transaction {
+            Transaction::Data(future) => {
+                future.resolve(self.process_data_request(future.request()));
+            }
+            Transaction::Reset(future) => future.resolve(self.reset()),
+            Transaction::Terminate => (),
         }
     }
 
-    fn process_data_request(&mut self, data: &Arc<[u8]>) -> ResultType {
+    fn process_data_request(&mut self, data: &Arc<[u8]>) -> Result<Arc<[u8]>, crate::Error> {
         self.buffers.clear();
         let result = data
             .iter()
@@ -109,7 +110,7 @@ where
         result
     }
 
-    fn process_chunks(&mut self, mut chunks: Chunks) -> ResultType {
+    fn process_chunks(&mut self, mut chunks: Chunks) -> Result<Arc<[u8]>, crate::Error> {
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Processing chunk...");
             if self
