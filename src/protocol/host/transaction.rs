@@ -28,7 +28,7 @@ impl Transaction {
         Self::Terminate
     }
 
-    pub fn resolve_error(&self, error: Error) {
+    pub fn resolve_error(self, error: Error) {
         match self {
             Self::Data(future) => future.resolve(Err(error)),
             Self::Reset(future) => future.resolve(Err(error)),

@@ -63,13 +63,13 @@ where
         while !self.terminate.load(Ordering::SeqCst) {
             debug!("Waiting for next request.");
             match self.receiver.recv() {
-                Ok(mut transaction) => self.process_transaction(&mut transaction),
+                Ok(transaction) => self.process_transaction(transaction),
                 Err(error) => error!("{error}"),
             }
         }
     }
 
-    fn process_transaction(&mut self, transaction: &mut Transaction) {
+    fn process_transaction(&mut self, transaction: Transaction) {
         trace!("Processing transaction: {:#04X?}", transaction);
 
         if !self.state.initialized() {
@@ -86,7 +86,8 @@ where
 
         match transaction {
             Transaction::Data(future) => {
-                future.resolve(self.process_data_request(future.request()));
+                let result = self.process_data_request(future.request());
+                future.resolve(result);
             }
             Transaction::Reset(future) => future.resolve(self.reset()),
             Transaction::Terminate => (),

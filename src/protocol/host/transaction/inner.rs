@@ -6,21 +6,21 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
 #[derive(Clone, Debug)]
-pub struct Inner<Request, Response>
+pub struct Inner<I, O>
 where
-    Request: Debug + Clone,
+    I: Debug + Clone,
 {
-    request: Request,
-    result: Arc<Mutex<Option<Result<Response, Error>>>>,
+    request: I,
+    result: Arc<Mutex<Option<Result<O, Error>>>>,
     waker: Arc<Mutex<Option<Waker>>>,
 }
 
-impl<Request, Response> Inner<Request, Response>
+impl<I, O> Inner<I, O>
 where
-    Request: Debug + Clone,
+    I: Debug + Clone,
 {
     #[must_use]
-    pub fn new(request: Request) -> Self {
+    pub fn new(request: I) -> Self {
         Self {
             request,
             result: Arc::new(Mutex::new(None)),
@@ -29,19 +29,18 @@ where
     }
 
     #[must_use]
-    pub const fn request(&self) -> &Request {
+    pub const fn request(&self) -> &I {
         &self.request
     }
 
-    pub fn resolve(&self, result: Result<Response, Error>) {
-        if let Ok(mut lock) = self.result.lock() {
-            lock.replace(result);
+    pub fn resolve(self, result: Result<O, Error>) {
+        self.result
+            .lock()
+            .expect("Could not lock result.")
+            .replace(result);
 
-            if let Ok(mut waker) = self.waker.lock() {
-                if let Some(waker) = waker.take() {
-                    waker.wake();
-                }
-            }
+        if let Some(waker) = self.waker.lock().expect("Could not lock waker.").take() {
+            waker.wake();
         }
     }
 }
