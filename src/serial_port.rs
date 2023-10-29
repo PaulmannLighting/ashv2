@@ -1,10 +1,10 @@
 use crate::BaudRate;
 
 #[cfg(windows)]
-use serialport::COMPort as SerialPort;
+pub use serialport::COMPort as SerialPortImpl;
 
 #[cfg(unix)]
-use serialport::TTYPort as SerialPort;
+pub use serialport::TTYPort as SerialPortImpl;
 
 /// Opens a serial port depending on the local operating system.
 ///
@@ -13,6 +13,6 @@ use serialport::TTYPort as SerialPort;
 pub fn open<'a>(
     path: impl Into<std::borrow::Cow<'a, str>>,
     baud_rate: BaudRate,
-) -> serialport::Result<SerialPort> {
-    SerialPort::open(&serialport::new(path, baud_rate.into()))
+) -> serialport::Result<SerialPortImpl> {
+    SerialPortImpl::open(&serialport::new(path, baud_rate.into()))
 }

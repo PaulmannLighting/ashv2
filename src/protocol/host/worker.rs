@@ -1,16 +1,20 @@
 mod buffers;
+//mod receiver;
 mod state;
 
 use super::Transaction;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::serial_port::{open, SerialPortImpl};
+use crate::BaudRate;
 use buffers::Buffers;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use state::State;
 use std::fmt::{Debug, Display};
+use std::io::Write;
 use std::iter::Copied;
 use std::slice::Iter;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -27,36 +31,32 @@ const T_REMOTE_NOTRDY: Duration = Duration::from_millis(1000);
 type Chunks<'c, 'i> = Vec<Chunk<'c, Copied<Iter<'i, u8>>>>;
 
 #[derive(Debug)]
-pub struct Worker<S>
-where
-    S: SerialPort,
-{
+pub struct Worker {
     // Shared state
     receiver: Receiver<Transaction>,
     terminate: Arc<AtomicBool>,
     // Local state
-    serial_port: S,
+    serial_port_in: SerialPortImpl,
+    serial_port_out: SerialPortImpl,
     state: State,
     buffers: Buffers,
 }
 
-impl<S> Worker<S>
-where
-    S: SerialPort,
-{
-    #[must_use]
+impl Worker {
     pub fn new(
-        serial_port: S,
+        path: &str,
+        baud_rate: BaudRate,
         receiver: Receiver<Transaction>,
         terminate: Arc<AtomicBool>,
-    ) -> Self {
-        Self {
+    ) -> serialport::Result<Self> {
+        Ok(Self {
             receiver,
             terminate,
-            serial_port,
+            serial_port_in: open(path, baud_rate)?,
+            serial_port_out: open(path, baud_rate)?,
             state: State::default(),
             buffers: Buffers::default(),
-        }
+        })
     }
 
     pub fn spawn(mut self) {
@@ -324,7 +324,7 @@ where
         self.buffers.output.buffer.extend(frame.into_iter().stuff());
         self.buffers.output.buffer.push(FLAG);
         trace!("Sending bytes: {:#04X?}", self.buffers.output.buffer);
-        self.serial_port.write_all(&self.buffers.output.buffer)
+        self.serial_port_out.write_all(&self.buffers.output.buffer)
     }
 
     fn ack_sent_data(&mut self, ack_num: u8) -> std::io::Result<()> {
@@ -334,7 +334,6 @@ where
             debug!("Last ACK duration: {} sec", duration.as_secs_f32());
             self.state.update_t_rx_ack(Some(duration));
             debug!("New T_RX_ACK: {} sec", self.state.t_rx_ack().as_secs_f32());
-            self.serial_port.set_timeout(self.state.t_rx_ack())?;
         }
 
         self.buffers.output.ack_sent_data(ack_num);
@@ -360,7 +359,7 @@ where
         let mut error = false;
 
         while !self.terminate.load(Ordering::SeqCst) {
-            match self.buffers.input.read_byte(&mut self.serial_port)? {
+            match self.buffers.input.read_byte(&mut self.serial_port_in)? {
                 CANCEL => {
                     self.buffers.input.buffer.clear();
                     error = false;
@@ -410,7 +409,7 @@ where
     }
 
     fn reset(&mut self) -> Result<(), crate::Error> {
-        self.serial_port.set_timeout(T_RSTACK_MAX)?;
+        self.serial_port_in.set_timeout(T_RSTACK_MAX)?;
         self.send_frame(&Rst::default())?;
 
         loop {

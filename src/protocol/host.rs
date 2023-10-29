@@ -1,7 +1,6 @@
 mod transaction;
 mod worker;
 
-use crate::serial_port::open;
 use crate::{BaudRate, Error};
 use log::{debug, error};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -87,11 +86,7 @@ impl Host {
 
     fn spawn_worker(&mut self) -> Result<(), serialport::Error> {
         let (sender, receiver) = channel::<Transaction>();
-        let worker = Worker::new(
-            open(&self.path, self.baud_rate.clone())?,
-            receiver,
-            self.terminate.clone(),
-        );
+        let worker = Worker::new(&self.path, self.baud_rate, receiver, self.terminate.clone())?;
         self.join_handle = Some(thread::spawn(move || worker.spawn()));
         self.sender = Some(sender);
         Ok(())

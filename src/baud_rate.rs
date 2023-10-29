@@ -1,7 +1,7 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive)]
 pub enum BaudRate {
     RstCts = 115_200,
     XOnXOff = 57_600,
