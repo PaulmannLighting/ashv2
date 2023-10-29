@@ -5,23 +5,26 @@ use log::debug;
 use std::io;
 use std::io::Read;
 use std::sync::Arc;
-use std::time::SystemTime;
 
 const INITIAL_BUFFER_CAPACITY: usize = 220;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Input {
-    pub data: Vec<(SystemTime, Data)>,
-    pub buffer: Vec<u8>,
+    data: Vec<Data>,
+    buffer: Vec<u8>,
     byte: [u8; 1],
 }
 
 impl Input {
+    pub fn buffer_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.buffer
+    }
+
     pub fn bytes(&self) -> Arc<[u8]> {
         self.data
             .iter()
-            .dedup_by(|(_, lhs), (_, rhs)| lhs.frame_num() == rhs.frame_num())
-            .flat_map(|(_, data)| data.payload().iter().copied().mask())
+            .dedup_by(|lhs, rhs| lhs.frame_num() == rhs.frame_num())
+            .flat_map(|data| data.payload().iter().copied().mask())
             .collect()
     }
 
@@ -34,6 +37,10 @@ impl Input {
 
     pub fn frame_bytes(&self) -> Vec<u8> {
         self.buffer.iter().copied().unstuff().collect()
+    }
+
+    pub fn push_data(&mut self, data: Data) {
+        self.data.push(data);
     }
 
     pub fn read_byte<R>(&mut self, src: &mut R) -> io::Result<u8>

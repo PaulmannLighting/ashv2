@@ -10,9 +10,9 @@ const ACK_TIMEOUTS: usize = 4;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Output {
-    pub data: Vec<(SystemTime, Data)>,
-    pub retransmit: VecDeque<Data>,
-    pub buffer: Vec<u8>,
+    data: Vec<(SystemTime, Data)>,
+    retransmit: VecDeque<Data>,
+    buffer: Vec<u8>,
 }
 
 impl Output {
@@ -30,6 +30,13 @@ impl Output {
         trace!("Unacknowledged data after ACK: {:#04X?}", self.data);
     }
 
+    pub fn buffer_frame(&mut self, bytes: impl Iterator<Item = u8>) -> &[u8] {
+        self.buffer.clear();
+        self.buffer.extend(bytes);
+        trace!("Buffered bytes to sent: {:#04X?}", self.buffer);
+        &self.buffer
+    }
+
     pub fn last_ack_duration(&self, ack_num: u8) -> Option<Duration> {
         self.data
             .iter()
@@ -37,6 +44,14 @@ impl Output {
             .sorted_by_key(|(timestamp, _)| timestamp)
             .next_back()
             .and_then(|(timestamp, _)| SystemTime::now().duration_since(*timestamp).ok())
+    }
+
+    pub fn pop_retransmit(&mut self) -> Option<Data> {
+        self.retransmit.pop_front()
+    }
+
+    pub fn push_data(&mut self, data: Data) {
+        self.data.push((SystemTime::now(), data));
     }
 
     pub fn queue_not_full(&self) -> bool {

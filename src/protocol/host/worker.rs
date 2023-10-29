@@ -17,7 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::sleep;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 const MAX_STARTUP_ATTEMPTS: u8 = 5;
 const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
@@ -186,10 +186,10 @@ where
             self.state.set_last_received_frame_number(data.frame_num());
             debug!("Last received frame number: {}", data.frame_num());
             self.ack_sent_data(data.ack_num());
-            self.buffers.input.data.push((SystemTime::now(), data));
+            self.buffers.input.push_data(data);
         } else if data.is_retransmission() {
             self.ack_sent_data(data.ack_num());
-            self.buffers.input.data.push((SystemTime::now(), data));
+            self.buffers.input.push_data(data);
         } else {
             debug!("Received out-of-sequence data frame: {data}");
 
@@ -241,7 +241,7 @@ where
 
     fn retransmit(&mut self) -> std::io::Result<()> {
         while self.buffers.output.queue_not_full() {
-            if let Some(mut data) = self.buffers.output.retransmit.pop_front() {
+            if let Some(mut data) = self.buffers.output.pop_retransmit() {
                 data.set_is_retransmission(true);
                 debug!("Retransmitting data frame: {data}");
                 trace!("Frame details: {data:#04X?}");
@@ -292,13 +292,13 @@ where
     }
 
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
-        self.send_frame(&data)?;
         trace!("Sending data frame with payload: {:#04X?}", data.payload());
         trace!(
             "Sending data frame with unmasked payload: {:#04X?}",
             data.payload().iter().copied().mask().collect_vec()
         );
-        self.buffers.output.data.push((SystemTime::now(), data));
+        self.send_frame(&data)?;
+        self.buffers.output.push_data(data);
         Ok(())
     }
 
@@ -320,11 +320,8 @@ where
     {
         debug!("Sending frame: {frame}");
         trace!("Frame details: {frame:#04X?}");
-        self.buffers.output.buffer.clear();
-        self.buffers.output.buffer.extend(frame.into_iter().stuff());
-        self.buffers.output.buffer.push(FLAG);
-        trace!("Sending bytes: {:#04X?}", self.buffers.output.buffer);
-        self.serial_port.write_all(&self.buffers.output.buffer)
+        self.serial_port
+            .write_all(self.buffers.output.buffer_frame(frame.into_iter().stuff()))
     }
 
     fn ack_sent_data(&mut self, ack_num: u8) {
@@ -354,23 +351,23 @@ where
     }
 
     fn receive_frame(&mut self) -> Result<Vec<u8>, crate::Error> {
-        self.buffers.input.buffer.clear();
+        self.buffers.input.buffer_mut().clear();
         let mut error = false;
 
         while !self.terminate.load(Ordering::SeqCst) {
             match self.buffers.input.read_byte(&mut self.serial_port)? {
                 CANCEL => {
-                    self.buffers.input.buffer.clear();
+                    self.buffers.input.buffer_mut().clear();
                     error = false;
                 }
                 FLAG => {
-                    if !error && !self.buffers.input.buffer.is_empty() {
+                    if !error && !self.buffers.input.buffer_mut().is_empty() {
                         debug!("Received frame.");
-                        trace!("Frame details: {:#04X?}", self.buffers.input.buffer);
+                        trace!("Frame details: {:#04X?}", self.buffers.input.buffer_mut());
                         return Ok(self.buffers.input.frame_bytes());
                     }
 
-                    self.buffers.input.buffer.clear();
+                    self.buffers.input.buffer_mut().clear();
                     error = false;
                 }
                 SUBSTITUTE => {
@@ -387,7 +384,7 @@ where
                 TIMEOUT => {
                     warn!("Received timeout byte not specified in protocol definition.");
                 }
-                byte => self.buffers.input.buffer.push(byte),
+                byte => self.buffers.input.buffer_mut().push(byte),
             }
         }
 
