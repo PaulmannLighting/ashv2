@@ -6,15 +6,12 @@ use super::Transaction;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
-use crate::serial_port::{open, SerialPortImpl};
-use crate::BaudRate;
 use buffers::Buffers;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use state::State;
 use std::fmt::{Debug, Display};
-use std::io::Write;
 use std::iter::Copied;
 use std::slice::Iter;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -31,32 +28,35 @@ const T_REMOTE_NOTRDY: Duration = Duration::from_millis(1000);
 type Chunks<'c, 'i> = Vec<Chunk<'c, Copied<Iter<'i, u8>>>>;
 
 #[derive(Debug)]
-pub struct Worker {
+pub struct Worker<S>
+where
+    S: SerialPort,
+{
     // Shared state
     receiver: Receiver<Transaction>,
     terminate: Arc<AtomicBool>,
     // Local state
-    serial_port_in: SerialPortImpl,
-    serial_port_out: SerialPortImpl,
+    serial_port: S,
     state: State,
     buffers: Buffers,
 }
 
-impl Worker {
+impl<S> Worker<S>
+where
+    S: SerialPort,
+{
     pub fn new(
-        path: &str,
-        baud_rate: BaudRate,
+        serial_port: S,
         receiver: Receiver<Transaction>,
         terminate: Arc<AtomicBool>,
-    ) -> serialport::Result<Self> {
-        Ok(Self {
+    ) -> Self {
+        Self {
             receiver,
             terminate,
-            serial_port_in: open(path, baud_rate)?,
-            serial_port_out: open(path, baud_rate)?,
+            serial_port,
             state: State::default(),
             buffers: Buffers::default(),
-        })
+        }
     }
 
     pub fn spawn(mut self) {
@@ -150,7 +150,7 @@ impl Worker {
 
         if let Some(packet) = self.receive_packet()? {
             match packet {
-                Packet::Ack(ref ack) => self.process_ack(ack)?,
+                Packet::Ack(ref ack) => self.process_ack(ack),
                 Packet::Data(data) => self.process_data(data)?,
                 Packet::Error(ref error) => self.handle_error(error)?,
                 Packet::Nak(ref nak) => self.process_nak(nak),
@@ -167,10 +167,10 @@ impl Worker {
         Ok(())
     }
 
-    fn process_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
+    fn process_ack(&mut self, ack: &Ack) {
         debug!("Received frame: {ack}");
         trace!("Frame details: {ack:#04X?}");
-        self.ack_sent_data(ack.ack_num())
+        self.ack_sent_data(ack.ack_num());
     }
 
     fn process_data(&mut self, data: Data) -> Result<(), crate::Error> {
@@ -185,10 +185,10 @@ impl Worker {
             self.state.set_rejecting(false);
             self.state.set_last_received_frame_number(data.frame_num());
             debug!("Last received frame number: {}", data.frame_num());
-            self.ack_sent_data(data.ack_num())?;
+            self.ack_sent_data(data.ack_num());
             self.buffers.input.data.push((SystemTime::now(), data));
         } else if data.is_retransmission() {
-            self.ack_sent_data(data.ack_num())?;
+            self.ack_sent_data(data.ack_num());
             self.buffers.input.data.push((SystemTime::now(), data));
         } else {
             debug!("Received out-of-sequence data frame: {data}");
@@ -324,10 +324,10 @@ impl Worker {
         self.buffers.output.buffer.extend(frame.into_iter().stuff());
         self.buffers.output.buffer.push(FLAG);
         trace!("Sending bytes: {:#04X?}", self.buffers.output.buffer);
-        self.serial_port_out.write_all(&self.buffers.output.buffer)
+        self.serial_port.write_all(&self.buffers.output.buffer)
     }
 
-    fn ack_sent_data(&mut self, ack_num: u8) -> std::io::Result<()> {
+    fn ack_sent_data(&mut self, ack_num: u8) {
         debug!("Acknowledged frame: {ack_num}");
 
         if let Some(duration) = self.buffers.output.last_ack_duration(ack_num) {
@@ -337,7 +337,6 @@ impl Worker {
         }
 
         self.buffers.output.ack_sent_data(ack_num);
-        Ok(())
     }
 
     fn receive_packet(&mut self) -> Result<Option<Packet>, crate::Error> {
@@ -359,7 +358,7 @@ impl Worker {
         let mut error = false;
 
         while !self.terminate.load(Ordering::SeqCst) {
-            match self.buffers.input.read_byte(&mut self.serial_port_in)? {
+            match self.buffers.input.read_byte(&mut self.serial_port)? {
                 CANCEL => {
                     self.buffers.input.buffer.clear();
                     error = false;
@@ -409,7 +408,7 @@ impl Worker {
     }
 
     fn reset(&mut self) -> Result<(), crate::Error> {
-        self.serial_port_in.set_timeout(T_RSTACK_MAX)?;
+        self.serial_port.set_timeout(T_RSTACK_MAX)?;
         self.send_frame(&Rst::default())?;
 
         loop {
@@ -432,7 +431,10 @@ impl Worker {
                     debug!("ASH connection initialized after {attempt} attempts.");
                     return Ok(());
                 }
-                Err(error) => warn!("Startup attempt #{attempt} failed: {error}"),
+                Err(error) => {
+                    warn!("Startup attempt #{attempt} failed.");
+                    debug!("{error}");
+                }
             }
 
             sleep(T_REMOTE_NOTRDY);
