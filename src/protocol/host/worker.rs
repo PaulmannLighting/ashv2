@@ -1,5 +1,4 @@
 mod buffers;
-//mod receiver;
 mod state;
 
 use super::Transaction;
@@ -122,7 +121,7 @@ where
                 self.state.update_t_rx_ack(None);
             }
 
-            if self.state.is_transmitting() {
+            if self.state.may_transmit() {
                 self.retransmit()?;
                 self.push_chunks(&mut chunks)?;
             }
@@ -228,7 +227,7 @@ where
     fn process_rst_ack(&mut self, rst_ack: &RstAck) {
         debug!("Received frame: {rst_ack}");
         trace!("Frame details: {rst_ack:#04X?}");
-        self.state.set_transmitting(true);
+        self.state.set_may_transmit(true);
         rst_ack.code().map_or_else(
             || {
                 error!("NCP acknowledged reset with invalid error code.");
@@ -379,11 +378,11 @@ where
                 }
                 X_ON => {
                     info!("NCP requested to stop transmission.");
-                    self.state.set_transmitting(true);
+                    self.state.set_may_transmit(true);
                 }
                 X_OFF => {
                     info!("NCP requested to resume transmission.");
-                    self.state.set_transmitting(false);
+                    self.state.set_may_transmit(false);
                 }
                 TIMEOUT => {
                     warn!("Received timeout byte not specified in protocol definition.");

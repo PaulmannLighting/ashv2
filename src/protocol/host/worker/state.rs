@@ -12,7 +12,7 @@ pub struct State {
     last_received_frame_number: Option<u8>,
     last_sent_ack: u8,
     reject: bool,
-    transmit: bool,
+    may_transmit: bool,
     t_rx_ack: Duration,
 }
 
@@ -33,8 +33,8 @@ impl State {
         self.reject
     }
 
-    pub const fn is_transmitting(&self) -> bool {
-        self.transmit
+    pub const fn may_transmit(&self) -> bool {
+        self.may_transmit
     }
 
     pub const fn last_received_frame_number(&self) -> Option<u8> {
@@ -74,8 +74,8 @@ impl State {
         self.reject = reject;
     }
 
-    pub fn set_transmitting(&mut self, transmit: bool) {
-        self.transmit = transmit;
+    pub fn set_may_transmit(&mut self, transmit: bool) {
+        self.may_transmit = transmit;
     }
 
     pub const fn t_rx_ack(&self) -> Duration {
@@ -101,7 +101,7 @@ impl Default for State {
             last_received_frame_number: None,
             last_sent_ack: 0,
             reject: false,
-            transmit: true,
+            may_transmit: true,
             t_rx_ack: T_RX_ACK_INIT,
         }
     }
