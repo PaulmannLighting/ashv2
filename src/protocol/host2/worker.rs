@@ -404,7 +404,7 @@ where
         debug!("Retransmitting unacknowledged frames.");
         self.queue_retransmit_due_to_timeout();
 
-        if self.connected {
+        if !self.connected {
             debug!("Cannot retransmit due to not being connected.");
             return;
         }
@@ -444,7 +444,7 @@ where
     }
 
     fn push_chunks(&mut self) {
-        if self.connected {
+        if !self.connected {
             debug!("Cannot push chunks due to not being connected.");
             return;
         }
