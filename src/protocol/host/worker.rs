@@ -302,7 +302,6 @@ where
     }
 
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
-        trace!("Sending data frame with payload: {:#04X?}", data.payload());
         trace!(
             "Sending data frame with unmasked payload: {:#04X?}",
             data.payload().iter().copied().mask().collect_vec()
