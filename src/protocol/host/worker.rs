@@ -150,7 +150,10 @@ where
         debug!("Receiving packet.");
 
         match self.receive_packet() {
-            Err(error) => self.state.handle_error(error),
+            Err(error) => self
+                .state
+                .handle_error(error)
+                .and_then(|timeout| Ok(self.serial_port.set_timeout(timeout)?)),
             Ok(packet) => self.process_packet(packet),
         }
     }

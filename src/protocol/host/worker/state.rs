@@ -2,13 +2,12 @@ use super::T_REMOTE_NOTRDY;
 use log::{debug, warn};
 use std::io::ErrorKind;
 use std::ops::RangeInclusive;
-use std::thread::sleep;
 use std::time::Duration;
 
 const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
 const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
-const MAX_TIMEOUTS: usize = 4;
+const MAX_TIMEOUTS: u32 = 4;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct State {
@@ -19,7 +18,7 @@ pub struct State {
     reject: bool,
     may_transmit: bool,
     t_rx_ack: Duration,
-    timeouts: usize,
+    timeouts: u32,
 }
 
 impl State {
@@ -31,7 +30,7 @@ impl State {
         }
     }
 
-    pub fn handle_error(&mut self, error: crate::Error) -> Result<(), crate::Error> {
+    pub fn handle_error(&mut self, error: crate::Error) -> Result<Duration, crate::Error> {
         if let crate::Error::Io(io_error) = &error {
             if io_error.kind() == ErrorKind::TimedOut {
                 warn!("Reading packet timed out.");
@@ -39,8 +38,7 @@ impl State {
 
                 if self.timeouts < MAX_TIMEOUTS {
                     self.timeouts += 1;
-                    sleep(T_REMOTE_NOTRDY);
-                    return Ok(());
+                    return Ok(T_REMOTE_NOTRDY * self.timeouts);
                 }
 
                 self.timeouts = 0;
