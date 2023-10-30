@@ -11,6 +11,7 @@ use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use state::State;
 use std::fmt::{Debug, Display};
+use std::io::ErrorKind;
 use std::iter::Copied;
 use std::slice::Iter;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -323,12 +324,19 @@ where
         )
     }
 
-    fn send_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    fn send_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: Debug + Display + IntoIterator<Item = u8>,
+        F: Debug + Display + Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>,
     {
         debug!("Sending frame: {frame}");
         trace!("Frame details: {frame:#04X?}");
+
+        if frame.is_crc_valid() {
+            error!("Rejecting to send frame with invalid CRC: {frame}");
+            return Err(std::io::Error::new(ErrorKind::InvalidData, "Invalid CRC."));
+        }
+
         self.serial_port
             .write_all(self.buffers.output.buffer_frame(frame.into_iter().stuff()))
     }
