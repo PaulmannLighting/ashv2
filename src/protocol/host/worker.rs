@@ -148,7 +148,14 @@ where
     fn receive_and_process_packet(&mut self) -> Result<(), crate::Error> {
         debug!("Receiving packet.");
 
-        if let Some(packet) = self.receive_packet()? {
+        match self.receive_packet() {
+            Err(error) => self.state.handle_error(error),
+            Ok(packet) => self.process_packet(packet),
+        }
+    }
+
+    fn process_packet(&mut self, packet: Packet) -> Result<(), crate::Error> {
+        if packet.is_crc_valid() {
             match packet {
                 Packet::Ack(ref ack) => self.process_ack(ack),
                 Packet::Data(data) => self.process_data(data)?,
@@ -161,6 +168,8 @@ where
                 Packet::RstAck(ref rst_ack) => self.process_rst_ack(rst_ack),
             }
         } else {
+            warn!("Received frame with invalid CRC: {packet}");
+            trace!("Frame details: {packet:#04X?}");
             self.send_nak()?;
         }
 
@@ -336,18 +345,8 @@ where
         self.buffers.output.ack_sent_data(ack_num);
     }
 
-    fn receive_packet(&mut self) -> Result<Option<Packet>, crate::Error> {
-        Packet::try_from(self.receive_frame()?.as_slice())
-            .map(|packet| {
-                if packet.is_crc_valid() {
-                    Some(packet)
-                } else {
-                    warn!("Received frame with invalid CRC: {packet}");
-                    trace!("Frame details: {packet:#04X?}");
-                    None
-                }
-            })
-            .map_err(crate::Error::Frame)
+    fn receive_packet(&mut self) -> Result<Packet, crate::Error> {
+        Ok(Packet::try_from(self.receive_frame()?.as_slice())?)
     }
 
     fn receive_frame(&mut self) -> Result<Vec<u8>, crate::Error> {
@@ -409,14 +408,13 @@ where
         self.send_frame(&Rst::default())?;
 
         loop {
-            if let Some(packet) = self.receive_packet()? {
-                match packet {
-                    Packet::RstAck(ref rst_ack) => {
-                        self.process_rst_ack(rst_ack);
-                        return Ok(());
-                    }
-                    packet => trace!("Ignoring packet: {packet}."),
+            match self.receive_packet()? {
+                Packet::RstAck(ref rst_ack) => {
+                    self.state.reset();
+                    self.process_rst_ack(rst_ack);
+                    return Ok(());
                 }
+                packet => trace!("Ignoring packet: {packet}."),
             }
         }
     }

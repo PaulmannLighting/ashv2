@@ -1,9 +1,14 @@
+use super::T_REMOTE_NOTRDY;
+use log::{debug, warn};
+use std::io::ErrorKind;
 use std::ops::RangeInclusive;
+use std::thread::sleep;
 use std::time::Duration;
 
 const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
 const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
+const MAX_TIMEOUTS: usize = 4;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct State {
@@ -14,6 +19,7 @@ pub struct State {
     reject: bool,
     may_transmit: bool,
     t_rx_ack: Duration,
+    timeouts: usize,
 }
 
 impl State {
@@ -23,6 +29,25 @@ impl State {
         } else {
             0
         }
+    }
+
+    pub fn handle_error(&mut self, error: crate::Error) -> Result<(), crate::Error> {
+        if let crate::Error::Io(io_error) = &error {
+            if io_error.kind() == ErrorKind::TimedOut {
+                warn!("Reading packet timed out.");
+                debug!("{error}");
+
+                if self.timeouts < MAX_TIMEOUTS {
+                    self.timeouts += 1;
+                    sleep(T_REMOTE_NOTRDY);
+                    return Ok(());
+                }
+
+                self.timeouts = 0;
+            }
+        }
+
+        Err(error)
     }
 
     pub const fn initialized(&self) -> bool {
@@ -56,6 +81,17 @@ impl State {
         } else {
             first..=last
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.initialized = false;
+        self.frame_number = 0;
+        self.last_received_frame_number = None;
+        self.last_sent_ack = 0;
+        self.reject = false;
+        self.may_transmit = true;
+        self.t_rx_ack = T_RX_ACK_INIT;
+        self.timeouts = 0;
     }
 
     pub fn set_initialized(&mut self) {
@@ -103,6 +139,7 @@ impl Default for State {
             reject: false,
             may_transmit: true,
             t_rx_ack: T_RX_ACK_INIT,
+            timeouts: 0,
         }
     }
 }
