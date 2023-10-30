@@ -39,11 +39,24 @@ impl AshReceiver {
 
     pub fn spawn(mut self) {
         while !self.terminate.load(SeqCst) {
-            let packet = self.receive_packet();
-            self.packets.send(packet).unwrap_or_else(|error| {
-                error!("Could not send received packet.");
-                debug!("{error}");
-            });
+            match self.receive_packet() {
+                Ok(packet) => self.packets.send(Ok(packet)).unwrap_or_else(|error| {
+                    error!("Could not send received packet.");
+                    debug!("{error}");
+                }),
+                Err(error) => {
+                    if let Error::Io(io_error) = &error {
+                        if io_error.kind() == ErrorKind::TimedOut {
+                            continue;
+                        }
+
+                        self.packets.send(Err(error)).unwrap_or_else(|error| {
+                            error!("Could not send received packet.");
+                            debug!("{error}");
+                        });
+                    }
+                }
+            }
         }
     }
 
