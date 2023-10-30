@@ -419,9 +419,9 @@ where
         while self.sent_queue.len() < ACK_TIMEOUTS {
             debug!("Buffer space available. Attempting to retransmit frames.");
             if let Some(mut packet) = self.retransmit_queue.pop_front() {
+                packet.set_is_retransmission(true);
                 debug!("Retransmitting packet: {packet}");
                 trace!("Frame details:: {packet:#04X?}");
-                packet.set_is_retransmission(true);
                 self.send_data(packet);
             } else {
                 debug!("No more packets to retransmit.");
@@ -502,7 +502,7 @@ where
                     reset.resolve(Ok(()));
                 }
             }
-            Transaction::Terminate => (),
+            Transaction::Terminate => self.terminate.store(true, SeqCst),
         }
     }
 
@@ -598,6 +598,23 @@ where
             .dedup_by(|lhs, rhs| lhs.frame_num() == rhs.frame_num())
             .flat_map(|data| data.payload().iter().copied().mask())
             .collect()
+    }
+}
+
+impl<S> Drop for Worker<S>
+where
+    S: SerialPort,
+{
+    fn drop(&mut self) {
+        self.terminate.store(true, SeqCst);
+
+        if let Some(ash_sender) = self.ash_sender.take() {
+            ash_sender.join().expect("Could not join sender.");
+        }
+
+        if let Some(ash_receiver) = self.ash_receiver.take() {
+            ash_receiver.join().expect("Could not join receiver.");
+        }
     }
 }
 
