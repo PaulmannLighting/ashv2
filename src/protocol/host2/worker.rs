@@ -569,6 +569,8 @@ where
                     } else {
                         transaction.resolve(Ok(self.received_bytes()));
                     }
+
+                    self.incoming = Some(incoming);
                 }
             }
         }
