@@ -73,6 +73,8 @@ impl Data {
         } else {
             self.header &= 0xFF ^ RETRANSMIT_MASK;
         }
+
+        self.crc = self.calculate_crc();
     }
 }
 
