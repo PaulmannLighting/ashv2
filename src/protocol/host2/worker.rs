@@ -379,6 +379,7 @@ where
                 debug!("NCP acknowledged reset due to: {code}");
             },
         );
+        debug!("NCP offered version: {}", rst_ack.version());
     }
 
     fn send_pending_acks(&mut self) {
