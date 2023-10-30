@@ -161,6 +161,8 @@ where
     }
 
     fn handle_incoming_packets(&mut self) {
+        debug!("Handling incoming packets.");
+
         if let Some(incoming) = self.incoming.take() {
             for result in incoming.try_iter() {
                 self.handle_incoming_result(result);
@@ -381,7 +383,10 @@ where
     }
 
     fn send_pending_acks(&mut self) {
+        debug!("Sending pending ACKs.");
+
         for ack_number in self.pending_acks() {
+            trace!("Sending ACK #{ack_number}");
             self.send_packet(Packet::Ack(Ack::from_ack_num(ack_number)));
         }
     }
@@ -444,9 +449,15 @@ where
             return;
         }
 
+        debug!("Pushing chunks.");
         while self.sent_queue.len() < ACK_TIMEOUTS {
+            debug!("Buffer space free. Attempting to send next chunk.");
             if let Some(chunk) = self.current_chunks.pop_back() {
+                debug!("Sending chunk.");
+                trace!("Chunk: {:#04X?}", chunk);
                 self.send_chunk(chunk);
+            } else {
+                debug!("No more chunks to transmit.");
             }
         }
     }
@@ -463,8 +474,9 @@ where
     }
 
     fn process_next_transaction(&mut self) {
+        debug!("Waiting for next transaction.");
         match self.receiver.recv() {
-            Ok(transaction) => self.process_request(transaction),
+            Ok(transaction) => self.process_transaction(transaction),
             Err(error) => {
                 error!("Failed to receive packet request.");
                 debug!("{error}");
@@ -472,7 +484,9 @@ where
         }
     }
 
-    fn process_request(&mut self, transaction: Transaction) {
+    fn process_transaction(&mut self, transaction: Transaction) {
+        debug!("Processing transaction.");
+        trace!("Transaction: {:#04X?}", transaction);
         match transaction {
             Transaction::Data(data) => self.process_data_request(data),
             Transaction::Reset(reset) => {

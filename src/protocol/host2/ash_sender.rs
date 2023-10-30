@@ -1,7 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::protocol::{Stuffing, FLAG};
-use log::{debug, error};
+use log::{debug, error, trace};
 use serialport::SerialPort;
 use std::fmt::{Debug, Display};
 use std::sync::atomic::AtomicBool;
@@ -57,6 +57,7 @@ impl AshSender {
         self.buffer.clear();
         self.buffer.extend(packet.into_iter().stuff());
         self.buffer.push(FLAG);
-        self.serial_port.write_all(&mut self.buffer)
+        trace!("Sending bytes: {:#04X?}", self.buffer);
+        self.serial_port.write_all(&self.buffer)
     }
 }

@@ -40,10 +40,14 @@ impl AshReceiver {
     pub fn spawn(mut self) {
         while !self.terminate.load(SeqCst) {
             match self.receive_packet() {
-                Ok(packet) => self.packets.send(Ok(packet)).unwrap_or_else(|error| {
-                    error!("Could not send received packet.");
-                    debug!("{error}");
-                }),
+                Ok(packet) => {
+                    debug!("Received packet: {packet}");
+                    trace!("Frame details: {packet:#04X?}");
+                    self.packets.send(Ok(packet)).unwrap_or_else(|error| {
+                        error!("Could not send received packet.");
+                        debug!("{error}");
+                    });
+                }
                 Err(error) => {
                     if let Error::Io(io_error) = &error {
                         if io_error.kind() == ErrorKind::TimedOut {
