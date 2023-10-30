@@ -441,7 +441,7 @@ where
 
     fn is_transaction_complete(&self, chunks: &Chunks) -> bool {
         trace!("Chunks empty: {}", chunks.is_empty());
-        trace!("Pending ACKs: {}", self.state.pending_acks().is_empty());
+        trace!("No pending ACKs: {}", self.state.pending_acks().is_empty());
         chunks.is_empty()
             && self.state.pending_acks().is_empty()
             && self.buffers.output.queues_are_empty()
