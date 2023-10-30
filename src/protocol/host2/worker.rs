@@ -111,6 +111,7 @@ where
             }
 
             self.try_complete_current_transaction();
+            sleep(Duration::from_millis(500));
         }
     }
 
