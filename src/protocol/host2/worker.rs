@@ -50,7 +50,7 @@ where
     current_chunks: VecDeque<Vec<u8>>,
     received_data: Vec<Data>,
     is_rejecting: bool,
-    connected: bool,
+    is_connected: bool,
     frame_num: u8,
     last_received_frame_number: Option<u8>,
     last_sent_ack: u8,
@@ -82,7 +82,7 @@ where
             received_data: Vec::new(),
             last_ack_duration: None,
             is_rejecting: false,
-            connected: false,
+            is_connected: false,
             frame_num: 0,
             last_received_frame_number: None,
             last_sent_ack: 0,
@@ -94,7 +94,7 @@ where
         self.spawn_sender();
         self.spawn_receiver();
 
-        if !self.connected && !self.initialize() {
+        if !self.is_connected && !self.initialize() {
             error!("ASH initialization failed. Bailing out.");
             self.terminate.store(true, SeqCst);
         }
@@ -292,7 +292,7 @@ where
                 error!("Could not set timeout on serial port.");
                 debug!("{error}");
             });
-        self.connected = false;
+        self.is_connected = false;
         self.send_packet(Packet::Rst(Rst::default()));
 
         if let Some(incoming) = &self.incoming {
@@ -301,7 +301,7 @@ where
                     Ok(packet) => match packet {
                         Packet::RstAck(ref rst_ack) => {
                             self.reset_state();
-                            self.connected = true;
+                            self.is_connected = true;
                             debug!("Received frame: {rst_ack}");
                             trace!("Frame details: {rst_ack:#04X?}");
                             rst_ack.code().map_or_else(
@@ -368,7 +368,7 @@ where
         debug!("Received frame: {rst_ack}");
         trace!("Frame details: {rst_ack:#04X?}");
         self.may_transmit.store(true, SeqCst);
-        self.connected = true;
+        self.is_connected = true;
         rst_ack.code().map_or_else(
             || {
                 error!("NCP acknowledged reset with invalid error code.");
@@ -404,7 +404,7 @@ where
         debug!("Retransmitting unacknowledged frames.");
         self.queue_retransmit_due_to_timeout();
 
-        if !self.connected {
+        if !self.is_connected {
             debug!("Cannot retransmit due to not being connected.");
             return;
         }
@@ -444,7 +444,7 @@ where
     }
 
     fn push_chunks(&mut self) {
-        if !self.connected {
+        if !self.is_connected {
             debug!("Cannot push chunks due to not being connected.");
             return;
         }
