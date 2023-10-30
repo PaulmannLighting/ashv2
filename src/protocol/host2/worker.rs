@@ -11,7 +11,6 @@ use log::{debug, error, trace, warn};
 use serialport::SerialPort;
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::iter::Map;
 use std::ops::RangeInclusive;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
@@ -452,13 +451,16 @@ where
         debug!("Pushing chunks.");
         while self.sent_queue.len() < ACK_TIMEOUTS {
             debug!("Buffer space free. Attempting to send next chunk.");
-            if let Some(chunk) = self.current_chunks.pop_back() {
-                debug!("Sending chunk.");
-                trace!("Chunk: {:#04X?}", chunk);
-                self.send_chunk(chunk);
-            } else {
-                debug!("No more chunks to transmit.");
-            }
+            self.current_chunks.pop_back().map_or_else(
+                || {
+                    debug!("No more chunks to transmit.");
+                },
+                |chunk| {
+                    debug!("Sending chunk.");
+                    trace!("Chunk: {:#04X?}", chunk);
+                    self.send_chunk(chunk);
+                },
+            );
         }
     }
 
@@ -541,15 +543,15 @@ where
             .map_or(0, next_three_bit_number)
     }
 
-    fn pending_acks(&self) -> Map<RangeInclusive<u8>, fn(u8) -> u8> {
+    fn pending_acks(&self) -> RangeInclusive<u8> {
         let first = next_three_bit_number(self.last_sent_ack);
-        let mut last = self.ack_number();
+        let last = self.ack_number();
 
-        if first > last {
-            last += 8;
+        if first == 0 && last == 7 {
+            last..=first
+        } else {
+            first..=last
         }
-
-        (first..=last).map(|n| n % 8)
     }
 
     fn try_complete_current_transaction(&mut self) {
