@@ -150,10 +150,10 @@ where
         debug!("Receiving packet.");
 
         match self.receive_packet() {
-            Err(error) => self
-                .state
-                .handle_error(error)
-                .and_then(|timeout| Ok(self.serial_port.set_timeout(timeout)?)),
+            Err(error) => self.state.handle_error(error).and_then(|timeout| {
+                debug!("Increasing timeout to: {} ms", timeout.as_millis());
+                Ok(self.serial_port.set_timeout(timeout)?)
+            }),
             Ok(packet) => self.process_packet(packet),
         }
     }
@@ -337,6 +337,7 @@ where
         if frame.is_crc_valid() {
             self.serial_port
                 .write_all(self.buffers.output.buffer_frame(frame.into_iter().stuff()))?;
+            trace!("Flushing serial port.");
             self.serial_port.flush()
         } else {
             error!("Rejecting to send frame with invalid CRC: {frame}");
