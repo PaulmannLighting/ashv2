@@ -611,7 +611,7 @@ where
         if let Some(outgoing) = self.outgoing.take() {
             outgoing
                 .send(Packet::Rst(Rst::default()))
-                .expect("Could not send termination packet.");
+                .unwrap_or_else(|error| debug!("{error}"));
         }
 
         if let Some(ash_sender) = self.ash_sender.take() {
