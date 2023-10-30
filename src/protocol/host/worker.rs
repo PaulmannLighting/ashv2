@@ -333,12 +333,12 @@ where
         trace!("Frame details: {frame:#04X?}");
 
         if frame.is_crc_valid() {
+            self.serial_port
+                .write_all(self.buffers.output.buffer_frame(frame.into_iter().stuff()))
+        } else {
             error!("Rejecting to send frame with invalid CRC: {frame}");
-            return Err(std::io::Error::new(ErrorKind::InvalidData, "Invalid CRC."));
+            Err(std::io::Error::new(ErrorKind::InvalidData, "Invalid CRC."))
         }
-
-        self.serial_port
-            .write_all(self.buffers.output.buffer_frame(frame.into_iter().stuff()))
     }
 
     fn ack_sent_data(&mut self, ack_num: u8) {
