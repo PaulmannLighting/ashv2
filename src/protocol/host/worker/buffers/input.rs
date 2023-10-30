@@ -16,6 +16,10 @@ pub struct Input {
 }
 
 impl Input {
+    pub fn buffer(&self) -> &[u8] {
+        self.buffer.as_slice()
+    }
+
     pub fn buffer_mut(&mut self) -> &mut Vec<u8> {
         &mut self.buffer
     }

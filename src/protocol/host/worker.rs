@@ -356,20 +356,27 @@ where
         while !self.terminate.load(Ordering::SeqCst) {
             match self.buffers.input.read_byte(&mut self.serial_port)? {
                 CANCEL => {
+                    debug!("Resetting buffer due to cancel byte.");
+                    trace!("Error condition: {error}");
+                    trace!("Buffer content: {:#04X?}", self.buffers.input.buffer());
                     self.buffers.input.buffer_mut().clear();
                     error = false;
                 }
                 FLAG => {
-                    if !error && !self.buffers.input.buffer_mut().is_empty() {
+                    if !error && !self.buffers.input.buffer().is_empty() {
                         debug!("Received frame.");
-                        trace!("Frame details: {:#04X?}", self.buffers.input.buffer_mut());
+                        trace!("Frame details: {:#04X?}", self.buffers.input.buffer());
                         return Ok(self.buffers.input.frame_bytes());
                     }
 
+                    debug!("Resetting buffer due to error or empty buffer.");
+                    trace!("Error condition: {error}");
+                    trace!("Buffer content: {:#04X?}", self.buffers.input.buffer());
                     self.buffers.input.buffer_mut().clear();
                     error = false;
                 }
                 SUBSTITUTE => {
+                    debug!("Received SUBSTITUTE byte. Setting error condition.");
                     error = true;
                 }
                 X_ON => {
