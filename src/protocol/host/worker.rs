@@ -4,7 +4,7 @@ mod state;
 use super::Transaction;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, Rst, RstAck};
-use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, TIMEOUT, X_OFF, X_ON};
+use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use buffers::Buffers;
 use itertools::{Chunk, Itertools};
 use log::{debug, error, info, trace, warn};
@@ -380,8 +380,8 @@ where
                     info!("NCP requested to resume transmission.");
                     self.state.set_may_transmit(false);
                 }
-                TIMEOUT => {
-                    warn!("Received timeout byte not specified in protocol definition.");
+                WAKE => {
+                    info!("NCP tried to wake us up.");
                 }
                 byte => self.buffers.input.buffer_mut().push(byte),
             }

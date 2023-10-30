@@ -9,7 +9,7 @@ pub const X_ON: u8 = 0x11;
 pub const X_OFF: u8 = 0x13;
 pub const SUBSTITUTE: u8 = 0x18;
 pub const CANCEL: u8 = 0x1A;
-pub const TIMEOUT: u8 = 0xFF;
+pub const WAKE: u8 = 0xFF;
 pub use ash_chunks::AshChunks;
 pub use host::Host;
 pub use randomization::{Mask, MaskGenerator, MaskIterator};
