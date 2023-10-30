@@ -72,7 +72,7 @@ where
             incoming: None,
             outgoing: None,
             terminate,
-            may_transmit: Arc::new(AtomicBool::new(true)),
+            may_transmit: Arc::new(AtomicBool::new(false)),
             ash_sender: None,
             ash_receiver: None,
             sent_queue: VecDeque::new(),
@@ -94,13 +94,9 @@ where
         self.spawn_sender();
         self.spawn_receiver();
 
-        if !self.connected {
-            if self.initialize() {
-                self.connected = true;
-            } else {
-                error!("ASH initialization failed. Bailing out.");
-                self.terminate.store(true, SeqCst);
-            }
+        if !self.connected && !self.initialize() {
+            error!("ASH initialization failed. Bailing out.");
+            self.terminate.store(true, SeqCst);
         }
 
         while !self.terminate.load(SeqCst) {
@@ -341,7 +337,6 @@ where
         self.current_chunks.clear();
         self.received_data.clear();
         self.last_ack_duration = None;
-        self.is_rejecting = false;
         self.frame_num = 0;
         self.last_received_frame_number = None;
         self.last_sent_ack = 0;
@@ -371,6 +366,7 @@ where
         debug!("Received frame: {rst_ack}");
         trace!("Frame details: {rst_ack:#04X?}");
         self.may_transmit.store(true, SeqCst);
+        self.connected = true;
         rst_ack.code().map_or_else(
             || {
                 error!("NCP acknowledged reset with invalid error code.");
@@ -406,8 +402,8 @@ where
         debug!("Retransmitting unacknowledged frames.");
         self.queue_retransmit_due_to_timeout();
 
-        if self.is_rejecting {
-            debug!("Cannot retransmit due to rejecting condition.");
+        if self.connected {
+            debug!("Cannot retransmit due to not being connected.");
             return;
         }
 
@@ -446,8 +442,8 @@ where
     }
 
     fn push_chunks(&mut self) {
-        if self.is_rejecting {
-            debug!("Cannot push chunks due to rejecting condition.");
+        if self.connected {
+            debug!("Cannot push chunks due to not being connected.");
             return;
         }
 
