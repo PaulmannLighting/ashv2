@@ -34,13 +34,9 @@ impl AshSender {
     }
 
     pub fn spawn(mut self) {
-        loop {
+        while !self.terminate.load(SeqCst) {
             match self.receiver.recv() {
                 Ok(ref packet) => {
-                    if !self.terminate.load(SeqCst) {
-                        break;
-                    }
-
                     if let Err(error) = self.send_packet(packet) {
                         error!("{error}");
                     }
