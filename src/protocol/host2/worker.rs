@@ -302,18 +302,7 @@ where
                     Ok(packet) => match packet {
                         Packet::RstAck(ref rst_ack) => {
                             self.reset_state();
-                            self.is_connected = true;
-                            debug!("Received frame: {rst_ack}");
-                            trace!("Frame details: {rst_ack:#04X?}");
-                            rst_ack.code().map_or_else(
-                                || {
-                                    error!("NCP acknowledged reset with invalid error code.");
-                                    trace!("NCP response was: {rst_ack}");
-                                },
-                                |code| {
-                                    debug!("NCP acknowledged reset due to: {code}");
-                                },
-                            );
+                            self.process_rst_ack(rst_ack);
                             return true;
                         }
                         packet => trace!("Ignoring packet: {packet}."),
