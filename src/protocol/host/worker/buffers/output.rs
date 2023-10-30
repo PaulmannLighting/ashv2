@@ -1,6 +1,6 @@
 use super::INITIAL_BUFFER_CAPACITY;
 use crate::packet::Data;
-use crate::protocol::FLAG;
+use crate::protocol::{CANCEL, FLAG};
 use crate::util::Extract;
 use itertools::Itertools;
 use log::{debug, trace, warn};
@@ -33,6 +33,7 @@ impl Output {
 
     pub fn buffer_frame(&mut self, bytes: impl Iterator<Item = u8>) -> &[u8] {
         self.buffer.clear();
+        self.buffer.push(CANCEL);
         self.buffer.extend(bytes);
         self.buffer.push(FLAG);
         trace!("Buffered bytes to sent: {:#04X?}", self.buffer);
