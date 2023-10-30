@@ -292,6 +292,7 @@ where
                 error!("Could not set timeout on serial port.");
                 debug!("{error}");
             });
+        self.connected = false;
         self.send_packet(Packet::Rst(Rst::default()));
 
         if let Some(incoming) = &self.incoming {
@@ -300,6 +301,7 @@ where
                     Ok(packet) => match packet {
                         Packet::RstAck(ref rst_ack) => {
                             self.reset_state();
+                            self.connected = true;
                             debug!("Received frame: {rst_ack}");
                             trace!("Frame details: {rst_ack:#04X?}");
                             rst_ack.code().map_or_else(
