@@ -98,6 +98,7 @@ where
             if self.initialize() {
                 self.connected = true;
             } else {
+                error!("ASH initialization failed. Bailing out.");
                 self.terminate.store(true, SeqCst);
             }
         }
@@ -402,6 +403,7 @@ where
     }
 
     fn send_retransmits(&mut self) {
+        debug!("Retransmitting unacknowledged frames.");
         self.queue_retransmit_due_to_timeout();
 
         if self.is_rejecting {
@@ -415,7 +417,10 @@ where
         }
 
         while self.sent_queue.len() < ACK_TIMEOUTS {
+            debug!("Buffer space available. Attempting to retransmit frames.");
             if let Some(mut packet) = self.retransmit_queue.pop_front() {
+                debug!("Retransmitting packet: {packet}");
+                trace!("Frame details:: {packet:#04X?}");
                 packet.set_is_retransmission(true);
                 self.send_data(packet);
             }
