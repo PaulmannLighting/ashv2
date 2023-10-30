@@ -4,7 +4,7 @@ name: CI
 
 jobs:
   build:
-    name: ASHv2
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,7 +12,7 @@ jobs:
       - run: cargo build --release --all-features
 
   test:
-    name: ASHv2
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
       - run: cargo test --all-features
 
   clippy:
-    name: ASHv2
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
