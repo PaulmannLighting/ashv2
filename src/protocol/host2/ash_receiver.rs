@@ -62,6 +62,8 @@ impl AshReceiver {
                 }
             }
         }
+
+        info!("Terminating.");
     }
 
     fn receive_packet(&mut self) -> Result<Packet, Error> {

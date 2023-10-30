@@ -1,7 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::protocol::{Stuffing, FLAG};
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use serialport::SerialPort;
 use std::fmt::{Debug, Display};
 use std::sync::atomic::AtomicBool;
@@ -34,9 +34,13 @@ impl AshSender {
     }
 
     pub fn spawn(mut self) {
-        while !self.terminate.load(SeqCst) {
+        loop {
             match self.receiver.recv() {
                 Ok(ref packet) => {
+                    if !self.terminate.load(SeqCst) {
+                        break;
+                    }
+
                     if let Err(error) = self.send_packet(packet) {
                         error!("{error}");
                     }
@@ -47,6 +51,8 @@ impl AshSender {
                 }
             }
         }
+
+        info!("Terminating.");
     }
 
     fn send_packet<P>(&mut self, packet: &P) -> std::io::Result<()>

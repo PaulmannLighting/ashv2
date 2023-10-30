@@ -608,6 +608,12 @@ where
     fn drop(&mut self) {
         self.terminate.store(true, SeqCst);
 
+        if let Some(outgoing) = self.outgoing.take() {
+            outgoing
+                .send(Packet::Rst(Rst::default()))
+                .expect("Could not send termination packet.");
+        }
+
         if let Some(ash_sender) = self.ash_sender.take() {
             ash_sender.join().expect("Could not join sender.");
         }
