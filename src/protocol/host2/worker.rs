@@ -387,6 +387,7 @@ where
         for ack_number in self.pending_acks() {
             trace!("Sending ACK #{ack_number}");
             self.send_packet(Packet::Ack(Ack::from_ack_num(ack_number)));
+            self.last_sent_ack = ack_number;
         }
     }
 
