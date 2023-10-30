@@ -423,6 +423,9 @@ where
                 trace!("Frame details:: {packet:#04X?}");
                 packet.set_is_retransmission(true);
                 self.send_data(packet);
+            } else {
+                debug!("No more packets to retransmit.");
+                break;
             }
         }
     }
@@ -456,16 +459,14 @@ where
         debug!("Pushing chunks.");
         while self.sent_queue.len() < ACK_TIMEOUTS {
             debug!("Buffer space free. Attempting to send next chunk.");
-            self.current_chunks.pop_back().map_or_else(
-                || {
-                    debug!("No more chunks to transmit.");
-                },
-                |chunk| {
-                    debug!("Sending chunk.");
-                    trace!("Chunk: {:#04X?}", chunk);
-                    self.send_chunk(chunk);
-                },
-            );
+            if let Some(chunk) = self.current_chunks.pop_back() {
+                debug!("Sending chunk.");
+                trace!("Chunk: {:#04X?}", chunk);
+                self.send_chunk(chunk);
+            } else {
+                debug!("No more chunks to transmit.");
+                break;
+            }
         }
     }
 
