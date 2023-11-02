@@ -17,9 +17,7 @@ pub fn open<'a>(
     baud_rate: BaudRate,
     flow_control: FlowControl,
 ) -> serialport::Result<SerialPortImpl> {
-    SerialPortImpl::open(&serialport::new(path, baud_rate.into())).and_then(|mut serial_port| {
-        serial_port
-            .set_flow_control(flow_control)
-            .map(|_| serial_port)
-    })
+    let mut serial_port = SerialPortImpl::open(&serialport::new(path, baud_rate.into()))?;
+    serial_port.set_flow_control(flow_control)?;
+    Ok(serial_port)
 }
