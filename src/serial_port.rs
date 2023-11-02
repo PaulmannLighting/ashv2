@@ -1,12 +1,12 @@
 use crate::BaudRate;
 
-use serialport::{FlowControl, SerialPort};
+use serialport::FlowControl;
 
 #[cfg(windows)]
-pub use serialport::COMPort as SerialPortImpl;
+use serialport::COMPort as SerialPort;
 
 #[cfg(unix)]
-pub use serialport::TTYPort as SerialPortImpl;
+use serialport::TTYPort as SerialPort;
 
 /// Opens a serial port depending on the local operating system.
 ///
@@ -16,8 +16,6 @@ pub fn open<'a>(
     path: impl Into<std::borrow::Cow<'a, str>>,
     baud_rate: BaudRate,
     flow_control: FlowControl,
-) -> serialport::Result<SerialPortImpl> {
-    let mut serial_port = SerialPortImpl::open(&serialport::new(path, baud_rate.into()))?;
-    serial_port.set_flow_control(flow_control)?;
-    Ok(serial_port)
+) -> serialport::Result<SerialPort> {
+    SerialPort::open(&serialport::new(path, baud_rate.into()).flow_control(flow_control))
 }
