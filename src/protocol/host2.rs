@@ -6,6 +6,7 @@ mod worker;
 use crate::serial_port::open;
 use crate::{BaudRate, Error};
 use log::{debug, error};
+use serialport::FlowControl;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use worker::Worker;
 pub struct Host {
     path: String,
     baud_rate: BaudRate,
+    flow_control: FlowControl,
     sender: Option<Sender<Transaction>>,
     join_handle: Option<JoinHandle<()>>,
     terminate: Arc<AtomicBool>,
@@ -28,10 +30,15 @@ impl Host {
     ///
     /// # Errors
     /// Returns a [`serialport::Error`] if the serial port could not be created.
-    pub fn new(path: String, baud_rate: BaudRate) -> Result<Self, serialport::Error> {
+    pub fn new(
+        path: String,
+        baud_rate: BaudRate,
+        flow_control: FlowControl,
+    ) -> Result<Self, serialport::Error> {
         let mut host = Self {
             path,
             baud_rate,
+            flow_control,
             sender: None,
             join_handle: None,
             terminate: Arc::new(AtomicBool::new(false)),
@@ -90,7 +97,7 @@ impl Host {
     fn spawn_worker(&mut self) -> Result<(), serialport::Error> {
         let (sender, receiver) = channel::<Transaction>();
         let worker = Worker::new(
-            open(&self.path, self.baud_rate)?,
+            open(&self.path, self.baud_rate, self.flow_control)?,
             receiver,
             self.terminate.clone(),
         );
