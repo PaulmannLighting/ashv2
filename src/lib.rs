@@ -13,3 +13,4 @@ pub use error::{Error, FrameError};
 pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 pub use baud_rate::BaudRate;
 pub use protocol::{Host, Host2};
+pub use serial_port::open;
