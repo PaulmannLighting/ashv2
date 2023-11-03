@@ -1,9 +1,9 @@
 use crate::packet::{Data, Rst};
 use crate::protocol::host::command::{Command, Event, Response};
-use crate::protocol::{AshChunks, Stuffing};
+use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
 use crate::{AshWrite, Error};
-use itertools::{Chunks, Itertools};
+use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::SerialPort;
 use std::collections::VecDeque;
@@ -181,7 +181,7 @@ impl Transmitter {
 
                 if let Err(error) = self.send_chunk() {
                     error!("Error during transmission of chunk: {error}");
-                    return Err(error.into());
+                    return Err(error);
                 }
             } else {
                 break;
@@ -197,17 +197,14 @@ impl Transmitter {
     }
 
     fn send_data(&mut self, data: Data) -> Result<(), Error> {
-        self.buffer.clear();
-        self.buffer.extend(data.into_iter().stuff());
-
         if self.connected.load(SeqCst) {
+            self.serial_port.write_frame(&data, &mut self.buffer)?;
             self.sent.push((SystemTime::now(), data));
+            Ok(())
         } else {
             error!("Attempted to transmit while not connected.");
-            return Err(Error::Aborted);
+            Err(Error::Aborted)
         }
-
-        Ok(self.serial_port.write_frame(&self.buffer)?)
     }
 
     fn handle_naks_and_acks(&mut self) {
@@ -333,10 +330,8 @@ impl Transmitter {
         self.serial_port
             .set_timeout(T_RSTACK_MAX)
             .unwrap_or_else(|error| error!("Could not set timeout on serial port: {error}"));
-        self.buffer.clear();
-        self.buffer.extend(&Rst::default());
         self.serial_port
-            .write_all(self.buffer.as_ref())
+            .write_frame(&Rst::default(), &mut self.buffer)
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
     }
 

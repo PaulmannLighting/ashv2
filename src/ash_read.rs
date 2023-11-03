@@ -5,10 +5,24 @@ use log::{debug, trace};
 use std::io::{ErrorKind, Read};
 
 pub trait AshRead: Read {
+    /// Read an ASH frame [`Packet`].
+    ///
+    /// # Arguments
+    /// * `buffer` The buffer used for input buffering.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
     fn read_frame(&mut self, buffer: &mut Vec<u8>) -> Result<Packet, Error> {
         Ok(Packet::try_from(self.read_frame_raw(buffer)?.as_slice())?)
     }
 
+    /// Reads a raw ASH frame as [`Vec<[u8]>`].
+    ///
+    /// # Arguments
+    /// * `buffer` The buffer used for input buffering.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
     fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<Vec<u8>, Error> {
         buffer.clear();
         let mut error = false;

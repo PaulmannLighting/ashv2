@@ -1,10 +1,22 @@
-use crate::protocol::FLAG;
+use crate::protocol::{Stuffing, FLAG};
 use std::io::{Result, Write};
 
 pub trait AshWrite: Write {
-    fn write_frame(&mut self, frame: &[u8]) -> Result<()> {
-        self.write_all(frame)?;
-        self.write_all(&[FLAG])
+    /// Writes an ASH [`Frame`](crate::frame::Frame).
+    ///
+    /// # Arguments
+    /// * `buffer` The buffer used for output buffering.
+    ///
+    /// # Errors
+    /// Returns an [`std::io::Error`] if any I/O errors occur.
+    fn write_frame<F>(&mut self, frame: F, buffer: &mut Vec<u8>) -> Result<()>
+    where
+        F: IntoIterator<Item = u8>,
+    {
+        buffer.clear();
+        buffer.extend(frame.into_iter().stuff());
+        buffer.push(FLAG);
+        self.write_all(buffer)
     }
 }
 
