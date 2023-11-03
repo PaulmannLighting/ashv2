@@ -5,7 +5,7 @@ mod transmitter;
 use crate::Error;
 use command::Command;
 use command::ResetResponse;
-pub use command::Response;
+pub use command::{Event, HandleResult, Response};
 use listener::Listener;
 use log::error;
 use serialport::SerialPort;
