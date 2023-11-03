@@ -272,8 +272,10 @@ where
         while self.buffers.output.queue_not_full() {
             if let Some(chunk) = chunks.pop() {
                 debug!("Transmitting chunk.");
-                let data =
-                    Data::try_from((self.state.next_frame_number(), chunk.collect_vec().into()))?;
+                let data = Data::try_from((
+                    self.state.next_frame_number(),
+                    chunk.collect_vec().as_slice(),
+                ))?;
                 self.send_data(data)?;
             } else {
                 debug!("No more chunks to transmit.");

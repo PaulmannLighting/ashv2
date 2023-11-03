@@ -1,61 +1,68 @@
-mod ash_receiver;
-mod ash_sender;
-mod transaction;
-mod worker;
+mod command;
+mod listener;
+mod transmitter;
 
-use crate::serial_port::open;
-use crate::{BaudRate, Error};
-use log::{debug, error};
-use serialport::FlowControl;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
-use transaction::Transaction;
-use worker::Worker;
+use crate::protocol::host2::command::{ResetResponse, Response};
+use crate::protocol::host2::listener::Listener;
+use crate::protocol::host2::transmitter::Transmitter;
+use crate::Error;
+use command::Command;
+use log::error;
+use serialport::SerialPort;
+use std::future::Future;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::SeqCst;
+use std::sync::mpsc::{channel, SendError, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread::{spawn, JoinHandle};
 
 #[derive(Debug)]
-pub struct Host {
-    path: String,
-    baud_rate: BaudRate,
-    flow_control: FlowControl,
-    sender: Option<Sender<Transaction>>,
-    join_handle: Option<JoinHandle<()>>,
-    terminate: Arc<AtomicBool>,
+pub struct Host<S>
+where
+    S: SerialPort,
+{
+    serial_port: S,
+    running: Arc<AtomicBool>,
+    command: Option<Sender<Command>>,
+    listener_thread: Option<JoinHandle<Option<Sender<Arc<[u8]>>>>>,
+    transmitter_thread: Option<JoinHandle<()>>,
+    callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl Host {
+impl<S> Host<S>
+where
+    S: SerialPort,
+{
     /// Creates a new `ASHv2` host.
-    ///
-    /// # Errors
-    /// Returns a [`serialport::Error`] if the serial port could not be created.
-    pub fn new(
-        path: String,
-        baud_rate: BaudRate,
-        flow_control: FlowControl,
-    ) -> Result<Self, serialport::Error> {
-        let mut host = Self {
-            path,
-            baud_rate,
-            flow_control,
-            sender: None,
-            join_handle: None,
-            terminate: Arc::new(AtomicBool::new(false)),
-        };
-        host.spawn_worker()?;
-        Ok(host)
+    pub fn new(serial_port: S) -> Self {
+        Self {
+            serial_port,
+            running: Arc::new(AtomicBool::new(false)),
+            command: None,
+            listener_thread: None,
+            transmitter_thread: None,
+            callback: None,
+        }
     }
 
     /// Communicate with the NCP.
-    ///
-    /// # Errors
-    /// This function will return an [`Error`] if any error happen during communication.
-    pub async fn communicate(&mut self, payload: &[u8]) -> Result<Arc<[u8]>, Error> {
-        self.ensure_worker_is_running()?;
-        let (transaction, future) = Transaction::new_data(payload);
-        self.send_transaction(transaction)?;
-        future.await
+    pub async fn communicate<T>(&mut self, payload: &[u8]) -> <T as Future>::Output
+    where
+        T: Clone + Default + Future + Response<Arc<[u8]>> + 'static,
+        <T as Future>::Output: From<Error> + From<SendError<Command>>,
+    {
+        if let Some(channel) = &mut self.command {
+            let response = T::default();
+            let command = Command::new_data(payload, response.clone());
+
+            if let Err(error) = channel.send(command) {
+                <T as Future>::Output::from(error)
+            } else {
+                response.await
+            }
+        } else {
+            Error::WorkerNotRunning.into()
+        }
     }
 
     /// Reset the NCP.
@@ -63,76 +70,82 @@ impl Host {
     /// # Errors
     /// This function will return an [`Error`] if any error happen during communication.
     pub async fn reset(&mut self) -> Result<(), Error> {
-        self.ensure_worker_is_running()?;
-        let (transaction, future) = Transaction::new_reset();
-        self.send_transaction(transaction)?;
-        future.await
-    }
-
-    fn ensure_worker_is_running(&mut self) -> Result<(), Error> {
-        while self.terminate.load(Ordering::SeqCst) {
-            error!("Worker has terminated. Attempting to restart.");
-            self.restart_worker()?;
-        }
-
-        Ok(())
-    }
-
-    fn send_transaction(&mut self, transaction: Transaction) -> Result<(), Error> {
-        if let Some(sender) = &self.sender {
-            sender.send(transaction)?;
+        if let Some(channel) = &mut self.command {
+            let response = ResetResponse::default();
+            channel.send(Command::Reset(response.clone()))?;
+            response.await
         } else {
-            transaction.resolve_error(Error::WorkerNotRunning);
+            Err(Error::WorkerNotRunning)
+        }
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.running.load(SeqCst)
+            || self.listener_thread.is_some()
+            || self.transmitter_thread.is_none()
+    }
+
+    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
+        if self.is_running() {
+            return Err(Error::AlreadyRunning);
         }
 
-        Ok(())
-    }
-
-    fn restart_worker(&mut self) -> Result<(), serialport::Error> {
-        self.join_thread();
-        self.terminate.store(false, Ordering::SeqCst);
-        self.spawn_worker()
-    }
-
-    fn spawn_worker(&mut self) -> Result<(), serialport::Error> {
-        let (sender, receiver) = channel::<Transaction>();
-        let worker = Worker::new(
-            open(&self.path, self.baud_rate, self.flow_control)?,
-            receiver,
-            self.terminate.clone(),
+        let (command_sender, command_receiver) = channel();
+        let connected = Arc::new(AtomicBool::new(false));
+        let current_command = Arc::new(Mutex::new(None));
+        let (listener, ack_receiver, nak_receiver) = Listener::create(
+            self.serial_port.try_clone()?,
+            self.running.clone(),
+            connected.clone(),
+            current_command.clone(),
+            callback,
         );
-        self.join_handle = Some(thread::spawn(move || worker.spawn()));
-        self.sender = Some(sender);
+        let transmitter = Transmitter::new(
+            self.serial_port.try_clone()?,
+            self.running.clone(),
+            connected.clone(),
+            command_receiver,
+            current_command,
+            ack_receiver,
+            nak_receiver,
+        );
+        self.command = Some(command_sender);
+        self.listener_thread = Some(spawn(|| listener.run()));
+        self.transmitter_thread = Some(spawn(|| transmitter.spawn()));
         Ok(())
     }
 
-    fn stop_worker(&mut self) {
-        self.terminate.store(true, Ordering::SeqCst);
+    fn stop(&mut self) {
+        self.running.store(false, SeqCst);
 
-        if let Some(sender) = &self.sender {
-            match sender.send(Transaction::new_terminate()) {
-                Ok(_) => {
-                    self.sender = None;
-                    debug!("Successfully sent termination request.");
-                }
-                Err(error) => debug!("Failed to send termination request to worker: {error}"),
-            }
+        if let Some(listener_thread) = self.listener_thread.take() {
+            self.callback = listener_thread.join().unwrap_or_else(|_| {
+                error!("Failed to join listener thread.");
+                None
+            });
         }
 
-        self.join_thread();
+        if let Some(transmitter_thread) = self.transmitter_thread.take() {
+            transmitter_thread
+                .join()
+                .unwrap_or_else(|_| error!("Failed to join transmitter thread."));
+        }
+
+        drop(self.command.take());
     }
 
-    fn join_thread(&mut self) {
-        if let Some(join_handle) = self.join_handle.take() {
-            if let Err(error) = join_handle.join() {
-                error!("Thread did not terminate gracefully: {error:?}");
-            }
-        }
+    pub fn restart(&mut self) -> Result<(), Error> {
+        self.stop();
+        let callback = self.callback.take();
+        self.start(callback)
     }
 }
 
-impl Drop for Host {
+impl<S> Drop for Host<S>
+where
+    S: SerialPort,
+{
     fn drop(&mut self) {
-        self.stop_worker();
+        self.stop();
     }
 }

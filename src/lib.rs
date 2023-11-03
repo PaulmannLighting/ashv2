@@ -1,3 +1,5 @@
+mod ash_read;
+mod ash_write;
 mod baud_rate;
 mod code;
 pub mod error;
@@ -11,6 +13,8 @@ use code::Code;
 use crc::{Crc, CRC_16_IBM_3740};
 pub use error::{Error, FrameError};
 pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
+pub use ash_read::AshRead;
+pub use ash_write::AshWrite;
 pub use baud_rate::BaudRate;
 pub use protocol::{Host, Host2};
 pub use serial_port::open;

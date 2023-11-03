@@ -1,0 +1,62 @@
+use crate::packet::Packet;
+use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::Error;
+use log::{debug, trace};
+use std::io::{ErrorKind, Read};
+
+pub trait AshRead: Read {
+    fn read_frame(&mut self, buffer: &mut Vec<u8>) -> Result<Packet, Error> {
+        Ok(Packet::try_from(self.read_frame_raw(buffer)?.as_slice())?)
+    }
+
+    fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<Vec<u8>, Error> {
+        buffer.clear();
+        let mut error = false;
+
+        for byte in self.bytes() {
+            match byte? {
+                CANCEL => {
+                    debug!("Resetting buffer due to cancel byte.");
+                    trace!("Error condition: {error}");
+                    trace!("Buffer content: {:#04X?}", buffer);
+                    buffer.clear();
+                    error = false;
+                }
+                FLAG => {
+                    if !error && !buffer.is_empty() {
+                        debug!("Received frame.");
+                        trace!("Frame details: {:#04X?}", buffer);
+                        return Ok(buffer.iter().copied().unstuff().collect());
+                    }
+
+                    debug!("Resetting buffer due to error or empty buffer.");
+                    trace!("Error condition: {error}");
+                    trace!("Buffer content: {:#04X?}", buffer);
+                    buffer.clear();
+                    error = false;
+                }
+                SUBSTITUTE => {
+                    debug!("Received SUBSTITUTE byte. Setting error condition.");
+                    error = true;
+                }
+                X_ON => {
+                    debug!("NCP requested to stop transmission.");
+                }
+                X_OFF => {
+                    debug!("NCP requested to resume transmission.");
+                }
+                WAKE => {
+                    debug!("NCP tried to wake us up.");
+                }
+                byte => buffer.push(byte),
+            }
+        }
+
+        Err(Error::Io(std::io::Error::new(
+            ErrorKind::UnexpectedEof,
+            "No more bytes to read.",
+        )))
+    }
+}
+
+impl<T> AshRead for T where T: Read {}

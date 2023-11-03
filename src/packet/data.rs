@@ -156,10 +156,10 @@ impl TryFrom<&[u8]> for Data {
     }
 }
 
-impl TryFrom<(u8, Arc<[u8]>)> for Data {
+impl TryFrom<(u8, &[u8])> for Data {
     type Error = FrameError;
 
-    fn try_from((frame_num, payload): (u8, Arc<[u8]>)) -> Result<Self, Self::Error> {
+    fn try_from((frame_num, payload): (u8, &[u8])) -> Result<Self, Self::Error> {
         if !VALID_SEQS.contains(&frame_num) {
             warn!("out of range frame number {frame_num} will be truncated");
         }
