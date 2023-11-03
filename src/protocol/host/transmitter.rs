@@ -160,7 +160,7 @@ impl Transmitter {
 
                 if let Err(error) = self.send_data(data) {
                     error!("Failed to retransmit: {error}");
-                    return Err(error.into());
+                    return Err(error);
                 }
             } else {
                 break;
@@ -217,10 +217,14 @@ impl Transmitter {
     }
 
     fn handle_naks(&mut self) {
-        let nak_numbers = self.nak_receiver.try_iter().collect_vec();
+        self.buffer.clear();
+        self.buffer.extend(self.nak_receiver.try_iter());
 
-        for nak_num in nak_numbers {
-            self.handle_nak(nak_num);
+        // Hack around non-Polonius issue.
+        let mut nak_num;
+        for index in 0..self.buffer.len() {
+            nak_num = unsafe { self.buffer.get_unchecked(index) };
+            self.handle_nak(*nak_num);
         }
     }
 
@@ -236,10 +240,14 @@ impl Transmitter {
     }
 
     fn handle_acks(&mut self) {
-        let ack_numbers = self.ack_receiver.try_iter().collect_vec();
+        self.buffer.clear();
+        self.buffer.extend(self.ack_receiver.try_iter());
 
-        for ack_num in ack_numbers {
-            self.handle_ack(ack_num);
+        // Hack around non-Polonius issue.
+        let mut ack_num;
+        for index in 0..self.buffer.len() {
+            ack_num = unsafe { self.buffer.get_unchecked(index) };
+            self.handle_ack(*ack_num);
         }
     }
 
