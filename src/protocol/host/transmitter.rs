@@ -1,5 +1,5 @@
 use crate::packet::{Data, Rst};
-use crate::protocol::host2::command::{Command, Event, Response};
+use crate::protocol::host::command::{Command, Event, Response};
 use crate::protocol::{AshChunks, Stuffing};
 use crate::util::next_three_bit_number;
 use crate::{AshWrite, Error};

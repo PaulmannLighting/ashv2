@@ -1,6 +1,5 @@
 mod ash_chunks;
 mod host;
-mod host2;
 mod randomization;
 mod stuffing;
 
@@ -13,6 +12,5 @@ pub const CANCEL: u8 = 0x1A;
 pub const WAKE: u8 = 0xFF;
 pub use ash_chunks::AshChunks;
 pub use host::Host;
-pub use host2::Host as Host2;
 pub use randomization::{Mask, MaskGenerator, MaskIterator};
 pub use stuffing::{Stuffer, Stuffing, Unstuffer};

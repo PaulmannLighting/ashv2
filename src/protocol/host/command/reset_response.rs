@@ -1,5 +1,5 @@
 use super::response::{HandleResult, Response};
-use crate::protocol::host2::command::response::Event;
+use crate::protocol::host::command::response::Event;
 use crate::Error;
 use log::error;
 use std::future::Future;

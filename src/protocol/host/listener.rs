@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
-use crate::protocol::host2::command::{Command, Event, HandleResult, Response};
+use crate::protocol::host::command::{Command, Event, HandleResult, Response};
 use crate::protocol::Mask;
 use crate::util::next_three_bit_number;
 use crate::AshRead;
