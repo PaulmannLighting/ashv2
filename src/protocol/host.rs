@@ -2,11 +2,11 @@ mod command;
 mod listener;
 mod transmitter;
 
-use crate::protocol::host::command::{ResetResponse, Response};
-use crate::protocol::host::listener::Listener;
-use crate::protocol::host::transmitter::Transmitter;
 use crate::Error;
 use command::Command;
+use command::ResetResponse;
+pub use command::Response;
+use listener::Listener;
 use log::error;
 use serialport::SerialPort;
 use std::future::Future;
@@ -15,6 +15,7 @@ use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::{channel, SendError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
+use transmitter::Transmitter;
 
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
