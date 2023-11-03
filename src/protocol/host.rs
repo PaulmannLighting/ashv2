@@ -16,6 +16,8 @@ use std::sync::mpsc::{channel, SendError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 
+type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
+
 #[derive(Debug)]
 pub struct Host<S>
 where
@@ -24,7 +26,7 @@ where
     serial_port: S,
     running: Arc<AtomicBool>,
     command: Option<Sender<Command>>,
-    listener_thread: Option<JoinHandle<Option<Sender<Arc<[u8]>>>>>,
+    listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
 }
@@ -68,7 +70,7 @@ where
     /// Reset the NCP.
     ///
     /// # Errors
-    /// This function will return an [`Error`] if any error happen during communication.
+    /// Returns an [`Error`] on I/O, protocol or parsing errors.
     pub async fn reset(&mut self) -> Result<(), Error> {
         if let Some(channel) = &mut self.command {
             let response = ResetResponse::default();
@@ -79,12 +81,17 @@ where
         }
     }
 
+    /// Queries whether the host is running.
     pub fn is_running(&self) -> bool {
         self.running.load(SeqCst)
             || self.listener_thread.is_some()
             || self.transmitter_thread.is_none()
     }
 
+    /// Starts the host..
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned..
     pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
         if self.is_running() {
             return Err(Error::AlreadyRunning);
@@ -103,7 +110,7 @@ where
         let transmitter = Transmitter::new(
             self.serial_port.try_clone()?,
             self.running.clone(),
-            connected.clone(),
+            connected,
             command_receiver,
             current_command,
             ack_receiver,
@@ -134,6 +141,10 @@ where
         drop(self.command.take());
     }
 
+    /// Restarts the host.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] on I/O, protocol or parsing errors.
     pub fn restart(&mut self) -> Result<(), Error> {
         self.stop();
         let callback = self.callback.take();

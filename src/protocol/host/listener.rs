@@ -8,7 +8,6 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
-use std::io::Write;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::{channel, Receiver, Sender};

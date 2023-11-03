@@ -65,20 +65,27 @@ impl Response<()> for ResetResponse {
             Event::TransmissionCompleted => {
                 self.transmission_complete.store(true, SeqCst);
 
-                if let Ok(result) = self.result.lock() {
-                    if result.is_some() {
-                        self.wake();
-                        HandleResult::Completed
-                    } else {
-                        HandleResult::Continue
-                    }
-                } else {
+                self.result.lock().map_or_else(
+                    |_| {
+                        error!("Could not lock result.");
+                        HandleResult::Reject
+                    },
+                    |result| {
+                        if result.is_some() {
+                            self.wake();
+                            HandleResult::Completed
+                        } else {
+                            HandleResult::Continue
+                        }
+                    },
+                )
+            }
+            Event::DataReceived(data) => self.result.lock().map_or_else(
+                |_| {
                     error!("Could not lock result.");
                     HandleResult::Reject
-                }
-            }
-            Event::DataReceived(data) => {
-                if let Ok(mut result) = self.result.lock() {
+                },
+                |mut result| {
                     if result.is_some() {
                         HandleResult::Reject
                     } else {
@@ -91,11 +98,8 @@ impl Response<()> for ResetResponse {
                             HandleResult::Continue
                         }
                     }
-                } else {
-                    error!("Could not lock result.");
-                    HandleResult::Reject
-                }
-            }
+                },
+            ),
         }
     }
 
