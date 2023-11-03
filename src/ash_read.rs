@@ -1,5 +1,5 @@
 use crate::packet::Packet;
-use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
 use log::{debug, trace};
 use std::io::{ErrorKind, Read};
@@ -13,7 +13,8 @@ pub trait AshRead: Read {
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
     fn read_frame(&mut self, buffer: &mut Vec<u8>) -> Result<Packet, Error> {
-        Ok(Packet::try_from(self.read_frame_raw(buffer)?.as_slice())?)
+        self.read_frame_raw(buffer)?;
+        Ok(Packet::try_from(buffer.as_slice())?)
     }
 
     /// Reads a raw ASH frame as [`Vec<[u8]>`].
@@ -23,7 +24,7 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
-    fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<Vec<u8>, Error> {
+    fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         buffer.clear();
         let mut error = false;
 
@@ -40,7 +41,8 @@ pub trait AshRead: Read {
                     if !error && !buffer.is_empty() {
                         debug!("Received frame.");
                         trace!("Frame details: {:#04X?}", buffer);
-                        return Ok(buffer.iter().copied().unstuff().collect());
+                        buffer.unstuff();
+                        return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");

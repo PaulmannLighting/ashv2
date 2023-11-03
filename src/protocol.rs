@@ -13,4 +13,4 @@ pub const WAKE: u8 = 0xFF;
 pub use ash_chunks::AshChunks;
 pub use host::Host;
 pub use randomization::{Mask, MaskGenerator, MaskIterator};
-pub use stuffing::{Stuffer, Stuffing, Unstuffer};
+pub use stuffing::{Stuffer, Stuffing, Unstuff, Unstuffer};
