@@ -8,12 +8,14 @@ mod rst_ack;
 use crate::frame::Frame;
 use crate::FrameError;
 pub use ack::Ack;
-pub use data::{Data, MAX_FRAME_SIZE, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+pub use data::{Data, HEADER_SIZE, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;
 pub use rst_ack::RstAck;
 use std::fmt::{Debug, Display, Formatter};
+
+pub const MAX_FRAME_SIZE: usize = HEADER_SIZE + MAX_PAYLOAD_SIZE * 2; // Wost-case stuffing
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
