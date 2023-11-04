@@ -1,11 +1,10 @@
 use crate::frame::Frame;
 use crate::protocol::{Stuffing, FLAG};
 use log::{debug, trace};
-use std::fmt::{Debug, Display};
 use std::io::{Result, Write};
 
 pub trait AshWrite: Write {
-    /// Writes an ASH [`Frame`](crate::frame::Frame).
+    /// Writes an ASH [`Frame`].
     ///
     /// # Arguments
     /// * `buffer` The buffer used for output buffering.

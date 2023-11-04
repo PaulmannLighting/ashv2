@@ -1,6 +1,7 @@
 use crate::CRC;
+use std::fmt::{Debug, Display};
 
-pub trait Frame
+pub trait Frame: Debug + Display
 where
     for<'a> &'a Self: IntoIterator<Item = u8>,
 {
