@@ -15,7 +15,7 @@ const FRAME_NUM_OFFSET: u8 = 4;
 pub const MIN_PAYLOAD_SIZE: usize = 3;
 pub const HEADER_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
-pub const MAX_FRAME_SIZE: usize = HEADER_SIZE + MAX_PAYLOAD_SIZE * 2;
+pub const MAX_FRAME_SIZE: usize = HEADER_SIZE + MAX_PAYLOAD_SIZE * 2; // Wost-case stuffing
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
