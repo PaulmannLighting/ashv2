@@ -167,4 +167,11 @@ mod tests {
             ACK2
         );
     }
+
+    #[test]
+    fn from_ack_num() {
+        for ack_num in u8::MIN..=u8::MAX {
+            assert_eq!(Ack::from_ack_num(ack_num).ack_num(), ack_num % 8);
+        }
+    }
 }
