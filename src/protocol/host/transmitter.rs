@@ -52,6 +52,7 @@ impl<S> Transmitter<S>
 where
     S: SerialPort,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
@@ -309,6 +310,7 @@ where
     fn next_frame_number(&mut self) -> u8 {
         let frame_number = self.frame_number;
         self.frame_number = next_three_bit_number(frame_number);
+        trace!("Returning frame number: {frame_number}");
         frame_number
     }
 
