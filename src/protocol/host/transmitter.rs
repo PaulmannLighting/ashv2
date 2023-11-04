@@ -340,12 +340,6 @@ where
         self.connected.store(false, SeqCst);
         debug!("Resetting state.");
         self.reset_state();
-        debug!("Setting port timeout.");
-        self.serial_port
-            .lock()
-            .expect("Could not lock serial port.")
-            .set_timeout(T_RSTACK_MAX)
-            .unwrap_or_else(|error| error!("Could not set timeout on serial port: {error}"));
         debug!("Sending RST.");
         self.write_frame(&Rst::default())
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
