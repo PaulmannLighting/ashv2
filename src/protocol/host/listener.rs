@@ -170,22 +170,33 @@ where
     }
 
     fn ack_received_data(&mut self, frame_num: u8) {
+        debug!(
+            "Sending ACK back to NCP: {}",
+            next_three_bit_number(frame_num)
+        );
         self.write_frame(&Ack::from_ack_num(next_three_bit_number(frame_num)))
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
     fn forward_data(&mut self, data: &Data) {
+        debug!("Forwarding data: {data}");
         let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
 
         if let Some(command) = self.current_command().as_ref() {
             if let Command::Data(_, response) = command {
+                debug!("Forwarding data to current command.");
                 match response.handle(Event::DataReceived(Ok(payload.clone()))) {
-                    HandleResult::Completed => drop(self.current_command().take()),
-                    HandleResult::Continue => (),
+                    HandleResult::Completed => {
+                        debug!("Command responded with COMPLETED.");
+                        drop(self.current_command().take());
+                    }
+                    HandleResult::Continue => debug!("Command responded with CONTINUE."),
                     HandleResult::Reject => {
+                        debug!("Command responded with REJECT.");
                         self.callback.as_ref().map_or_else(|| {
                             error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
                         }, |callback| {
+                            debug!("Forwarding rejected data to callback.");
                             callback.send(payload).unwrap_or_else(|error| {
                                 error!("Failed to send data to callback channel: {error}");
                             });
@@ -193,6 +204,7 @@ where
                     }
                 };
             } else if let Some(callback) = &self.callback {
+                debug!("Forwarding data to callback.");
                 callback.send(payload).unwrap_or_else(|error| {
                     error!("Failed to send data to callback channel: {error}");
                 });
@@ -220,6 +232,7 @@ where
             warn!("Received ACK with invalid CRC.");
         }
 
+        debug!("Forwarding NAK to transmitter.");
         self.nak_sender
             .send(nak.ack_num())
             .unwrap_or_else(|error| error!("Failed to forward NAK: {error}"));
@@ -248,22 +261,26 @@ where
     }
 
     fn reset_state(&mut self) {
+        trace!("Resetting state variables.");
         self.read_buffer.clear();
         self.is_rejecting = false;
         self.last_received_frame_number = None;
     }
 
     fn reject(&mut self) {
+        trace!("Entering rejection state.");
         self.is_rejecting = true;
         self.send_nak();
     }
 
     fn send_nak(&mut self) {
+        debug!("Sending NAK: {}", self.ack_number());
         self.write_frame(&Nak::from_ack_num(self.ack_number()))
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
+        trace!("Reading frame.");
         self.serial_port
             .lock()
             .map_err(|error| error!("Failed to lock serial port: {error}"))
@@ -282,8 +299,9 @@ where
 
     fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
     where
-        F: IntoIterator<Item = u8>,
+        F: Debug + IntoIterator<Item = u8>,
     {
+        trace!("Writing frame: {frame:#04X?}");
         self.serial_port
             .lock()
             .map_err(|error| error!("Failed to lock serial port: {error}"))
@@ -292,6 +310,7 @@ where
     }
 
     fn current_command(&self) -> MutexGuard<'_, Option<Command>> {
+        trace!("Retrieving current command.");
         self.current_command
             .lock()
             .map_err(|error| error!("Failed to lock current command: {error}"))
