@@ -26,9 +26,12 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter {
+pub struct Transmitter<S>
+where
+    S: SerialPort,
+{
     // Shared state
-    serial_port: Box<dyn SerialPort>,
+    serial_port: S,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command>,
@@ -43,9 +46,12 @@ pub struct Transmitter {
     t_rx_ack: Duration,
 }
 
-impl Transmitter {
+impl<S> Transmitter<S>
+where
+    S: SerialPort,
+{
     pub fn new(
-        serial_port: Box<dyn SerialPort>,
+        serial_port: S,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command>,
@@ -334,6 +340,10 @@ impl Transmitter {
         self.connected.store(false, SeqCst);
         debug!("Resetting state.");
         self.reset_state();
+        debug!("Setting port timeout.");
+        self.serial_port
+            .set_timeout(T_RSTACK_MAX)
+            .unwrap_or_else(|error| error!("Could not set timeout on serial port: {error}"));
         debug!("Sending RST.");
         self.serial_port
             .write_frame(&Rst::default(), &mut self.buffer)

@@ -14,9 +14,12 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Debug)]
-pub struct Listener {
+pub struct Listener<S>
+where
+    S: SerialPort,
+{
     // Shared state
-    serial_port: Box<dyn SerialPort>,
+    serial_port: S,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     current_command: Arc<Mutex<Option<Command>>>,
@@ -30,9 +33,12 @@ pub struct Listener {
     last_received_frame_number: Option<u8>,
 }
 
-impl Listener {
+impl<S> Listener<S>
+where
+    S: SerialPort,
+{
     pub fn new(
-        serial_port: Box<dyn SerialPort>,
+        serial_port: S,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         current_command: Arc<Mutex<Option<Command>>>,
@@ -56,7 +62,7 @@ impl Listener {
     }
 
     pub fn create(
-        serial_port: Box<dyn SerialPort>,
+        serial_port: S,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         response: Arc<Mutex<Option<Command>>>,
