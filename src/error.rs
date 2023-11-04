@@ -10,8 +10,8 @@ use std::sync::{Arc, PoisonError};
 pub enum Error {
     Frame(FrameError),
     Io(Arc<std::io::Error>),
-    LockError(Arc<dyn std::error::Error + Send + Sync>),
-    SendError(Arc<dyn std::error::Error + Send + Sync>),
+    LockError(Arc<dyn std::error::Error + Send + Sync + 'static>),
+    SendError(Arc<dyn std::error::Error + Send + Sync + 'static>),
     SerialConnectionError(serialport::Error),
     CannotFindViableChunkSize(usize),
     WorkerNotRunning,
