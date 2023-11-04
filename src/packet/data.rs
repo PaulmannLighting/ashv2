@@ -68,7 +68,7 @@ impl Data {
     }
 
     pub fn set_ack_num(&mut self, ack_num: u8) {
-        self.header &= 0xFF ^ (ack_num ^ ACK_NUM_MASK);
+        self.header = (self.header | ACK_NUM_MASK) & (ack_num & ACK_NUM_MASK);
     }
 
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
@@ -370,5 +370,15 @@ mod tests {
         assert_eq!(unmasked_payload, payload);
         let byte_representation: Vec<_> = (&data).into_iter().collect();
         assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);
+    }
+
+    #[test]
+    fn test_set_ack_num() {
+        let mut data = Data::new(0, &[1, 2, 3, 4]);
+
+        for ack_num in 0..8 {
+            data.set_ack_num(ack_num);
+            assert_eq!(data.ack_num(), ack_num);
+        }
     }
 }
