@@ -1,12 +1,10 @@
 use crate::frame::Frame;
-use crate::protocol::Mask;
 use crate::{FrameError, CRC};
 use itertools::Itertools;
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::{Chain, Copied};
-use std::ops::RangeInclusive;
 use std::slice::Iter;
 use std::sync::Arc;
 
@@ -17,7 +15,6 @@ const FRAME_NUM_OFFSET: u8 = 4;
 pub const MIN_PAYLOAD_SIZE: usize = 3;
 const MIN_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
-const VALID_SEQS: RangeInclusive<u8> = 0..=7;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
@@ -43,6 +40,14 @@ impl Data {
         }
     }
 
+    #[must_use]
+    pub fn create(frame_num: u8, ack_num: u8, payload: &[u8]) -> Self {
+        Self::new(
+            ((frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK) + (ack_num & ACK_NUM_MASK),
+            payload,
+        )
+    }
+
     /// Returns the frame number.
     #[must_use]
     pub const fn frame_num(&self) -> u8 {
@@ -65,11 +70,6 @@ impl Data {
     #[must_use]
     pub fn payload(&self) -> &[u8] {
         &self.payload
-    }
-
-    pub fn set_ack_num(&mut self, ack_num: u8) {
-        self.header &= 0xFF ^ ACK_NUM_MASK;
-        self.header |= ack_num & ACK_NUM_MASK;
     }
 
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
@@ -158,33 +158,6 @@ impl TryFrom<&[u8]> for Data {
             payload,
             crc: u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
         })
-    }
-}
-
-impl TryFrom<(u8, &[u8])> for Data {
-    type Error = FrameError;
-
-    fn try_from((frame_num, payload): (u8, &[u8])) -> Result<Self, Self::Error> {
-        if !VALID_SEQS.contains(&frame_num) {
-            warn!("out of range frame number {frame_num} will be truncated");
-        }
-
-        if payload.len() < MIN_PAYLOAD_SIZE {
-            Err(Self::Error::PayloadTooSmall {
-                min: MIN_PAYLOAD_SIZE,
-                size: payload.len(),
-            })
-        } else if payload.len() > MAX_PAYLOAD_SIZE {
-            Err(Self::Error::PayloadTooLarge {
-                max: MAX_PAYLOAD_SIZE,
-                size: payload.len(),
-            })
-        } else {
-            Ok(Self::new(
-                (frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK,
-                payload.iter().copied().mask().collect_vec().as_slice(),
-            ))
-        }
     }
 }
 
@@ -371,23 +344,5 @@ mod tests {
         assert_eq!(unmasked_payload, payload);
         let byte_representation: Vec<_> = (&data).into_iter().collect();
         assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);
-    }
-
-    #[test]
-    fn test_set_ack_num() {
-        let mut data: Data;
-
-        for frame_num in 0..8 {
-            data = Data::try_from((frame_num, [1, 2, 3, 4].as_slice()))
-                .expect("Could not create data.");
-
-            for ack_num in 0..8 {
-                eprintln!("Header before: {:#b}", data.header);
-                data.set_ack_num(ack_num);
-                eprintln!("Header after: {:#b}", data.header);
-                assert_eq!(data.ack_num(), ack_num);
-                assert_eq!(data.frame_num(), frame_num);
-            }
-        }
     }
 }
