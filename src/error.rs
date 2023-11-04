@@ -6,10 +6,10 @@ use std::fmt::{Display, Formatter};
 use std::sync::mpsc::SendError;
 use std::sync::{Arc, PoisonError};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Error {
     Frame(FrameError),
-    Io(std::io::Error),
+    Io(Arc<std::io::Error>),
     LockError(Arc<dyn std::error::Error + Send + Sync>),
     SendError(Arc<dyn std::error::Error + Send + Sync>),
     SerialConnectionError(serialport::Error),
@@ -60,7 +60,7 @@ impl From<FrameError> for Error {
 
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
-        Self::Io(error)
+        Self::Io(Arc::new(error))
     }
 }
 

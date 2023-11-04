@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Error {
     InvalidHeader(Option<u8>),
     BufferTooSmall { expected: usize, found: usize },
