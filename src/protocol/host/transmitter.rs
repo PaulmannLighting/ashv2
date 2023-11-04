@@ -300,8 +300,10 @@ impl Transmitter {
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             info!("Establishing ASH connection. Attempt #{attempt}");
             self.reset();
+            info!("Connection reset.");
             sent_rst_timestamp = SystemTime::now();
 
+            debug!("Waiting for NCP to start up.");
             while !self.connected.load(SeqCst) {
                 debug!("Waiting for NCP to become ready.");
                 sleep(T_REMOTE_NOTRDY);
@@ -317,6 +319,7 @@ impl Transmitter {
                 }
             }
 
+            debug!("Checking whether NCP has started.");
             if self.connected.load(SeqCst) {
                 info!("ASH connection established.");
                 return;
