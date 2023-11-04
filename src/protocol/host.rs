@@ -18,7 +18,7 @@ use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use transmitter::Transmitter;
 
-pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
+const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
