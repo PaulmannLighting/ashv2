@@ -280,7 +280,6 @@ where
     }
 
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
-        trace!("Reading frame.");
         self.serial_port
             .lock()
             .map_err(|error| error!("Failed to lock serial port: {error}"))
