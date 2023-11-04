@@ -10,8 +10,8 @@ use listener::Listener;
 use log::error;
 use serialport::SerialPort;
 use std::future::Future;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, SendError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
@@ -111,11 +111,13 @@ where
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
         let current_command = Arc::new(Mutex::new(None));
+        let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
             self.serial_port.clone(),
             self.running.clone(),
             connected.clone(),
             current_command.clone(),
+            ack_number.clone(),
             callback,
         );
         let transmitter = Transmitter::new(
@@ -124,6 +126,7 @@ where
             connected,
             command_receiver,
             current_command,
+            ack_number,
             ack_receiver,
             nak_receiver,
         );

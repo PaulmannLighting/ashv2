@@ -9,8 +9,8 @@ use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
 use std::io::ErrorKind;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -24,6 +24,7 @@ where
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     current_command: Arc<Mutex<Option<Command>>>,
+    ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
@@ -43,6 +44,7 @@ where
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         current_command: Arc<Mutex<Option<Command>>>,
+        ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
         nak_sender: Sender<u8>,
@@ -52,6 +54,7 @@ where
             running,
             connected,
             current_command,
+            ack_number,
             callback,
             ack_sender,
             nak_sender,
@@ -67,6 +70,7 @@ where
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         response: Arc<Mutex<Option<Command>>>,
+        ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
         let (ack_sender, ack_receiver) = channel();
@@ -76,6 +80,7 @@ where
             running,
             connected,
             response,
+            ack_number,
             callback,
             ack_sender,
             nak_sender,
@@ -142,6 +147,7 @@ where
             self.reject();
         } else if data.frame_num() == self.ack_number() {
             self.ack_received_data(data.frame_num());
+            self.ack_number.store(self.ack_number(), SeqCst);
             self.is_rejecting = false;
             self.last_received_frame_number = Some(data.frame_num());
             debug!("Sending ACK to transmitter: {}", data.ack_num());
@@ -153,6 +159,7 @@ where
             self.forward_data(data);
         } else if data.is_retransmission() {
             self.ack_received_data(data.frame_num());
+            self.ack_number.store(self.ack_number(), SeqCst);
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sender
                 .send(data.ack_num())

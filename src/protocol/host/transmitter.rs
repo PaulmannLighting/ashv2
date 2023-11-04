@@ -10,8 +10,8 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::iter::Copied;
 use std::slice::Iter;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::sleep;
@@ -36,6 +36,7 @@ where
     connected: Arc<AtomicBool>,
     command: Receiver<Command>,
     current_command: Arc<Mutex<Option<Command>>>,
+    ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
     // Local state
@@ -56,6 +57,7 @@ where
         connected: Arc<AtomicBool>,
         command: Receiver<Command>,
         current_command: Arc<Mutex<Option<Command>>>,
+        ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
     ) -> Self {
@@ -65,6 +67,7 @@ where
             connected,
             command,
             current_command,
+            ack_number,
             ack_receiver,
             nak_receiver,
             buffer: Vec::new(),
@@ -205,7 +208,8 @@ where
     fn send_chunk(&mut self) -> Result<(), Error> {
         debug!("Sending chunk.");
         trace!("{:#04X?}", self.buffer);
-        let data = Data::try_from((self.next_frame_number(), self.buffer.as_ref()))?;
+        let mut data = Data::try_from((self.next_frame_number(), self.buffer.as_ref()))?;
+        data.set_ack_num(self.ack_number.load(SeqCst));
         self.send_data(data)
     }
 

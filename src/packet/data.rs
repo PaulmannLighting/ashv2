@@ -67,6 +67,10 @@ impl Data {
         &self.payload
     }
 
+    pub fn set_ack_num(&mut self, ack_num: u8) {
+        self.header &= 0xFF ^ (ack_num ^ ACK_NUM_MASK);
+    }
+
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
         if is_retransmission {
             self.header |= RETRANSMIT_MASK;
