@@ -26,10 +26,19 @@ pub trait AshRead: Read {
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
     fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<(), Error> {
         buffer.clear();
+        let mut byte = [0; 1];
         let mut error = false;
 
-        for byte in self.bytes() {
-            match byte? {
+        loop {
+            if let Err(error) = self.read_exact(&mut byte) {
+                if error.kind() == ErrorKind::UnexpectedEof {
+                    continue;
+                }
+
+                return Err(error.into());
+            }
+
+            match byte[0] {
                 CANCEL => {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
@@ -67,8 +76,6 @@ pub trait AshRead: Read {
                 byte => buffer.push(byte),
             }
         }
-
-        Err(std::io::Error::new(ErrorKind::UnexpectedEof, "No more bytes to read.").into())
     }
 }
 
