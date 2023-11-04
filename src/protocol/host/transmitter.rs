@@ -303,10 +303,12 @@ impl Transmitter {
             sent_rst_timestamp = SystemTime::now();
 
             while !self.connected.load(SeqCst) {
+                debug!("Waiting for NCP to become ready.");
                 sleep(T_REMOTE_NOTRDY);
 
                 match SystemTime::now().duration_since(sent_rst_timestamp) {
                     Ok(duration) => {
+                        trace!("Time passed: {duration:?}");
                         if duration > T_RSTACK_MAX {
                             break;
                         }
@@ -325,6 +327,7 @@ impl Transmitter {
     }
 
     fn reset(&mut self) {
+        info!("Resetting connection.");
         self.connected.store(false, SeqCst);
         self.reset_state();
         self.serial_port
