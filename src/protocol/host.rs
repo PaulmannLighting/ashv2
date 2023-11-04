@@ -15,8 +15,10 @@ use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::{channel, SendError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
+use std::time::Duration;
 use transmitter::Transmitter;
 
+const SOCKET_TIMEOUT: Duration = Duration::from_millis(10);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
@@ -38,7 +40,10 @@ where
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
-    pub fn new(serial_port: S) -> Self {
+    pub fn new(mut serial_port: S) -> Self {
+        serial_port
+            .set_timeout(SOCKET_TIMEOUT)
+            .expect("Could not set timeout on serial port.");
         Self {
             serial_port: Arc::new(Mutex::new(serial_port)),
             running: Arc::new(AtomicBool::new(false)),
