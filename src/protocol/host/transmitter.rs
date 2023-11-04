@@ -131,9 +131,11 @@ where
     }
 
     fn transmit_chunks(&mut self, mut chunks: Chunks<Copied<Iter<u8>>>) -> Result<(), Error> {
-        let mut transmits: usize = 0;
+        let mut transmits;
 
         loop {
+            transmits = 0;
+
             if !self.connected.load(SeqCst) {
                 error!("Connection lost during transaction.");
                 return Err(Error::Aborted);
@@ -150,7 +152,7 @@ where
             trace!("Transmit sent in this loop: {transmits}");
 
             if transmits == 0 && self.is_transaction_complete() {
-                debug!("Sending completed.");
+                trace!("Sending completed.");
                 return Ok(());
             }
         }
