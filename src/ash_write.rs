@@ -22,6 +22,7 @@ pub trait AshWrite: Write {
         buffer.rewind()?;
         buffer.extend(frame.into_iter().stuff())?;
         buffer.write_all(&[FLAG])?;
+        trace!("{:#04X?}", &*buffer);
         self.write_all(buffer)
     }
 }
