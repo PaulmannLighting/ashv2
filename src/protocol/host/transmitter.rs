@@ -18,7 +18,7 @@ use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
 const MAX_STARTUP_ATTEMPTS: u8 = 5;
-const MAX_TIMEOUTS: usize = 4;
+const MAX_TIMEOUTS: usize = 1;
 const T_REMOTE_NOTRDY: Duration = Duration::from_millis(1000);
 const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
