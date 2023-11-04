@@ -68,10 +68,7 @@ pub trait AshRead: Read {
             }
         }
 
-        Err(Error::Io(std::io::Error::new(
-            ErrorKind::UnexpectedEof,
-            "No more bytes to read.",
-        )))
+        Err(std::io::Error::new(ErrorKind::UnexpectedEof, "No more bytes to read.").into())
     }
 }
 
