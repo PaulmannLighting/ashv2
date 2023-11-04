@@ -106,7 +106,7 @@ where
     }
 
     fn handle_frame(&mut self, frame: &Packet) {
-        debug!("Received {frame}");
+        debug!("Received: {frame}");
         trace!("{frame:#04X?}");
 
         if self.connected.load(SeqCst) {
