@@ -19,7 +19,7 @@ where
     S: SerialPort,
 {
     // Shared state
-    serial_port: S,
+    serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     current_command: Arc<Mutex<Option<Command>>>,
@@ -38,7 +38,7 @@ where
     S: SerialPort,
 {
     pub fn new(
-        serial_port: S,
+        serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         current_command: Arc<Mutex<Option<Command>>>,
@@ -62,7 +62,7 @@ where
     }
 
     pub fn create(
-        serial_port: S,
+        serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         response: Arc<Mutex<Option<Command>>>,
@@ -84,7 +84,7 @@ where
 
     pub fn run(mut self) -> Option<Sender<Arc<[u8]>>> {
         while self.running.load(SeqCst) {
-            match self.serial_port.read_frame(&mut self.read_buffer) {
+            match self.read_frame() {
                 Ok(ref frame) => self.handle_frame(frame),
                 Err(error) => error!("{error}"),
             }
@@ -163,11 +163,7 @@ where
     }
 
     fn ack_received_data(&mut self, frame_num: u8) {
-        self.serial_port
-            .write_frame(
-                &Ack::from_ack_num(next_three_bit_number(frame_num)),
-                &mut self.write_buffer,
-            )
+        self.write_frame(&Ack::from_ack_num(next_three_bit_number(frame_num)))
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
@@ -256,12 +252,27 @@ where
     }
 
     fn send_nak(&mut self) {
-        self.serial_port
-            .write_frame(
-                &Nak::from_ack_num(self.ack_number()),
-                &mut self.write_buffer,
-            )
+        self.write_frame(&Nak::from_ack_num(self.ack_number()))
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
+    }
+
+    fn read_frame(&mut self) -> Result<Packet, crate::Error> {
+        self.serial_port
+            .lock()
+            .map_err(|error| error!("Failed to lock serial port: {error}"))
+            .expect("Failed to lock serial port.")
+            .read_frame(&mut self.read_buffer)
+    }
+
+    fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    where
+        F: IntoIterator<Item = u8>,
+    {
+        self.serial_port
+            .lock()
+            .map_err(|error| error!("Failed to lock serial port: {error}"))
+            .expect("Failed to lock serial port.")
+            .write_frame(frame, &mut self.write_buffer)
     }
 
     fn current_command(&self) -> MutexGuard<'_, Option<Command>> {

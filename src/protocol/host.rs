@@ -2,13 +2,13 @@ mod command;
 mod listener;
 mod transmitter;
 
-use crate::{open, BaudRate, Error};
+use crate::Error;
 use command::Command;
 use command::ResetResponse;
 pub use command::{Event, HandleResult, Response};
 use listener::Listener;
 use log::error;
-use serialport::{FlowControl, SerialPort};
+use serialport::SerialPort;
 use std::future::Future;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
@@ -20,10 +20,11 @@ use transmitter::Transmitter;
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
-pub struct Host {
-    serial_port: String,
-    baud_rate: BaudRate,
-    flow_control: FlowControl,
+pub struct Host<S>
+where
+    S: SerialPort + 'static,
+{
+    serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     command: Option<Sender<Command>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
@@ -31,14 +32,15 @@ pub struct Host {
     callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl Host {
+impl<S> Host<S>
+where
+    S: SerialPort + 'static,
+{
     /// Creates a new `ASHv2` host.
     #[must_use]
-    pub fn new(serial_port: String, baud_rate: BaudRate, flow_control: FlowControl) -> Self {
+    pub fn new(serial_port: S) -> Self {
         Self {
-            serial_port,
-            baud_rate,
-            flow_control,
+            serial_port: Arc::new(Mutex::new(serial_port)),
             running: Arc::new(AtomicBool::new(false)),
             command: None,
             listener_thread: None,
@@ -105,14 +107,14 @@ impl Host {
         let connected = Arc::new(AtomicBool::new(false));
         let current_command = Arc::new(Mutex::new(None));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
-            self.serial_port()?,
+            self.serial_port.clone(),
             self.running.clone(),
             connected.clone(),
             current_command.clone(),
             callback,
         );
         let transmitter = Transmitter::new(
-            self.serial_port()?,
+            self.serial_port.clone(),
             self.running.clone(),
             connected,
             command_receiver,
@@ -155,13 +157,12 @@ impl Host {
         let callback = self.callback.take();
         self.start(callback)
     }
-
-    fn serial_port(&self) -> serialport::Result<impl SerialPort> {
-        open(&self.serial_port, self.baud_rate, self.flow_control)
-    }
 }
 
-impl Drop for Host {
+impl<S> Drop for Host<S>
+where
+    S: SerialPort,
+{
     fn drop(&mut self) {
         self.stop();
     }

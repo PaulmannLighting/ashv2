@@ -31,7 +31,7 @@ where
     S: SerialPort,
 {
     // Shared state
-    serial_port: S,
+    serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command>,
@@ -51,7 +51,7 @@ where
     S: SerialPort,
 {
     pub fn new(
-        serial_port: S,
+        serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command>,
@@ -204,7 +204,7 @@ where
 
     fn send_data(&mut self, data: Data) -> Result<(), Error> {
         if self.connected.load(SeqCst) {
-            self.serial_port.write_frame(&data, &mut self.buffer)?;
+            self.write_frame(&data)?;
             self.sent.push((SystemTime::now(), data));
             Ok(())
         } else {
@@ -342,11 +342,12 @@ where
         self.reset_state();
         debug!("Setting port timeout.");
         self.serial_port
+            .lock()
+            .expect("Could not lock serial port.")
             .set_timeout(T_RSTACK_MAX)
             .unwrap_or_else(|error| error!("Could not set timeout on serial port: {error}"));
         debug!("Sending RST.");
-        self.serial_port
-            .write_frame(&Rst::default(), &mut self.buffer)
+        self.write_frame(&Rst::default())
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
     }
 
@@ -385,6 +386,17 @@ where
                 Command::Terminate => (),
             };
         }
+    }
+
+    fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    where
+        F: IntoIterator<Item = u8>,
+    {
+        self.serial_port
+            .lock()
+            .map_err(|error| error!("Failed to lock serial port: {error}"))
+            .expect("Failed to lock serial port.")
+            .write_frame(frame, &mut self.buffer)
     }
 
     fn current_command(&self) -> MutexGuard<'_, Option<Command>> {
