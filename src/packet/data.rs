@@ -68,7 +68,8 @@ impl Data {
     }
 
     pub fn set_ack_num(&mut self, ack_num: u8) {
-        self.header = (self.header | ACK_NUM_MASK) & (ack_num & ACK_NUM_MASK);
+        self.header &= 0xFF ^ ACK_NUM_MASK;
+        self.header |= ack_num & ACK_NUM_MASK;
     }
 
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
@@ -375,10 +376,26 @@ mod tests {
     #[test]
     fn test_set_ack_num() {
         let mut data = Data::new(0, &[1, 2, 3, 4]);
+        let mut frame_num = data.frame_num();
 
         for ack_num in 0..8 {
+            eprintln!("Header before: {:#b}", data.header);
             data.set_ack_num(ack_num);
+            eprintln!("Header after: {:#b}", data.header);
             assert_eq!(data.ack_num(), ack_num);
+            assert_eq!(data.frame_num(), frame_num);
+        }
+
+        frame_num = 1;
+        data =
+            Data::try_from((frame_num, [1, 2, 3, 4].as_slice())).expect("Could not create data.");
+
+        for ack_num in 0..8 {
+            eprintln!("Header before: {:#b}", data.header);
+            data.set_ack_num(ack_num);
+            eprintln!("Header after: {:#b}", data.header);
+            assert_eq!(data.ack_num(), ack_num);
+            assert_eq!(data.frame_num(), frame_num);
         }
     }
 }
