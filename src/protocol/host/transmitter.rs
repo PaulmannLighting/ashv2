@@ -1,3 +1,4 @@
+use crate::frame::Frame;
 use crate::packet::{Data, Rst};
 use crate::protocol::host::command::{Command, Event, Response};
 use crate::protocol::AshChunks;
@@ -393,9 +394,10 @@ where
         }
     }
 
-    fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: IntoIterator<Item = u8>,
+        F: Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>,
     {
         self.serial_port
             .lock()

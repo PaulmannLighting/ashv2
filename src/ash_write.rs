@@ -1,3 +1,4 @@
+use crate::frame::Frame;
 use crate::protocol::{Stuffing, FLAG};
 use log::{debug, trace};
 use std::fmt::{Debug, Display};
@@ -11,9 +12,10 @@ pub trait AshWrite: Write {
     ///
     /// # Errors
     /// Returns an [`std::io::Error`] if any I/O errors occur.
-    fn write_frame<F>(&mut self, frame: F, buffer: &mut Vec<u8>) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F, buffer: &mut Vec<u8>) -> Result<()>
     where
-        F: Debug + Display + IntoIterator<Item = u8>,
+        F: Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>,
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");

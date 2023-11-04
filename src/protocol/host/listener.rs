@@ -302,11 +302,11 @@ where
             })
     }
 
-    fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: Debug + IntoIterator<Item = u8>,
+        F: Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>,
     {
-        trace!("Writing frame: {frame:#04X?}");
         self.serial_port
             .lock()
             .map_err(|error| error!("Failed to lock serial port: {error}"))
