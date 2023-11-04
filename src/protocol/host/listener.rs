@@ -39,6 +39,7 @@ impl<S> Listener<S>
 where
     S: SerialPort,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,

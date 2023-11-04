@@ -18,7 +18,7 @@ use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use transmitter::Transmitter;
 
-const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
+pub const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
@@ -40,10 +40,7 @@ where
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
-    pub fn new(mut serial_port: S) -> Self {
-        serial_port
-            .set_timeout(SOCKET_TIMEOUT)
-            .expect("Could not set timeout on serial port.");
+    pub fn new(serial_port: S) -> Self {
         Self {
             serial_port: Arc::new(Mutex::new(serial_port)),
             running: Arc::new(AtomicBool::new(false)),
@@ -103,11 +100,18 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned..
+    ///
+    /// # Panics
+    /// This function may panic, when the serial port Mutex is poisoned.
     pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
         if self.is_running() {
             return Err(Error::AlreadyRunning);
         }
 
+        self.serial_port
+            .lock()
+            .expect("Failed to lock serial port.")
+            .set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
         let current_command = Arc::new(Mutex::new(None));
