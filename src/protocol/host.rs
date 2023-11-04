@@ -49,22 +49,25 @@ where
     }
 
     /// Communicate with the NCP.
-    pub async fn communicate<T>(&mut self, payload: &[u8]) -> <T as Future>::Output
+    ///
+    /// # Errors
+    /// Returns an error if the transactions fails.
+    pub async fn communicate<R, T, E>(&mut self, payload: &[u8]) -> <R as Future>::Output
     where
-        T: Clone + Default + Future + Response<Arc<[u8]>> + 'static,
-        <T as Future>::Output: From<Error> + From<SendError<Command>>,
+        R: Clone + Default + Future<Output = Result<T, E>> + Response<Arc<[u8]>> + 'static,
+        E: From<Error> + From<SendError<Command>>,
     {
         if let Some(channel) = &mut self.command {
-            let response = T::default();
+            let response = R::default();
             let command = Command::new_data(payload, response.clone());
 
             if let Err(error) = channel.send(command) {
-                <T as Future>::Output::from(error)
+                <R as Future>::Output::Err(error.into())
             } else {
                 response.await
             }
         } else {
-            Error::WorkerNotRunning.into()
+            Err(Error::WorkerNotRunning.into())
         }
     }
 
