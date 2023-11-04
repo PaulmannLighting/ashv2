@@ -147,9 +147,9 @@ where
             self.reject();
         } else if data.frame_num() == self.ack_number() {
             self.ack_received_data(data.frame_num());
-            self.ack_number.store(self.ack_number(), SeqCst);
             self.is_rejecting = false;
             self.last_received_frame_number = Some(data.frame_num());
+            self.ack_number.store(self.ack_number(), SeqCst);
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sender
                 .send(data.ack_num())
@@ -158,7 +158,6 @@ where
                 });
             self.forward_data(data);
         } else if data.is_retransmission() {
-            self.ack_received_data(data.frame_num());
             self.ack_number.store(self.ack_number(), SeqCst);
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sender
