@@ -258,7 +258,7 @@ where
         if let Some((timestamp, _)) = self
             .sent
             .iter()
-            .position(|(_, data)| data.frame_num() == ack_num)
+            .position(|(_, data)| next_three_bit_number(data.frame_num()) == ack_num)
             .map(|index| self.sent.remove(index))
         {
             debug!("ACKed packet #{ack_num}");
