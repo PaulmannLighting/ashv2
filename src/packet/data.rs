@@ -375,27 +375,19 @@ mod tests {
 
     #[test]
     fn test_set_ack_num() {
-        let mut data = Data::new(0, &[1, 2, 3, 4]);
-        let mut frame_num = data.frame_num();
+        let mut data: Data;
 
-        for ack_num in 0..8 {
-            eprintln!("Header before: {:#b}", data.header);
-            data.set_ack_num(ack_num);
-            eprintln!("Header after: {:#b}", data.header);
-            assert_eq!(data.ack_num(), ack_num);
-            assert_eq!(data.frame_num(), frame_num);
-        }
+        for frame_num in 0..8 {
+            data = Data::try_from((frame_num, [1, 2, 3, 4].as_slice()))
+                .expect("Could not create data.");
 
-        frame_num = 1;
-        data =
-            Data::try_from((frame_num, [1, 2, 3, 4].as_slice())).expect("Could not create data.");
-
-        for ack_num in 0..8 {
-            eprintln!("Header before: {:#b}", data.header);
-            data.set_ack_num(ack_num);
-            eprintln!("Header after: {:#b}", data.header);
-            assert_eq!(data.ack_num(), ack_num);
-            assert_eq!(data.frame_num(), frame_num);
+            for ack_num in 0..8 {
+                eprintln!("Header before: {:#b}", data.header);
+                data.set_ack_num(ack_num);
+                eprintln!("Header after: {:#b}", data.header);
+                assert_eq!(data.ack_num(), ack_num);
+                assert_eq!(data.frame_num(), frame_num);
+            }
         }
     }
 }
