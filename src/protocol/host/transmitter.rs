@@ -151,10 +151,8 @@ where
             transmits = 0;
             transmits += self.retransmit()?;
             transmits += self.push_chunks(&mut chunks)?;
-            trace!("Transmit sent in this loop: {transmits}");
 
             if transmits == 0 && self.is_transaction_complete() {
-                trace!("Sending completed.");
                 return Ok(());
             }
         }
@@ -179,7 +177,6 @@ where
             }
         }
 
-        trace!("Pushed #{retransmits} retransmits.");
         Ok(retransmits)
     }
 
@@ -201,7 +198,6 @@ where
             }
         }
 
-        trace!("Pushed #{transmits} chunks.");
         Ok(transmits)
     }
 
@@ -416,8 +412,6 @@ where
     }
 
     fn is_transaction_complete(&self) -> bool {
-        trace!("Data to ack: {}", self.sent.len());
-        trace!("Data to retransmit: {}", self.retransmit.len());
         self.sent.is_empty() && self.retransmit.is_empty()
     }
 }
