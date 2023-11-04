@@ -121,6 +121,7 @@ where
             nak_receiver,
         );
         self.command = Some(command_sender);
+        self.running.store(true, SeqCst);
         self.listener_thread = Some(spawn(|| listener.run()));
         self.transmitter_thread = Some(spawn(|| transmitter.spawn()));
         Ok(())
