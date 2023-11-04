@@ -8,6 +8,7 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
+use std::io::ErrorKind;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -85,7 +86,11 @@ where
     pub fn run(mut self) -> Option<Sender<Arc<[u8]>>> {
         while self.running.load(SeqCst) {
             match self.read_frame() {
-                Ok(ref frame) => self.handle_frame(frame),
+                Ok(packet) => {
+                    if let Some(ref frame) = packet {
+                        self.handle_frame(frame);
+                    }
+                }
                 Err(error) => error!("{error}"),
             }
         }
@@ -256,12 +261,21 @@ where
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 
-    fn read_frame(&mut self) -> Result<Packet, crate::Error> {
+    fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
         self.serial_port
             .lock()
             .map_err(|error| error!("Failed to lock serial port: {error}"))
             .expect("Failed to lock serial port.")
             .read_frame(&mut self.read_buffer)
+            .map(Some)
+            .or_else(|error| {
+                if let crate::Error::Io(io_error) = &error {
+                    if io_error.kind() == ErrorKind::TimedOut {
+                        return Ok(None);
+                    }
+                }
+                Err(error)
+            })
     }
 
     fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
