@@ -332,20 +332,28 @@ impl Transmitter {
     fn reset(&mut self) {
         info!("Resetting connection.");
         self.connected.store(false, SeqCst);
+        debug!("Resetting state.");
         self.reset_state();
+        debug!("Setting port timeout.");
         self.serial_port
             .set_timeout(T_RSTACK_MAX)
             .unwrap_or_else(|error| error!("Could not set timeout on serial port: {error}"));
+        debug!("Sending RST.");
         self.serial_port
             .write_frame(&Rst::default(), &mut self.buffer)
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
     }
 
     fn reset_state(&mut self) {
+        debug!("Aborting current command.");
         self.abort_current_command(Error::Aborted);
+        debug!("Cleaning buffer.");
         self.buffer.clear();
+        debug!("Clearing sent queue.");
         self.sent.clear();
+        debug!("Resetting frame number.");
         self.frame_number = 0;
+        debug!("Resetting T_RX_ACK.");
         self.t_rx_ack = T_RX_ACK_INIT;
     }
 
