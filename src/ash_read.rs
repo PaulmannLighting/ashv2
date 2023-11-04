@@ -35,21 +35,23 @@ pub trait AshRead: Read {
                 CANCEL => {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer content: {:#04X?}", buffer);
+                    trace!("{:#04X?}", &*buffer);
                     buffer.rewind()?;
                     error = false;
                 }
                 FLAG => {
+                    debug!("Received flag byte.");
+
                     if !error && !buffer.is_empty() {
-                        debug!("Received frame.");
-                        trace!("Frame details: {:#04X?}", buffer);
+                        debug!("Frame complete.");
+                        trace!("{:#04X?}", &*buffer);
                         buffer.unstuff();
                         return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer content: {:#04X?}", buffer);
+                    trace!("{:#04X?}", &*buffer);
                     buffer.rewind()?;
                     error = false;
                 }
