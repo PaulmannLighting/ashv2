@@ -1,7 +1,7 @@
 mod ash_chunks;
 mod host;
 mod randomization;
-mod stuffing;
+pub mod stuffing;
 
 pub const FLAG: u8 = 0x7E;
 pub const ESCAPE: u8 = 0x7D;

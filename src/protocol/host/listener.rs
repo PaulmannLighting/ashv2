@@ -1,3 +1,4 @@
+use crate::buffer::FrameBuffer;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::host::command::{Command, Event, HandleResult, Response};
@@ -8,7 +9,7 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Seek};
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -29,8 +30,8 @@ where
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
     // Local state
-    read_buffer: Vec<u8>,
-    write_buffer: Vec<u8>,
+    read_buffer: FrameBuffer,
+    write_buffer: FrameBuffer,
     is_rejecting: bool,
     last_received_frame_number: Option<u8>,
 }
@@ -59,8 +60,8 @@ where
             callback,
             ack_sender,
             nak_sender,
-            read_buffer: Vec::new(),
-            write_buffer: Vec::new(),
+            read_buffer: FrameBuffer::new(),
+            write_buffer: FrameBuffer::new(),
             is_rejecting: false,
             last_received_frame_number: None,
         }
@@ -265,7 +266,7 @@ where
 
     fn reset_state(&mut self) {
         trace!("Resetting state variables.");
-        self.read_buffer.clear();
+        self.read_buffer.rewind().expect("Could not rewind buffer.");
         self.is_rejecting = false;
         self.last_received_frame_number = None;
     }

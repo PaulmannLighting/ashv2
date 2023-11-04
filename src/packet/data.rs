@@ -13,8 +13,9 @@ const FRAME_NUM_MASK: u8 = 0b0111_0000;
 const RETRANSMIT_MASK: u8 = 0b0000_1000;
 const FRAME_NUM_OFFSET: u8 = 4;
 pub const MIN_PAYLOAD_SIZE: usize = 3;
-const MIN_SIZE: usize = 3;
+pub const HEADER_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
+pub const MAX_FRAME_SIZE: usize = HEADER_SIZE + MAX_PAYLOAD_SIZE * 2;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
@@ -136,9 +137,9 @@ impl TryFrom<&[u8]> for Data {
     type Error = FrameError;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < MIN_SIZE {
+        if buffer.len() < HEADER_SIZE {
             return Err(Self::Error::BufferTooSmall {
-                expected: MIN_SIZE,
+                expected: HEADER_SIZE,
                 found: buffer.len(),
             });
         }

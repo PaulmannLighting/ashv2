@@ -1,8 +1,10 @@
+use crate::buffer::FrameBuffer;
 use crate::packet::Packet;
 use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
 use log::{debug, trace};
-use std::io::{ErrorKind, Read};
+use std::io::{ErrorKind, Read, Seek, Write};
+use std::ops::Deref;
 
 pub trait AshRead: Read {
     /// Read an ASH frame [`Packet`].
@@ -12,9 +14,9 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
-    fn read_frame(&mut self, buffer: &mut Vec<u8>) -> Result<Packet, Error> {
+    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
         self.read_frame_raw(buffer)?;
-        Ok(Packet::try_from(buffer.as_slice())?)
+        Ok(Packet::try_from((*buffer).deref())?)
     }
 
     /// Reads a raw ASH frame as [`Vec<[u8]>`].
@@ -24,8 +26,8 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
-    fn read_frame_raw(&mut self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        buffer.clear();
+    fn read_frame_raw(&mut self, buffer: &mut FrameBuffer) -> Result<(), Error> {
+        buffer.rewind()?;
         let mut error = false;
 
         for byte in self.bytes() {
@@ -34,7 +36,7 @@ pub trait AshRead: Read {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
                     trace!("Buffer content: {:#04X?}", buffer);
-                    buffer.clear();
+                    buffer.rewind()?;
                     error = false;
                 }
                 FLAG => {
@@ -48,7 +50,7 @@ pub trait AshRead: Read {
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
                     trace!("Buffer content: {:#04X?}", buffer);
-                    buffer.clear();
+                    buffer.rewind()?;
                     error = false;
                 }
                 SUBSTITUTE => {
@@ -64,7 +66,7 @@ pub trait AshRead: Read {
                 WAKE => {
                     debug!("NCP tried to wake us up.");
                 }
-                byte => buffer.push(byte),
+                byte => buffer.write_all(&[byte])?,
             }
         }
 

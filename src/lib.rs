@@ -1,6 +1,7 @@
 mod ash_read;
 mod ash_write;
 mod baud_rate;
+mod buffer;
 mod code;
 pub mod error;
 pub mod frame;

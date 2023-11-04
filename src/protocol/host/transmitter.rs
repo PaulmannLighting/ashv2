@@ -1,3 +1,4 @@
+use crate::buffer::FrameBuffer;
 use crate::frame::Frame;
 use crate::packet::{Data, Rst};
 use crate::protocol::host::command::{Command, Event, Response};
@@ -9,6 +10,7 @@ use log::{debug, error, info, trace};
 use serialport::SerialPort;
 use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::io::Seek;
 use std::iter::Copied;
 use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
@@ -41,7 +43,7 @@ where
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
     // Local state
-    buffer: Vec<u8>,
+    buffer: FrameBuffer,
     sent: Vec<(SystemTime, Data)>,
     retransmit: VecDeque<Data>,
     frame_number: u8,
@@ -72,7 +74,7 @@ where
             ack_number,
             ack_receiver,
             nak_receiver,
-            buffer: Vec::new(),
+            buffer: FrameBuffer::new(),
             sent: Vec::new(),
             retransmit: VecDeque::new(),
             frame_number: 0,
@@ -149,7 +151,7 @@ where
                 return Err(Error::Terminated);
             }
 
-            self.handle_naks_and_acks();
+            self.handle_naks_and_acks()?;
             transmits = 0;
             transmits += self.retransmit()?;
             transmits += self.push_chunks(&mut chunks)?;
@@ -188,8 +190,8 @@ where
         while self.sent.len() < MAX_TIMEOUTS {
             if let Some(chunk) = chunks.next() {
                 transmits += 1;
-                self.buffer.clear();
-                self.buffer.extend(chunk);
+                self.buffer.rewind()?;
+                self.buffer.extend(chunk)?;
 
                 if let Err(error) = self.send_chunk() {
                     error!("Error during transmission of chunk: {error}");
@@ -228,15 +230,15 @@ where
         }
     }
 
-    fn handle_naks_and_acks(&mut self) {
-        self.handle_naks();
+    fn handle_naks_and_acks(&mut self) -> std::io::Result<()> {
+        self.handle_naks()?;
         self.check_ack_timeouts();
-        self.handle_acks();
+        self.handle_acks()
     }
 
-    fn handle_naks(&mut self) {
-        self.buffer.clear();
-        self.buffer.extend(self.nak_receiver.try_iter());
+    fn handle_naks(&mut self) -> std::io::Result<()> {
+        self.buffer.rewind()?;
+        self.buffer.extend(self.nak_receiver.try_iter())?;
 
         // Hack around non-Polonius issue.
         let mut nak_num;
@@ -244,6 +246,8 @@ where
             nak_num = unsafe { self.buffer.get_unchecked(index) };
             self.handle_nak(*nak_num);
         }
+
+        Ok(())
     }
 
     fn handle_nak(&mut self, nak_num: u8) {
@@ -257,9 +261,9 @@ where
         }
     }
 
-    fn handle_acks(&mut self) {
-        self.buffer.clear();
-        self.buffer.extend(self.ack_receiver.try_iter());
+    fn handle_acks(&mut self) -> std::io::Result<()> {
+        self.buffer.rewind()?;
+        self.buffer.extend(self.ack_receiver.try_iter())?;
 
         // Hack around non-Polonius issue.
         let mut ack_num;
@@ -267,6 +271,8 @@ where
             ack_num = unsafe { self.buffer.get_unchecked(index) };
             self.handle_ack(*ack_num);
         }
+
+        Ok(())
     }
 
     fn handle_ack(&mut self, ack_num: u8) {
@@ -366,7 +372,7 @@ where
         debug!("Aborting current command.");
         self.abort_current_command(Error::Aborted);
         debug!("Cleaning buffer.");
-        self.buffer.clear();
+        self.buffer.rewind().expect("Could not rewind buffer.");
         debug!("Clearing sent queue.");
         self.sent.clear();
         debug!("Resetting frame number.");
