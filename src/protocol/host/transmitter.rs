@@ -147,8 +147,10 @@ where
             self.handle_naks_and_acks();
             transmits += self.retransmit()?;
             transmits += self.push_chunks(&mut chunks)?;
+            trace!("Transmit sent in this loop: {transmits}");
 
             if transmits == 0 && self.is_transaction_complete() {
+                debug!("Sending completed.");
                 return Ok(());
             }
         }
@@ -402,6 +404,8 @@ where
     }
 
     fn is_transaction_complete(&self) -> bool {
+        trace!("Data to ack: {}", self.sent.len());
+        trace!("Data to retransmit: {}", self.retransmit.len());
         self.sent.is_empty() && self.retransmit.is_empty()
     }
 }
