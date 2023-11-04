@@ -203,11 +203,16 @@ where
     }
 
     fn send_chunk(&mut self) -> Result<(), Error> {
+        debug!("Sending chunk.");
+        trace!("{:#04X?}", self.buffer);
         let data = Data::try_from((self.next_frame_number(), self.buffer.as_ref()))?;
         self.send_data(data)
     }
 
     fn send_data(&mut self, data: Data) -> Result<(), Error> {
+        debug!("Sending data: {data}");
+        trace!("{data:#04X?}");
+
         if self.connected.load(SeqCst) {
             self.write_frame(&data)?;
             self.sent.push((SystemTime::now(), data));
