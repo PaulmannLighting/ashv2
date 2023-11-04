@@ -134,8 +134,6 @@ where
         let mut transmits;
 
         loop {
-            transmits = 0;
-
             if !self.connected.load(SeqCst) {
                 error!("Connection lost during transaction.");
                 return Err(Error::Aborted);
@@ -147,6 +145,7 @@ where
             }
 
             self.handle_naks_and_acks();
+            transmits = 0;
             transmits += self.retransmit()?;
             transmits += self.push_chunks(&mut chunks)?;
             trace!("Transmit sent in this loop: {transmits}");
@@ -177,6 +176,7 @@ where
             }
         }
 
+        trace!("Pushed #{retransmits} retransmits.");
         Ok(retransmits)
     }
 
@@ -198,6 +198,7 @@ where
             }
         }
 
+        trace!("Pushed #{transmits} chunks.");
         Ok(transmits)
     }
 
@@ -260,13 +261,13 @@ where
 
     fn handle_ack(&mut self, ack_num: u8) {
         debug!("Handling ACK: {ack_num}");
-        if let Some((timestamp, _)) = self
+        if let Some((timestamp, data)) = self
             .sent
             .iter()
             .position(|(_, data)| next_three_bit_number(data.frame_num()) == ack_num)
             .map(|index| self.sent.remove(index))
         {
-            debug!("ACKed packet #{ack_num}");
+            debug!("ACKed packet #{}", data.frame_num());
             if let Ok(duration) = SystemTime::now().duration_since(timestamp) {
                 self.update_t_rx_ack(Some(duration));
             }
