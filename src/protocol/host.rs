@@ -89,7 +89,7 @@ where
     pub fn is_running(&self) -> bool {
         self.running.load(SeqCst)
             || self.listener_thread.is_some()
-            || self.transmitter_thread.is_none()
+            || self.transmitter_thread.is_some()
     }
 
     /// Starts the host..
