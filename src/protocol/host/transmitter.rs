@@ -255,6 +255,7 @@ where
     }
 
     fn handle_ack(&mut self, ack_num: u8) {
+        debug!("Handling ACK: {ack_num}");
         if let Some((timestamp, _)) = self
             .sent
             .iter()
