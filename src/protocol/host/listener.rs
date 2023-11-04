@@ -176,10 +176,6 @@ where
     }
 
     fn ack_received_data(&mut self, frame_num: u8) {
-        debug!(
-            "Sending ACK back to NCP: {}",
-            next_three_bit_number(frame_num)
-        );
         self.write_frame(&Ack::from_ack_num(next_three_bit_number(frame_num)))
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
