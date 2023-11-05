@@ -4,7 +4,6 @@ use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
 use log::{debug, trace};
 use std::io::{ErrorKind, Read, Seek, Write};
-use std::ops::Deref;
 
 pub trait AshRead: Read {
     /// Read an ASH frame [`Packet`].
@@ -16,7 +15,7 @@ pub trait AshRead: Read {
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
     fn read_frame(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
         self.read_frame_raw(buffer)?;
-        Ok(Packet::try_from((*buffer).deref())?)
+        Ok(Packet::try_from(&**buffer)?)
     }
 
     /// Reads a raw ASH frame as [`Vec<[u8]>`].
@@ -35,7 +34,7 @@ pub trait AshRead: Read {
                 CANCEL => {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
-                    trace!("{:#04X?}", &*buffer);
+                    trace!("{:#04X?}", &**buffer);
                     buffer.rewind()?;
                     error = false;
                 }
@@ -44,14 +43,14 @@ pub trait AshRead: Read {
 
                     if !error && !buffer.is_empty() {
                         debug!("Frame complete.");
-                        trace!("{:#04X?}", &*buffer);
+                        trace!("{:#04X?}", &**buffer);
                         buffer.unstuff();
                         return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
-                    trace!("{:#04X?}", &*buffer);
+                    trace!("{:#04X?}", &**buffer);
                     buffer.rewind()?;
                     error = false;
                 }
