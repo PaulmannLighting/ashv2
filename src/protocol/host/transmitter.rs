@@ -207,11 +207,11 @@ where
 
     fn send_chunk(&mut self) -> Result<(), Error> {
         debug!("Sending chunk.");
-        trace!("{:#04X?}", self.buffer);
+        trace!("Buffer: {:#04X?}", &*self.buffer);
         let data = Data::create(
             self.next_frame_number(),
             self.ack_number.load(SeqCst),
-            self.buffer.as_ref(),
+            &self.buffer,
         );
         self.send_data(data)
     }
