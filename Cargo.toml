@@ -13,6 +13,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.4.7", optional = true }
 crc = "3.0.1"
+heapless = "0.7.16"
 itertools = "0.11.0"
 log = "0.4.20"
 num-derive = "0.4.1"

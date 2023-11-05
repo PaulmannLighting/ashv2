@@ -1,6 +1,5 @@
-use crate::buffer::FrameBuffer;
 use crate::frame::Frame;
-use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
+use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck, MAX_FRAME_SIZE};
 use crate::protocol::host::command::{Command, Event, HandleResult, Response};
 use crate::protocol::Mask;
 use crate::util::next_three_bit_number;
@@ -9,7 +8,7 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
-use std::io::{ErrorKind, Seek};
+use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -30,8 +29,8 @@ where
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
     // Local state
-    read_buffer: FrameBuffer,
-    write_buffer: FrameBuffer,
+    read_buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
+    write_buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
     is_rejecting: bool,
     last_received_frame_number: Option<u8>,
 }
@@ -60,8 +59,8 @@ where
             callback,
             ack_sender,
             nak_sender,
-            read_buffer: FrameBuffer::new(),
-            write_buffer: FrameBuffer::new(),
+            read_buffer: heapless::Vec::new(),
+            write_buffer: heapless::Vec::new(),
             is_rejecting: false,
             last_received_frame_number: None,
         }
@@ -266,7 +265,7 @@ where
 
     fn reset_state(&mut self) {
         trace!("Resetting state variables.");
-        self.read_buffer.rewind().expect("Could not rewind buffer.");
+        self.read_buffer.clear();
         self.is_rejecting = false;
         self.last_received_frame_number = None;
     }

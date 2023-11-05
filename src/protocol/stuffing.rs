@@ -104,9 +104,36 @@ pub trait Unstuff {
     fn unstuff(&mut self);
 }
 
+impl<const SIZE: usize> Unstuff for heapless::Vec<u8, SIZE> {
+    fn unstuff(&mut self) {
+        let mut last_escape: usize = 0;
+
+        loop {
+            if let Some(index) = self
+                .iter()
+                .skip(last_escape)
+                .position(|&byte| byte == ESCAPE)
+            {
+                last_escape += index;
+
+                if let Some(byte) = self.get_mut(last_escape + 1) {
+                    if !RESERVED_BYTES.contains(byte) {
+                        *byte ^= COMPLEMENT_BIT;
+                    }
+                }
+
+                self.remove(last_escape);
+                last_escape += 1; // Skip unescaped follow byte.
+            } else {
+                return;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Stuffer, Stuffing, Unstuffer};
+    use super::{Stuffer, Stuffing, Unstuff, Unstuffer};
 
     #[test]
     fn test_stuffing_trait() {
@@ -136,5 +163,16 @@ mod tests {
         let unstuffer = Unstuffer::new(stuffed.into_iter());
         let unstuffed: Vec<u8> = unstuffer.collect();
         assert_eq!(unstuffed, original);
+    }
+
+    #[test]
+    fn test_in_place_unstuff() {
+        let stuffed: [u8; 12] = [
+            0x7Du8, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
+        ];
+        let mut buffer: heapless::Vec<u8, 12> = heapless::Vec::new();
+        buffer.extend(stuffed);
+        buffer.unstuff();
+        assert_eq!(&buffer, &[0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D]);
     }
 }

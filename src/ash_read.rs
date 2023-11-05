@@ -1,9 +1,8 @@
-use crate::buffer::FrameBuffer;
-use crate::packet::Packet;
+use crate::packet::{Packet, MAX_FRAME_SIZE};
 use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
 use log::{debug, trace};
-use std::io::{ErrorKind, Read, Seek, Write};
+use std::io::{ErrorKind, Read};
 
 pub trait AshRead: Read {
     /// Read an ASH frame [`Packet`].
@@ -13,7 +12,10 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
-    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
+    fn read_frame(
+        &mut self,
+        buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
+    ) -> Result<Packet, Error> {
         self.read_frame_raw(buffer)?;
         Ok(Packet::try_from(&**buffer)?)
     }
@@ -25,8 +27,11 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
-    fn read_frame_raw(&mut self, buffer: &mut FrameBuffer) -> Result<(), Error> {
-        buffer.rewind()?;
+    fn read_frame_raw(
+        &mut self,
+        buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
+    ) -> Result<(), Error> {
+        buffer.clear();
         let mut error = false;
 
         for byte in self.bytes() {
@@ -34,8 +39,8 @@ pub trait AshRead: Read {
                 CANCEL => {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", &**buffer);
-                    buffer.rewind()?;
+                    trace!("Buffer: {:#04X?}", buffer);
+                    buffer.clear();
                     error = false;
                 }
                 FLAG => {
@@ -43,15 +48,15 @@ pub trait AshRead: Read {
 
                     if !error && !buffer.is_empty() {
                         debug!("Frame complete.");
-                        trace!("Buffer: {:#04X?}", &**buffer);
+                        trace!("Buffer: {:#04X?}", buffer);
                         buffer.unstuff();
                         return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", &**buffer);
-                    buffer.rewind()?;
+                    trace!("Buffer: {:#04X?}", buffer);
+                    buffer.clear();
                     error = false;
                 }
                 SUBSTITUTE => {
@@ -67,7 +72,15 @@ pub trait AshRead: Read {
                 WAKE => {
                     debug!("NCP tried to wake us up.");
                 }
-                byte => buffer.write_all(&[byte])?,
+                byte => {
+                    if buffer.push(byte).is_err() {
+                        return Err(std::io::Error::new(
+                            ErrorKind::OutOfMemory,
+                            "Buffer overflow.",
+                        )
+                        .into());
+                    }
+                }
             }
         }
 
