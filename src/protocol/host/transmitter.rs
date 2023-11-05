@@ -7,7 +7,6 @@ use crate::{AshWrite, Error};
 use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::SerialPort;
-use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::iter::Copied;
 use std::slice::Iter;
@@ -42,8 +41,8 @@ where
     nak_receiver: Receiver<u8>,
     // Local state
     buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
-    sent: Vec<(SystemTime, Data)>,
-    retransmit: VecDeque<Data>,
+    sent: heapless::Vec<(SystemTime, Data), MAX_TIMEOUTS>,
+    retransmit: heapless::Deque<Data, MAX_TIMEOUTS>,
     frame_number: u8,
     t_rx_ack: Duration,
 }
@@ -73,8 +72,8 @@ where
             ack_receiver,
             nak_receiver,
             buffer: heapless::Vec::new(),
-            sent: Vec::new(),
-            retransmit: VecDeque::new(),
+            sent: heapless::Vec::new(),
+            retransmit: heapless::Deque::new(),
             frame_number: 0,
             t_rx_ack: T_RX_ACK_INIT,
         }
@@ -220,7 +219,9 @@ where
 
         if self.connected.load(SeqCst) {
             self.write_frame(&data)?;
-            self.sent.push((SystemTime::now(), data));
+            self.sent
+                .push((SystemTime::now(), data))
+                .expect("Could not push data to sent queue.");
             Ok(())
         } else {
             error!("Attempted to transmit while not connected.");
@@ -253,7 +254,9 @@ where
             .position(|(_, data)| data.frame_num() == nak_num)
             .map(|index| self.sent.remove(index))
         {
-            self.retransmit.push_back(data);
+            self.retransmit
+                .push_back(data)
+                .expect("Could not push data to retransmit queue.");
         }
     }
 
@@ -296,7 +299,9 @@ where
             })
             .map(|index| self.sent.remove(index))
         {
-            self.retransmit.push_back(data);
+            self.retransmit
+                .push_back(data)
+                .expect("Could not push data to retransmit queue.");
             self.update_t_rx_ack(None);
         }
     }
