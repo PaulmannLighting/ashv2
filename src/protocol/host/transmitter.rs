@@ -1,9 +1,9 @@
 use crate::frame::Frame;
-use crate::packet::{Data, Rst, MAX_FRAME_SIZE};
+use crate::packet::{Data, Rst, MAX_FRAME_SIZE, MAX_PAYLOAD_SIZE};
 use crate::protocol::host::command::{Command, Event, Response};
 use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
-use crate::{AshWrite, Error};
+use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::SerialPort;
@@ -208,7 +208,12 @@ where
         let data = Data::create(
             self.next_frame_number(),
             self.ack_number.load(SeqCst),
-            &self.buffer,
+            self.buffer.as_slice().try_into().map_err(|_| {
+                Error::Frame(FrameError::PayloadTooLarge {
+                    max: MAX_PAYLOAD_SIZE,
+                    size: self.buffer.len(),
+                })
+            })?,
         );
         self.send_data(data)
     }
