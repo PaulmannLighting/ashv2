@@ -5,6 +5,7 @@ use std::fmt::Debug;
 pub enum HandleResult {
     Completed,
     Continue,
+    Failed,
     Reject,
 }
 
@@ -19,8 +20,9 @@ where
 
 pub trait Response<T>: Debug + Send + Sync
 where
-    T: Debug + Sync,
+    T: Debug + Send + Sync,
 {
     fn handle(&self, event: Event<Result<T, Error>>) -> HandleResult;
     fn abort(&self, error: Error);
+    fn wake(&self);
 }

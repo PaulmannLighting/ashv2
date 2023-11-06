@@ -25,14 +25,6 @@ impl ResetResponse {
             transmission_complete: Arc::new(AtomicBool::new(false)),
         }
     }
-
-    fn wake(&self) {
-        if let Ok(mut waker) = self.waker.lock() {
-            if let Some(waker) = waker.take() {
-                waker.wake();
-            }
-        }
-    }
 }
 
 impl Default for ResetResponse {
@@ -106,6 +98,14 @@ impl Response<()> for ResetResponse {
     fn abort(&self, error: Error) {
         if let Ok(mut result) = self.result.lock() {
             result.replace(Err(error));
+        }
+    }
+
+    fn wake(&self) {
+        if let Ok(mut waker) = self.waker.lock() {
+            if let Some(waker) = waker.take() {
+                waker.wake();
+            }
         }
     }
 }

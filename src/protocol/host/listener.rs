@@ -191,9 +191,14 @@ where
                 match response.handle(Event::DataReceived(Ok(payload.clone()))) {
                     HandleResult::Completed => {
                         debug!("Command responded with COMPLETED.");
-                        drop(self.current_command().take());
+                        response.wake();
+                        self.current_command().take();
                     }
                     HandleResult::Continue => debug!("Command responded with CONTINUE."),
+                    HandleResult::Failed => {
+                        response.wake();
+                        self.current_command().take();
+                    }
                     HandleResult::Reject => {
                         debug!("Command responded with REJECT.");
                         self.callback.as_ref().map_or_else(|| {
@@ -256,8 +261,15 @@ where
 
         if let Some(Command::Reset(reset_response)) = command.as_ref() {
             match reset_response.handle(Event::DataReceived(Ok(()))) {
-                HandleResult::Completed => drop(command.take()),
+                HandleResult::Completed => {
+                    reset_response.wake();
+                    command.take();
+                }
                 HandleResult::Continue => (),
+                HandleResult::Failed => {
+                    reset_response.wake();
+                    command.take();
+                }
                 HandleResult::Reject => warn!("Reset response handler rejected our reset."),
             }
         }
