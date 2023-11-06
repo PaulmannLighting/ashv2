@@ -170,6 +170,7 @@ impl TryFrom<&[u8]> for Data {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
     use super::Data;
@@ -336,7 +337,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn test_from_buffer() {
         // EZSP "version" command: 00 00 00 02
         let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
@@ -364,7 +364,7 @@ mod tests {
     fn test_data_frame() {
         let header = 0x00;
         let payload = [0x01, 0x00, 0x00, 0x04];
-        let msaked_payload: Vec<_> = payload.clone().into_iter().mask().collect();
+        let msaked_payload: Vec<_> = payload.into_iter().mask().collect();
         let mut crc_target = vec![header];
         crc_target.extend_from_slice(&msaked_payload);
         let crc = CRC.checksum(&crc_target);
