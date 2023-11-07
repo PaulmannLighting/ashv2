@@ -12,7 +12,7 @@ use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug)]
 pub struct Listener<S>
@@ -23,7 +23,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    current_command: Arc<Mutex<Option<Command>>>,
+    current_command: Arc<RwLock<Option<Command>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
@@ -44,7 +44,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<Mutex<Option<Command>>>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
@@ -70,7 +70,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        response: Arc<Mutex<Option<Command>>>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
@@ -80,7 +80,7 @@ where
             serial_port,
             running,
             connected,
-            response,
+            current_command,
             ack_number,
             callback,
             ack_sender,
@@ -192,12 +192,12 @@ where
                     HandleResult::Completed => {
                         debug!("Command responded with COMPLETED.");
                         response.wake();
-                        self.current_command().take();
+                        self.current_command_mut().take();
                     }
                     HandleResult::Continue => debug!("Command responded with CONTINUE."),
                     HandleResult::Failed => {
                         response.wake();
-                        self.current_command().take();
+                        self.current_command_mut().take();
                     }
                     HandleResult::Reject => {
                         debug!("Command responded with REJECT.");
@@ -257,19 +257,14 @@ where
         );
         self.reset_state();
         self.connected.store(true, SeqCst);
-        let mut command = self.current_command();
 
-        if let Some(Command::Reset(reset_response)) = command.as_ref() {
+        if let Some(Command::Reset(reset_response)) = self.current_command().as_ref() {
             match reset_response.handle(Event::DataReceived(Ok(()))) {
-                HandleResult::Completed => {
+                HandleResult::Completed | HandleResult::Failed => {
                     reset_response.wake();
-                    command.take();
+                    self.current_command_mut().take();
                 }
                 HandleResult::Continue => (),
-                HandleResult::Failed => {
-                    reset_response.wake();
-                    command.take();
-                }
                 HandleResult::Reject => warn!("Reset response handler rejected our reset."),
             }
         }
@@ -323,10 +318,18 @@ where
             .write_frame(frame, &mut self.write_buffer)
     }
 
-    fn current_command(&self) -> MutexGuard<'_, Option<Command>> {
+    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
         trace!("Retrieving current command.");
         self.current_command
-            .lock()
+            .read()
+            .map_err(|error| error!("Failed to lock current command: {error}"))
+            .expect("Failed to lock current command.")
+    }
+
+    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
+        trace!("Retrieving current command.");
+        self.current_command
+            .write()
             .map_err(|error| error!("Failed to lock current command: {error}"))
             .expect("Failed to lock current command.")
     }

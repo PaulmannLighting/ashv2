@@ -13,7 +13,7 @@ use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, SendError, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use transmitter::Transmitter;
@@ -114,7 +114,7 @@ where
             .set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
-        let current_command = Arc::new(Mutex::new(None));
+        let current_command = Arc::new(RwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
             self.serial_port.clone(),

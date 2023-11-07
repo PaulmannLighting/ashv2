@@ -13,7 +13,7 @@ use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
@@ -35,7 +35,7 @@ where
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command>,
-    current_command: Arc<Mutex<Option<Command>>>,
+    current_command: Arc<RwLock<Option<Command>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -57,7 +57,7 @@ where
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command>,
-        current_command: Arc<Mutex<Option<Command>>>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -89,7 +89,7 @@ where
 
     fn main(&mut self) {
         if self.connected.load(SeqCst) {
-            if self.current_command().as_ref().is_some() {
+            if self.current_command().is_some() {
                 trace!("Waiting for current transaction to complete.");
             } else {
                 self.process_next_command();
@@ -107,10 +107,10 @@ where
     }
 
     fn process_command(&mut self, command: Command) {
-        self.current_command().replace(command);
-        let command_clone = self.current_command().as_ref().cloned();
+        self.current_command_mut().replace(command);
+        let current_command = self.current_command().clone();
 
-        if let Some(command) = command_clone {
+        if let Some(command) = current_command {
             match command {
                 Command::Data(payload, _) => self.transmit_data(&payload),
                 Command::Reset(_) => self.reset(),
@@ -386,7 +386,7 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        if let Some(current_command) = self.current_command().take() {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
@@ -396,7 +396,7 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        if let Some(current_command) = self.current_command().take() {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => {
                     response.handle(Event::TransmissionCompleted);
@@ -421,9 +421,16 @@ where
             .write_frame(frame, &mut self.buffer)
     }
 
-    fn current_command(&self) -> MutexGuard<'_, Option<Command>> {
+    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
         self.current_command
-            .lock()
+            .read()
+            .map_err(|error| error!("Could not lock current command: {error}"))
+            .expect("Could not lock current command.")
+    }
+
+    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
+        self.current_command
+            .write()
             .map_err(|error| error!("Could not lock current command: {error}"))
             .expect("Could not lock current command.")
     }
