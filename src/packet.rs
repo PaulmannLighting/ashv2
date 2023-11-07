@@ -15,7 +15,8 @@ pub use rst::Rst;
 pub use rst_ack::RstAck;
 use std::fmt::{Debug, Display, Formatter};
 
-pub const MAX_FRAME_SIZE: usize = (HEADER_SIZE + MAX_PAYLOAD_SIZE) * 2; // Wost-case stuffing
+// In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
+pub const MAX_FRAME_SIZE: usize = (HEADER_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
