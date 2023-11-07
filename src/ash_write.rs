@@ -11,7 +11,7 @@ pub trait AshWrite: Write {
     /// * `buffer` The buffer used for output buffering.
     ///
     /// # Errors
-    /// Returns an [`std::io::Error`] if any I/O errors occur.
+    /// Returns an [`std::io::Error`] if any I/O error occurs.
     fn write_frame<F>(
         &mut self,
         frame: &F,
