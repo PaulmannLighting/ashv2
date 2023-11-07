@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck, MAX_FRAME_SIZE};
+use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
 use crate::protocol::host::command::{Command, Event, HandleResult, Response};
 use crate::protocol::Mask;
 use crate::util::next_three_bit_number;
@@ -29,8 +29,8 @@ where
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
     // Local state
-    read_buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
-    write_buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
+    read_buffer: FrameBuffer,
+    write_buffer: FrameBuffer,
     is_rejecting: bool,
     last_received_frame_number: Option<u8>,
 }
@@ -59,8 +59,8 @@ where
             callback,
             ack_sender,
             nak_sender,
-            read_buffer: heapless::Vec::new(),
-            write_buffer: heapless::Vec::new(),
+            read_buffer: FrameBuffer::new(),
+            write_buffer: FrameBuffer::new(),
             is_rejecting: false,
             last_received_frame_number: None,
         }

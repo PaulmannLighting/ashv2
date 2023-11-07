@@ -1,4 +1,4 @@
-use crate::packet::{Packet, MAX_FRAME_SIZE};
+use crate::packet::{FrameBuffer, Packet};
 use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
 use log::{debug, trace};
@@ -12,10 +12,7 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_frame(
-        &mut self,
-        buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
-    ) -> Result<Packet, Error> {
+    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
         self.read_frame_raw(buffer)?;
         Ok(Packet::try_from(&**buffer)?)
     }
@@ -27,10 +24,7 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_frame_raw(
-        &mut self,
-        buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
-    ) -> Result<(), Error> {
+    fn read_frame_raw(&mut self, buffer: &mut FrameBuffer) -> Result<(), Error> {
         buffer.clear();
         let mut error = false;
 

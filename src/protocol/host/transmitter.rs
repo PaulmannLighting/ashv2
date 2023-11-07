@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::packet::{Data, Rst, MAX_FRAME_SIZE, MAX_PAYLOAD_SIZE};
+use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::host::command::{Command, Event, Response};
 use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
@@ -40,7 +40,7 @@ where
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
     // Local state
-    buffer: heapless::Vec<u8, MAX_FRAME_SIZE>,
+    buffer: FrameBuffer,
     sent: heapless::Vec<(SystemTime, Data), MAX_TIMEOUTS>,
     retransmit: heapless::Deque<Data, MAX_TIMEOUTS>,
     frame_number: u8,
@@ -71,7 +71,7 @@ where
             ack_number,
             ack_receiver,
             nak_receiver,
-            buffer: heapless::Vec::new(),
+            buffer: FrameBuffer::new(),
             sent: heapless::Vec::new(),
             retransmit: heapless::Deque::new(),
             frame_number: 0,

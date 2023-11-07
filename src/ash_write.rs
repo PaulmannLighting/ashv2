@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::packet::MAX_FRAME_SIZE;
+use crate::packet::FrameBuffer;
 use crate::protocol::{Stuffing, FLAG};
 use log::{debug, trace};
 use std::io::{Error, ErrorKind, Result, Write};
@@ -13,11 +13,7 @@ pub trait AshWrite: Write {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O error occurs.
-    fn write_frame<F>(
-        &mut self,
-        frame: &F,
-        buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
-    ) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F, buffer: &mut FrameBuffer) -> Result<()>
     where
         F: Frame,
         for<'a> &'a F: IntoIterator<Item = u8>,
