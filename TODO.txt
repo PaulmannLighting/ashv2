@@ -1,5 +1,5 @@
 * Limit max retransmits
-* Avoid stack allocations (arrays + Cursors?)
+* Avoid heap allocations (arrays + Cursors?)
 * Refactor ResponseHandler
     - handle(data): only data (no error)
     - abort(error): Pass error and actively cancel transaction
