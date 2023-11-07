@@ -3,6 +3,7 @@ use crate::packet::MAX_FRAME_SIZE;
 use crate::protocol::{Stuffing, FLAG};
 use log::{debug, trace};
 use std::io::{Error, ErrorKind, Result, Write};
+use std::iter::once;
 
 pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
@@ -25,15 +26,12 @@ pub trait AshWrite: Write {
         trace!("{frame:#04X?}");
         buffer.clear();
 
-        for byte in frame.into_iter().stuff() {
+        for byte in frame.into_iter().stuff().chain(once(FLAG)) {
             buffer
                 .push(byte)
                 .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Buffer overflow."))?;
         }
 
-        buffer
-            .push(FLAG)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Buffer overflow."))?;
         trace!("Buffer: {:#04X?}", buffer);
         self.write_all(buffer)
     }
