@@ -11,7 +11,7 @@ pub trait AshRead: Read {
     /// * `buffer` The buffer used for input buffering.
     ///
     /// # Errors
-    /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
+    /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     fn read_frame(
         &mut self,
         buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
@@ -26,7 +26,7 @@ pub trait AshRead: Read {
     /// * `buffer` The buffer used for input buffering.
     ///
     /// # Errors
-    /// Returns an [`Error`] if any I/O, protocol or parsing error occur.
+    /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     fn read_frame_raw(
         &mut self,
         buffer: &mut heapless::Vec<u8, MAX_FRAME_SIZE>,
