@@ -28,12 +28,7 @@ impl Data {
     /// This function may panic on a buffer overflow.
     #[must_use]
     pub fn new(header: u8, payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> Self {
-        let crc = CRC.checksum(&{
-            let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
-            bytes.push(header).expect("buffer overflow");
-            bytes.extend_from_slice(&payload).expect("buffer overflow");
-            bytes
-        });
+        let crc = Self::calculate_crc(header, &payload);
         Self {
             header,
             payload,
@@ -86,6 +81,13 @@ impl Data {
 
         self.crc = self.calculate_crc();
     }
+
+    fn calculate_crc(header: u8, payload: &heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> u16 {
+        let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
+        bytes.push(header).expect("buffer overflow");
+        bytes.extend_from_slice(payload).expect("buffer overflow");
+        CRC.checksum(&bytes)
+    }
 }
 
 impl Display for Data {
@@ -114,12 +116,7 @@ impl Frame for Data {
     }
 
     fn calculate_crc(&self) -> u16 {
-        let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
-        bytes.push(self.header).expect("buffer overflow");
-        bytes
-            .extend_from_slice(&self.payload)
-            .expect("buffer overflow");
-        CRC.checksum(&bytes)
+        Self::calculate_crc(self.header, &self.payload)
     }
 }
 
