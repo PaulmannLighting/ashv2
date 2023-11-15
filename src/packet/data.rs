@@ -164,7 +164,7 @@ impl TryFrom<&[u8]> for Data {
             header: buffer[0],
             payload: payload
                 .try_into()
-                .map_err(|_| Self::Error::BufferTooSmall {
+                .map_err(|()| Self::Error::BufferTooSmall {
                     expected: payload.len(),
                     found: MAX_PAYLOAD_SIZE,
                 })?,
