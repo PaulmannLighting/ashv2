@@ -1,6 +1,5 @@
 use crate::frame::Frame;
 use crate::{FrameError, CRC};
-use itertools::Itertools;
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -24,15 +23,17 @@ pub struct Data {
 
 impl Data {
     /// Creates a new data packet.
+    ///
+    /// # Panics
+    /// This function may panic on a buffer overflow.
     #[must_use]
     pub fn new(header: u8, payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> Self {
-        let crc = CRC.checksum(
-            &header
-                .to_be_bytes()
-                .into_iter()
-                .chain(payload.iter().copied())
-                .collect_vec(),
-        );
+        let crc = CRC.checksum(&{
+            let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
+            bytes.push(header).expect("buffer overflow");
+            bytes.extend_from_slice(&payload).expect("buffer overflow");
+            bytes
+        });
         Self {
             header,
             payload,
@@ -113,9 +114,11 @@ impl Frame for Data {
     }
 
     fn calculate_crc(&self) -> u16 {
-        let mut bytes = Vec::with_capacity(self.payload.len() + 1);
-        bytes.push(self.header);
-        bytes.extend_from_slice(&self.payload);
+        let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
+        bytes.push(self.header).expect("buffer overflow");
+        bytes
+            .extend_from_slice(&self.payload)
+            .expect("buffer overflow");
         CRC.checksum(&bytes)
     }
 }
