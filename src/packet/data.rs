@@ -23,9 +23,6 @@ pub struct Data {
 
 impl Data {
     /// Creates a new data packet.
-    ///
-    /// # Panics
-    /// This function may panic on a buffer overflow.
     #[must_use]
     pub fn new(header: u8, payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> Self {
         let crc = calculate_crc(header, &payload);
