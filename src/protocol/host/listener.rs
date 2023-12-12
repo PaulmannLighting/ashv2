@@ -227,7 +227,7 @@ where
         self.connected.store(false, SeqCst);
         error.code().map_or_else(
             || {
-                error!("NCP set error without valid code.");
+                error!("NCP sent error without valid code.");
             },
             |code| {
                 warn!("NCP sent error condition: {code}");
