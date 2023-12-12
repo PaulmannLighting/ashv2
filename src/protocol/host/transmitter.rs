@@ -208,7 +208,7 @@ where
         let data = Data::create(
             self.next_frame_number(),
             self.ack_number.load(SeqCst),
-            self.buffer.as_slice().try_into().map_err(|_| {
+            self.buffer.as_slice().try_into().map_err(|()| {
                 Error::Frame(FrameError::PayloadTooLarge {
                     max: MAX_PAYLOAD_SIZE,
                     size: self.buffer.len(),
