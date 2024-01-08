@@ -25,11 +25,10 @@ impl Data {
     /// Creates a new data packet.
     #[must_use]
     pub fn new(header: u8, payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> Self {
-        let crc = calculate_crc(header, &payload);
         Self {
             header,
+            crc: calculate_crc(header, &payload),
             payload,
-            crc,
         }
     }
 
