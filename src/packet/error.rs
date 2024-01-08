@@ -41,6 +41,11 @@ impl Error {
     pub fn code(&self) -> Option<Code> {
         Code::from_u8(self.error_code)
     }
+
+    #[must_use]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
 }
 
 impl Display for Error {

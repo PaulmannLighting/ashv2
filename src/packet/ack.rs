@@ -41,6 +41,11 @@ impl Ack {
     pub const fn ack_num(&self) -> u8 {
         self.header & ACK_NUM_MASK
     }
+
+    #[must_use]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
 }
 
 impl Display for Ack {

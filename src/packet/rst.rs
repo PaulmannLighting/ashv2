@@ -24,6 +24,11 @@ impl Rst {
             crc: CRC,
         }
     }
+
+    #[must_use]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
 }
 
 impl Default for Rst {

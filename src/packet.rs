@@ -29,6 +29,13 @@ pub enum Packet {
     RstAck(RstAck),
 }
 
+impl Packet {
+    #[must_use]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
+}
+
 impl Display for Packet {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

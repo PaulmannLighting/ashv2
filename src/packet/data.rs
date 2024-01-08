@@ -78,6 +78,11 @@ impl Data {
 
         self.crc = self.calculate_crc();
     }
+
+    #[must_use]
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
 }
 
 impl Display for Data {
