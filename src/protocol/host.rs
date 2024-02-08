@@ -96,7 +96,7 @@ where
             || self.transmitter_thread.is_some()
     }
 
-    /// Starts the host..
+    /// Starts the host.
     ///
     /// # Errors
     /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned..
