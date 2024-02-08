@@ -99,7 +99,7 @@ where
     /// Starts the host.
     ///
     /// # Errors
-    /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned..
+    /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned.
     ///
     /// # Panics
     /// This function may panic, when the serial port Mutex is poisoned.
