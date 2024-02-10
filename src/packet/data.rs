@@ -365,13 +365,13 @@ mod tests {
     fn test_data_frame() {
         let header = 0x00;
         let payload = [0x01, 0x00, 0x00, 0x04];
-        let msaked_payload: Vec<_> = payload.into_iter().mask().collect();
+        let masked_payload: Vec<_> = payload.into_iter().mask().collect();
         let mut crc_target = vec![header];
-        crc_target.extend_from_slice(&msaked_payload);
+        crc_target.extend_from_slice(&masked_payload);
         let crc = CRC.checksum(&crc_target);
         let data = Data {
             header: 0x00,
-            payload: msaked_payload.as_slice().try_into().unwrap(),
+            payload: masked_payload.as_slice().try_into().unwrap(),
             crc,
         };
         let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
