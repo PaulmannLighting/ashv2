@@ -245,10 +245,8 @@ where
         self.buffer.extend(self.nak_receiver.try_iter());
 
         // Hack around non-Polonius issue.
-        let mut nak_num;
         for index in 0..self.buffer.len() {
-            nak_num = unsafe { self.buffer.get_unchecked(index) };
-            self.handle_nak(*nak_num);
+            self.handle_nak(*unsafe { self.buffer.get_unchecked(index) });
         }
     }
 
@@ -270,10 +268,8 @@ where
         self.buffer.extend(self.ack_receiver.try_iter());
 
         // Hack around non-Polonius issue.
-        let mut ack_num;
         for index in 0..self.buffer.len() {
-            ack_num = unsafe { self.buffer.get_unchecked(index) };
-            self.handle_ack(*ack_num);
+            self.handle_ack(*unsafe { self.buffer.get_unchecked(index) });
         }
     }
 
