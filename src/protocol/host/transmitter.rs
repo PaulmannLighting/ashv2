@@ -79,7 +79,7 @@ where
         }
     }
 
-    pub fn spawn(mut self) {
+    pub fn run(mut self) {
         while self.running.load(SeqCst) {
             self.main();
         }
