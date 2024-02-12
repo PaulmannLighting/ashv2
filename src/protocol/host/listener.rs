@@ -334,7 +334,7 @@ where
             .expect("Failed to lock current command.")
     }
 
-    pub const fn ack_number(&self) -> u8 {
+    const fn ack_number(&self) -> u8 {
         if let Some(last_received_frame_number) = self.last_received_frame_number {
             next_three_bit_number(last_received_frame_number)
         } else {
