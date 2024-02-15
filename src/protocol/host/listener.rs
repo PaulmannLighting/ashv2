@@ -292,7 +292,6 @@ where
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
         self.serial_port
             .lock()
-            .map_err(|error| error!("Failed to lock serial port: {error}"))
             .expect("Failed to lock serial port.")
             .read_frame(&mut self.read_buffer)
             .map(Some)
@@ -313,7 +312,6 @@ where
     {
         self.serial_port
             .lock()
-            .map_err(|error| error!("Failed to lock serial port: {error}"))
             .expect("Failed to lock serial port.")
             .write_frame(frame, &mut self.write_buffer)
     }
@@ -322,7 +320,6 @@ where
         trace!("Retrieving current command.");
         self.current_command
             .read()
-            .map_err(|error| error!("Failed to lock current command: {error}"))
             .expect("Failed to lock current command.")
     }
 
@@ -330,7 +327,6 @@ where
         trace!("Retrieving current command.");
         self.current_command
             .write()
-            .map_err(|error| error!("Failed to lock current command: {error}"))
             .expect("Failed to lock current command.")
     }
 

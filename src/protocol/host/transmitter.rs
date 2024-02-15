@@ -412,7 +412,6 @@ where
     {
         self.serial_port
             .lock()
-            .map_err(|error| error!("Failed to lock serial port: {error}"))
             .expect("Failed to lock serial port.")
             .write_frame(frame, &mut self.buffer)
     }
