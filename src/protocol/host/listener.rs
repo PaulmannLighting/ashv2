@@ -196,6 +196,7 @@ where
                     }
                     HandleResult::Continue => debug!("Command responded with CONTINUE."),
                     HandleResult::Failed => {
+                        warn!("Command responded with FAILED.");
                         response.wake();
                         self.current_command_mut().take();
                     }
