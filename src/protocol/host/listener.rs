@@ -188,30 +188,7 @@ where
         if let Some(command) = self.current_command().as_ref() {
             if let Command::Data(_, response) = command {
                 debug!("Forwarding data to current command.");
-                match response.handle(Event::DataReceived(Ok(payload.clone()))) {
-                    HandleResult::Completed => {
-                        debug!("Command responded with COMPLETED.");
-                        response.wake();
-                        self.current_command_mut().take();
-                    }
-                    HandleResult::Continue => debug!("Command responded with CONTINUE."),
-                    HandleResult::Failed => {
-                        warn!("Command responded with FAILED.");
-                        response.wake();
-                        self.current_command_mut().take();
-                    }
-                    HandleResult::Reject => {
-                        debug!("Command responded with REJECT.");
-                        self.callback.as_ref().map_or_else(|| {
-                            error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
-                        }, |callback| {
-                            debug!("Forwarding rejected data to callback.");
-                            callback.send(payload).unwrap_or_else(|error| {
-                                error!("Failed to send data to callback channel: {error}");
-                            });
-                        });
-                    }
-                };
+                self.forward_data_to_command(payload, response);
             } else if let Some(callback) = &self.callback {
                 debug!("Forwarding data to callback.");
                 callback.send(payload).unwrap_or_else(|error| {
@@ -221,6 +198,33 @@ where
                 error!("There is neither an active response handler nor a callback handler registered. Dropping packet.");
             }
         }
+    }
+
+    fn forward_data_to_command(&self, payload: Arc<[u8]>, response: &Arc<dyn Response<Arc<[u8]>>>) {
+        match response.handle(Event::DataReceived(Ok(payload.clone()))) {
+            HandleResult::Completed => {
+                debug!("Command responded with COMPLETED.");
+                response.wake();
+                self.current_command_mut().take();
+            }
+            HandleResult::Continue => debug!("Command responded with CONTINUE."),
+            HandleResult::Failed => {
+                warn!("Command responded with FAILED.");
+                response.wake();
+                self.current_command_mut().take();
+            }
+            HandleResult::Reject => {
+                debug!("Command responded with REJECT.");
+                self.callback.as_ref().map_or_else(|| {
+                    error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
+                }, |callback| {
+                    debug!("Forwarding rejected data to callback.");
+                    callback.send(payload).unwrap_or_else(|error| {
+                        error!("Failed to send data to callback channel: {error}");
+                    });
+                });
+            }
+        };
     }
 
     fn handle_error(&mut self, error: &Error) {
