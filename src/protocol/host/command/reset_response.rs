@@ -18,10 +18,13 @@ pub struct ResetResponse {
 
 impl ResetResponse {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(
+        result: Arc<Mutex<Option<Result<(), Error>>>>,
+        waker: Arc<Mutex<Option<Waker>>>,
+    ) -> Self {
         Self {
-            result: Arc::new(Mutex::new(None)),
-            waker: Arc::new(Mutex::new(None)),
+            result,
+            waker,
             transmission_complete: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -29,7 +32,7 @@ impl ResetResponse {
 
 impl Default for ResetResponse {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(Mutex::new(None)), Arc::new(Mutex::new(None)))
     }
 }
 
