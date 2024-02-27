@@ -114,7 +114,6 @@ where
             match command {
                 Command::Data(payload, _) => self.transmit_data(&payload),
                 Command::Reset(_) => self.reset(),
-                Command::Terminate => self.running.store(false, SeqCst),
             };
         }
     }
@@ -386,7 +385,6 @@ where
             match current_command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
-                Command::Terminate => (),
             };
         }
     }
@@ -400,7 +398,6 @@ where
                 Command::Reset(response) => {
                     response.handle(Event::TransmissionCompleted);
                 }
-                Command::Terminate => (),
             };
         }
     }

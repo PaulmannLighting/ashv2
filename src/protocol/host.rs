@@ -66,7 +66,7 @@ where
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
-            let command = Command::new_data(payload, response.clone());
+            let command = Command::new(payload, response.clone());
             channel.send(command).expect("could not send command");
             response.await
         } else {
