@@ -12,7 +12,7 @@ use serialport::SerialPort;
 use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
-use std::sync::mpsc::{channel, SendError, Sender};
+use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
@@ -59,13 +59,13 @@ where
     ///
     /// # Panics
     /// This function panics if the command cannot be sent through the channel.
-    pub async fn communicate<R, T, E>(&mut self, payload: &[u8]) -> <R as Future>::Output
+    pub async fn communicate<R, E, T>(&mut self, payload: &[u8]) -> <T as Future>::Output
     where
-        R: Clone + Default + Future<Output = Result<T, E>> + Response<Arc<[u8]>> + 'static,
+        T: Clone + Default + Response<Arc<[u8]>> + Future<Output = Result<R, E>> + 'static,
         E: From<Error>,
     {
         if let Some(channel) = &mut self.command {
-            let response = R::default();
+            let response = T::default();
             let command = Command::new_data(payload, response.clone());
             channel.send(command).expect("could not send command");
             response.await
