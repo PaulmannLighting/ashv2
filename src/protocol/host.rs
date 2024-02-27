@@ -19,6 +19,7 @@ use std::time::Duration;
 use transmitter::Transmitter;
 
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
+
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
@@ -55,20 +56,19 @@ where
     ///
     /// # Errors
     /// Returns an error if the transactions fails.
+    ///
+    /// # Panics
+    /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<R, T, E>(&mut self, payload: &[u8]) -> <R as Future>::Output
     where
         R: Clone + Default + Future<Output = Result<T, E>> + Response<Arc<[u8]>> + 'static,
-        E: From<Error> + From<SendError<Command>>,
+        E: From<Error>,
     {
         if let Some(channel) = &mut self.command {
             let response = R::default();
             let command = Command::new_data(payload, response.clone());
-
-            if let Err(error) = channel.send(command) {
-                <R as Future>::Output::Err(error.into())
-            } else {
-                response.await
-            }
+            channel.send(command).expect("could not send command");
+            response.await
         } else {
             Err(Error::WorkerNotRunning.into())
         }
