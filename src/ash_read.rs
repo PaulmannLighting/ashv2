@@ -44,6 +44,7 @@ pub trait AshRead: Read {
                         debug!("Frame complete.");
                         trace!("Buffer: {:#04X?}", buffer);
                         buffer.unstuff();
+                        trace!("Unstuffed buffer: {:#04X?}", buffer);
                         return Ok(());
                     }
 
