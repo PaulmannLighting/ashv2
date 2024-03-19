@@ -5,26 +5,26 @@ use log::{debug, trace};
 use std::io::{ErrorKind, Read};
 
 pub trait AshRead: Read {
-    /// Read an ASH frame [`Packet`].
+    /// Read an ASH [`Packet`].
     ///
     /// # Arguments
     /// * `buffer` The buffer used for input buffering.
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
-        self.read_frame_raw(buffer)?;
+    fn read_packet(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
+        self.read_frame(buffer)?;
         Ok(Packet::try_from(&**buffer)?)
     }
 
-    /// Reads a raw ASH frame as [`Vec<[u8]>`].
+    /// Reads an ASH frame into a [`FrameBuffer`].
     ///
     /// # Arguments
     /// * `buffer` The buffer used for input buffering.
     ///
     /// # Errors
-    /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_frame_raw(&mut self, buffer: &mut FrameBuffer) -> Result<(), Error> {
+    /// Returns an [`std::io::Error`] if any I/O or protocol error occurs.
+    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> std::io::Result<()> {
         buffer.clear();
         let mut error = false;
 
@@ -72,8 +72,7 @@ pub trait AshRead: Read {
                         return Err(std::io::Error::new(
                             ErrorKind::OutOfMemory,
                             "Buffer overflow.",
-                        )
-                        .into());
+                        ));
                     }
                 }
             }
@@ -82,8 +81,7 @@ pub trait AshRead: Read {
         Err(std::io::Error::new(
             ErrorKind::UnexpectedEof,
             "byte stream terminated unexpectedly",
-        )
-        .into())
+        ))
     }
 }
 

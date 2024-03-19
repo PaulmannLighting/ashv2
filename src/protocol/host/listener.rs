@@ -298,7 +298,7 @@ where
         self.serial_port
             .lock()
             .expect("Failed to lock serial port.")
-            .read_frame(&mut self.read_buffer)
+            .read_packet(&mut self.read_buffer)
             .map(Some)
             .or_else(|error| {
                 if let crate::Error::Io(io_error) = &error {
