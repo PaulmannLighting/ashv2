@@ -47,11 +47,10 @@ impl Iterator for MaskGenerator {
 
     fn next(&mut self) -> Option<Self::Item> {
         let random = self.random;
+        self.random >>= 1;
 
-        self.random = if self.random & self.flag_bit == 0 {
-            self.random >> 1
-        } else {
-            (self.random >> 1) ^ self.mask
+        if random & self.flag_bit != 0 {
+            self.random ^= self.mask;
         };
 
         Some(random)
