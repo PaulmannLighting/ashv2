@@ -47,7 +47,7 @@ mod tests {
         for chunk in &bytes
             .into_iter()
             .ash_chunks()
-            .expect("Could not distribute chunks")
+            .expect("Chunks should always be able to be distributed.")
         {
             let chunk = chunk.collect_vec();
             assert_eq!(

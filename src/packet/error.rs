@@ -161,7 +161,7 @@ mod tests {
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
         assert_eq!(
-            Error::try_from(buffer.as_slice()).expect("Could not create error frame"),
+            Error::try_from(buffer.as_slice()).expect("Reference frame should be a valid ERROR."),
             ERROR
         );
     }

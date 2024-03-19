@@ -67,7 +67,9 @@ where
         if let Some(channel) = &mut self.command {
             let response = T::default();
             let command = Command::new(payload, response.clone());
-            channel.send(command).expect("could not send command");
+            channel
+                .send(command)
+                .expect("Command channel should always accept data.");
             response.await
         } else {
             Err(Error::WorkerNotRunning.into())
@@ -110,7 +112,7 @@ where
 
         self.serial_port
             .lock()
-            .expect("Failed to lock serial port.")
+            .expect("Serial port should always be able to be locked.")
             .set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));

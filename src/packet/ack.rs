@@ -163,12 +163,12 @@ mod tests {
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
         assert_eq!(
-            Ack::try_from(buffer1.as_slice()).expect("Could not create ACK"),
+            Ack::try_from(buffer1.as_slice()).expect("Reference frame should be a valid ACK"),
             ACK1
         );
         let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
         assert_eq!(
-            Ack::try_from(buffer2.as_slice()).expect("Could not create ACK"),
+            Ack::try_from(buffer2.as_slice()).expect("Reference frame should be a valid ACK"),
             ACK2
         );
     }

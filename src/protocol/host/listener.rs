@@ -297,7 +297,7 @@ where
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
         self.serial_port
             .lock()
-            .expect("Failed to lock serial port.")
+            .expect("Serial port should always be able to be locked.")
             .read_packet(&mut self.read_buffer)
             .map(Some)
             .or_else(|error| {
@@ -317,7 +317,7 @@ where
     {
         self.serial_port
             .lock()
-            .expect("Failed to lock serial port.")
+            .expect("Serial port should always be able to be locked.")
             .write_frame(frame, &mut self.write_buffer)
     }
 
@@ -325,14 +325,14 @@ where
         trace!("Retrieving current command.");
         self.current_command
             .read()
-            .expect("Failed to lock current command.")
+            .expect("Current command should always be able to be locked for reading.")
     }
 
     fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
         trace!("Retrieving current command.");
         self.current_command
             .write()
-            .expect("Failed to lock current command.")
+            .expect("Current command should always be able to be locked for writing.")
     }
 
     const fn ack_number(&self) -> u8 {

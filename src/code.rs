@@ -35,6 +35,7 @@ impl Display for Code {
 
 impl From<Code> for u8 {
     fn from(code: Code) -> Self {
-        code.to_u8().expect("Could not convert Code to u8.")
+        code.to_u8()
+            .expect("Code should always be convertible to u8.")
     }
 }

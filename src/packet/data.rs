@@ -166,8 +166,12 @@ impl TryFrom<&[u8]> for Data {
 
 fn calculate_crc(header: u8, payload: &heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> u16 {
     let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
-    bytes.push(header).expect("buffer overflow");
-    bytes.extend_from_slice(payload).expect("buffer overflow");
+    bytes
+        .push(header)
+        .expect("Buffer should have sufficient size for header.");
+    bytes
+        .extend_from_slice(payload)
+        .expect("Buffer should have sufficient size for payload.");
     CRC.checksum(&bytes)
 }
 

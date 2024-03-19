@@ -225,7 +225,7 @@ where
             self.write_frame(&data)?;
             self.sent
                 .push((SystemTime::now(), data))
-                .expect("Could not push data to sent queue.");
+                .expect("Send queue should always accept data.");
             Ok(())
         } else {
             error!("Attempted to transmit while not connected.");
@@ -258,7 +258,7 @@ where
         {
             self.retransmit
                 .push_back(data)
-                .expect("Could not push data to retransmit queue.");
+                .expect("Retransmit queue should always accept data.");
         }
     }
 
@@ -301,7 +301,7 @@ where
         {
             self.retransmit
                 .push_back(data)
-                .expect("Could not push data to retransmit queue.");
+                .expect("Retransmit queue should always accept data.");
             self.update_t_rx_ack(None);
         }
     }
@@ -409,22 +409,20 @@ where
     {
         self.serial_port
             .lock()
-            .expect("Failed to lock serial port.")
+            .expect("Serial port should always be able to be locked.")
             .write_frame(frame, &mut self.buffer)
     }
 
     fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
         self.current_command
             .read()
-            .map_err(|error| error!("Could not lock current command: {error}"))
-            .expect("Could not lock current command.")
+            .expect("Current command should always be able to be locked for reading.")
     }
 
     fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
         self.current_command
             .write()
-            .map_err(|error| error!("Could not lock current command: {error}"))
-            .expect("Could not lock current command.")
+            .expect("Current command should always be able to be locked for writing.")
     }
 
     fn is_transaction_complete(&self) -> bool {

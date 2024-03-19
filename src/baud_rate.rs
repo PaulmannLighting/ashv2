@@ -11,7 +11,7 @@ impl From<BaudRate> for u32 {
     fn from(baud_rate: BaudRate) -> Self {
         baud_rate
             .to_u32()
-            .expect("could not convert baud rate to u32")
+            .expect("Baud rate should always be convertible to u32.")
     }
 }
 

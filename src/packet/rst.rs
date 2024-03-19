@@ -126,7 +126,7 @@ mod tests {
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
         assert_eq!(
-            Rst::try_from(buffer.as_slice()).expect("Could not create RST"),
+            Rst::try_from(buffer.as_slice()).expect("Reference frame should be a valid RST."),
             RST
         );
     }
