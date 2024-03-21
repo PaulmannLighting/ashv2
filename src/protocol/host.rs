@@ -59,7 +59,7 @@ where
     /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        T: Response + 'a,
+        T: Clone + Default + Response + 'a,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
