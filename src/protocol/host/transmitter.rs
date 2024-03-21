@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
-use crate::protocol::host::command::{Command, Event, Response};
+use crate::protocol::host::command::{Command, Event, Handler};
 use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
 use crate::{AshWrite, Error, FrameError};

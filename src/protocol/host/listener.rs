@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
-use crate::protocol::host::command::{Command, Event, HandleResult, Response};
+use crate::protocol::host::command::{Command, Event, HandleResult, Handler};
 use crate::protocol::Mask;
 use crate::util::next_three_bit_number;
 use crate::{AshRead, AshWrite};
@@ -200,7 +200,7 @@ where
         }
     }
 
-    fn forward_data_to_command(&self, payload: Arc<[u8]>, response: &Arc<dyn Response<Arc<[u8]>>>) {
+    fn forward_data_to_command(&self, payload: Arc<[u8]>, response: &Arc<dyn Handler<Arc<[u8]>>>) {
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");

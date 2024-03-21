@@ -2,10 +2,11 @@ mod command;
 mod listener;
 mod transmitter;
 
+use crate::protocol::host::command::Response;
 use crate::Error;
 use command::Command;
 use command::ResetResponse;
-pub use command::{Event, HandleResult, Response};
+pub use command::{Event, HandleResult, Handler};
 use listener::Listener;
 use log::error;
 use serialport::SerialPort;
@@ -59,10 +60,14 @@ where
     ///
     /// # Panics
     /// This function panics if the command cannot be sent through the channel.
-    pub async fn communicate<T, R, E>(&mut self, payload: &[u8]) -> <T as Future>::Output
+    pub async fn communicate<T>(&mut self, payload: &[u8]) -> <T as Future>::Output
     where
-        T: Clone + Default + Response<Arc<[u8]>> + Future<Output = Result<R, E>> + 'static,
-        E: From<Error>,
+        T: Clone
+            + Default
+            + Response
+            + Future<Output = Result<<T as Response>::Result, <T as Response>::Error>>
+            + 'static,
+        <T as Response>::Error: From<Error>,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();

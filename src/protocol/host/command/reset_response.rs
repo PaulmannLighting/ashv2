@@ -1,4 +1,4 @@
-use super::response::{HandleResult, Response};
+use super::response::{HandleResult, Handler};
 use crate::protocol::host::command::response::Event;
 use crate::Error;
 use log::error;
@@ -54,7 +54,7 @@ impl Future for ResetResponse {
     }
 }
 
-impl Response<()> for ResetResponse {
+impl Handler<()> for ResetResponse {
     fn handle(&self, event: Event<Result<(), Error>>) -> HandleResult {
         match event {
             Event::TransmissionCompleted => {

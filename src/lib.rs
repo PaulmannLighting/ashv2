@@ -16,5 +16,5 @@ pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 pub use ash_read::AshRead;
 pub use ash_write::AshWrite;
 pub use baud_rate::BaudRate;
-pub use protocol::{Event, HandleResult, Host, Response};
+pub use protocol::{Event, HandleResult, Handler, Host};
 pub use serial_port::open;
