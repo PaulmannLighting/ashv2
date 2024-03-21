@@ -30,7 +30,7 @@ where
 }
 
 pub trait Response:
-    Handler<Arc<[u8]>> + Future<Output = Result<Self::Result, Self::Error>>
+    Clone + Default + Future<Output = Result<Self::Result, Self::Error>> + Handler<Arc<[u8]>>
 where
     Self::Error: From<Error>,
 {
