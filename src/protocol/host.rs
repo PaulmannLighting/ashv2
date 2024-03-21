@@ -77,12 +77,10 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub async fn reset(&mut self) -> Result<(), Error> {
+    pub async fn reset(&'static mut self) -> Result<(), Error> {
         if let Some(channel) = &mut self.command {
             let response = ResetResponse::default();
-            channel
-                .send(Command::Reset(response.clone()))
-                .expect("Command channel should always accept data.");
+            channel.send(Command::Reset(response.clone()))?;
             response.await
         } else {
             Err(Error::WorkerNotRunning)
