@@ -8,7 +8,6 @@ pub use command::{Event, HandleResult, Handler, Response};
 use listener::Listener;
 use log::error;
 use serialport::SerialPort;
-use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
@@ -58,14 +57,9 @@ where
     ///
     /// # Panics
     /// This function panics if the command cannot be sent through the channel.
-    pub async fn communicate<T>(&mut self, payload: &[u8]) -> <T as Future>::Output
+    pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        T: Clone
-            + Default
-            + Response
-            + Future<Output = Result<<T as Response>::Result, <T as Response>::Error>>
-            + 'static,
-        <T as Response>::Error: From<Error>,
+        T: Clone + Default + Response + 'static,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();

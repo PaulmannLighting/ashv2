@@ -1,5 +1,6 @@
 use crate::Error;
 use std::fmt::Debug;
+use std::future::Future;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -28,7 +29,11 @@ where
     fn wake(&self);
 }
 
-pub trait Response: Handler<Arc<[u8]>> {
+pub trait Response:
+    Handler<Arc<[u8]>> + Future<Output = Result<Self::Result, Self::Error>>
+where
+    Self::Error: From<Error>,
+{
     type Result;
     type Error;
 }
