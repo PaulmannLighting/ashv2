@@ -59,7 +59,7 @@ where
     ///
     /// # Panics
     /// This function panics if the command cannot be sent through the channel.
-    pub async fn communicate<R, E, T>(&mut self, payload: &[u8]) -> <T as Future>::Output
+    pub async fn communicate<T, R, E>(&mut self, payload: &[u8]) -> <T as Future>::Output
     where
         T: Clone + Default + Response<Arc<[u8]>> + Future<Output = Result<R, E>> + 'static,
         E: From<Error>,
