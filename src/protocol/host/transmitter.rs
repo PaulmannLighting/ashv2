@@ -26,7 +26,7 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter<S>
+pub struct Transmitter<'a, S>
 where
     S: SerialPort,
 {
@@ -34,8 +34,8 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    command: Receiver<Command>,
-    current_command: Arc<RwLock<Option<Command>>>,
+    command: Receiver<Command<'a>>,
+    current_command: Arc<RwLock<Option<Command<'a>>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -47,7 +47,7 @@ where
     t_rx_ack: Duration,
 }
 
-impl<S> Transmitter<S>
+impl<'a, S> Transmitter<'a, S>
 where
     S: SerialPort,
 {
@@ -56,8 +56,8 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        command: Receiver<Command>,
-        current_command: Arc<RwLock<Option<Command>>>,
+        command: Receiver<Command<'a>>,
+        current_command: Arc<RwLock<Option<Command<'a>>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -106,7 +106,7 @@ where
         }
     }
 
-    fn process_command(&mut self, command: Command) {
+    fn process_command(&mut self, command: Command<'a>) {
         self.current_command_mut().replace(command);
         let current_command = self.current_command().clone();
 
@@ -381,7 +381,12 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        if let Some(current_command) = self.current_command_mut().take() {
+        if let Some(current_command) = self
+            .current_command
+            .write()
+            .expect("Current command should always be able to be locked for writing.")
+            .take()
+        {
             match current_command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
@@ -390,7 +395,12 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        if let Some(current_command) = self.current_command_mut().take() {
+        if let Some(current_command) = self
+            .current_command
+            .write()
+            .expect("Current command should always be able to be locked for writing.")
+            .take()
+        {
             match current_command {
                 Command::Data(_, response) => {
                     response.handle(Event::TransmissionCompleted);
@@ -405,7 +415,7 @@ where
     fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
         F: Frame,
-        for<'a> &'a F: IntoIterator<Item = u8>,
+        for<'f> &'f F: IntoIterator<Item = u8>,
     {
         self.serial_port
             .lock()
@@ -413,13 +423,13 @@ where
             .write_frame(frame, &mut self.buffer)
     }
 
-    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
+    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command<'a>>> {
         self.current_command
             .read()
             .expect("Current command should always be able to be locked for reading.")
     }
 
-    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
+    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command<'a>>> {
         self.current_command
             .write()
             .expect("Current command should always be able to be locked for writing.")

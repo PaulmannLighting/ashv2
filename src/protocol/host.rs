@@ -21,21 +21,21 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
-pub struct Host<S>
+pub struct Host<'a, S>
 where
-    S: SerialPort + 'static,
+    S: SerialPort + 'a,
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
-    command: Option<Sender<Command>>,
+    command: Option<Sender<Command<'a>>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl<S> Host<S>
+impl<'a, S> Host<'a, S>
 where
-    S: SerialPort + 'static,
+    S: SerialPort + 'a,
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
@@ -59,7 +59,7 @@ where
     /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        T: Response + 'static,
+        T: Response + 'a,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
@@ -80,7 +80,9 @@ where
     pub async fn reset(&mut self) -> Result<(), Error> {
         if let Some(channel) = &mut self.command {
             let response = ResetResponse::default();
-            channel.send(Command::Reset(response.clone()))?;
+            channel
+                .send(Command::Reset(response.clone()))
+                .expect("Command channel should always accept data.");
             response.await
         } else {
             Err(Error::WorkerNotRunning)
@@ -102,7 +104,7 @@ where
     ///
     /// # Panics
     /// This function may panic, when the serial port Mutex is poisoned.
-    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
+    pub fn start(&'static mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
         if self.is_running() {
             return Err(Error::AlreadyRunning);
         }
@@ -163,14 +165,14 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub fn restart(&mut self) -> Result<(), Error> {
+    pub fn restart(&'static mut self) -> Result<(), Error> {
         self.stop();
         let callback = self.callback.take();
         self.start(callback)
     }
 }
 
-impl<S> Drop for Host<S>
+impl<'a, S> Drop for Host<'a, S>
 where
     S: SerialPort,
 {
