@@ -2,11 +2,9 @@ mod command;
 mod listener;
 mod transmitter;
 
-use crate::protocol::host::command::Response;
 use crate::Error;
-use command::Command;
-use command::ResetResponse;
-pub use command::{Event, HandleResult, Handler};
+use command::{Command, ResetResponse};
+pub use command::{Event, HandleResult, Response};
 use listener::Listener;
 use log::error;
 use serialport::SerialPort;
