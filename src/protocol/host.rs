@@ -63,9 +63,8 @@ where
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
-            let command = Command::new(payload, response.clone());
             channel
-                .send(command)
+                .send(Command::new(payload, response.clone()))
                 .expect("Command channel should always accept data.");
             response.await
         } else {
