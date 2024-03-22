@@ -50,10 +50,10 @@ where
         }
     }
 
-    /// Communicate with the NCP.
+    /// Communicate with the NCP, returning [`T::Result`].
     ///
     /// # Errors
-    /// Returns an error if the transactions fails.
+    /// Returns [`T::Error`] if the transactions fails.
     ///
     /// # Panics
     /// This function panics if the command cannot be sent through the channel.
