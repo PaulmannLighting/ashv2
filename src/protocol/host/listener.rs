@@ -200,11 +200,7 @@ where
         }
     }
 
-    fn forward_data_to_command(
-        &self,
-        payload: Arc<[u8]>,
-        response: &Arc<dyn Handler<Arc<[u8]>> + 'static>,
-    ) {
+    fn forward_data_to_command(&self, payload: Arc<[u8]>, response: &Arc<dyn Handler<Arc<[u8]>>>) {
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");

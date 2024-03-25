@@ -64,7 +64,10 @@ where
         if let Some(channel) = &mut self.command {
             let response = T::default();
             channel
-                .send(Command::new(payload, response.clone()))
+                .send(Command::Data(
+                    Arc::from(payload),
+                    Arc::new(response.clone()),
+                ))
                 .expect("Command channel should always accept data.");
             response.await
         } else {
@@ -176,7 +179,7 @@ where
 
 impl<S> Drop for Host<S>
 where
-    S: SerialPort,
+    S: SerialPort + 'static,
 {
     fn drop(&mut self) {
         self.stop();
