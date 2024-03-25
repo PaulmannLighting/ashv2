@@ -322,17 +322,23 @@ where
     }
 
     fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
-        trace!("Retrieving current command.");
-        self.current_command
+        debug!("Attempting to lock current command ro.");
+        let current_command = self
+            .current_command
             .read()
-            .expect("Current command should always be able to be locked for reading.")
+            .expect("Current command should always be able to be locked for reading.");
+        debug!("Current command locked ro.");
+        current_command
     }
 
     fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
-        trace!("Retrieving current command.");
-        self.current_command
+        debug!("Attempting to lock current command rw.");
+        let current_command = self
+            .current_command
             .write()
-            .expect("Current command should always be able to be locked for writing.")
+            .expect("Current command should always be able to be locked for writing.");
+        debug!("Current command locked rw.");
+        current_command
     }
 
     const fn ack_number(&self) -> u8 {
