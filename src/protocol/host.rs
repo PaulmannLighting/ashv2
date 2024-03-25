@@ -23,7 +23,7 @@ type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 #[derive(Debug)]
 pub struct Host<S>
 where
-    S: SerialPort + 'static,
+    for<'s> S: SerialPort + 's,
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
@@ -35,7 +35,7 @@ where
 
 impl<S> Host<S>
 where
-    S: SerialPort + 'static,
+    for<'s> S: SerialPort + 's,
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
@@ -59,15 +59,12 @@ where
     /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        T: Clone + Default + Response + 'static,
+        for<'a> T: Clone + Default + Response + 'a,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
             channel
-                .send(Command::Data(
-                    Arc::from(payload),
-                    Arc::new(response.clone()),
-                ))
+                .send(Command::new(payload, response.clone()))
                 .expect("Command channel should always accept data.");
             response.await
         } else {
@@ -105,18 +102,14 @@ where
     /// Starts the host.
     ///
     /// # Errors
-    /// Returns an [`Error`] if the host is already running or the serial port cannot be cloned.
+    /// Returns an [`Error`] if the host could not be started.
     ///
     /// # Panics
-    /// This function may panic, when the serial port Mutex is poisoned.
+    /// This function may panic if any locks are poisoned.
     pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
-        if self.is_running() {
-            return Err(Error::AlreadyRunning);
-        }
-
         self.serial_port
             .lock()
-            .expect("Serial port should always be able to be locked.")
+            .expect("Socket should not be poisoned.")
             .set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
@@ -165,21 +158,11 @@ where
 
         drop(self.command.take());
     }
-
-    /// Restarts the host.
-    ///
-    /// # Errors
-    /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub fn restart(&mut self) -> Result<(), Error> {
-        self.stop();
-        let callback = self.callback.take();
-        self.start(callback)
-    }
 }
 
 impl<S> Drop for Host<S>
 where
-    S: SerialPort + 'static,
+    for<'s> S: SerialPort + 's,
 {
     fn drop(&mut self) {
         self.stop();
