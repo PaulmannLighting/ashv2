@@ -60,7 +60,9 @@ where
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
-            channel.send(Command::new(payload, response.clone()))?;
+            channel
+                .send(Command::new(payload, response.clone()))
+                .map_err(Error::from)?;
             response.await
         } else {
             Err(Error::WorkerNotRunning.into())

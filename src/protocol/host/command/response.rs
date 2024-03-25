@@ -1,8 +1,6 @@
-use crate::protocol::host::command::Command;
 use crate::Error;
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::mpsc::SendError;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -34,7 +32,7 @@ where
 pub trait Response:
     Future<Output = Result<Self::Result, Self::Error>> + Handler<Arc<[u8]>>
 where
-    Self::Error: From<Error> + From<SendError<Command>>,
+    Self::Error: From<Error>,
 {
     type Result;
     type Error;
