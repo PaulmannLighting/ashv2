@@ -381,8 +381,11 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        if let Some(current_command) = self.current_command_mut().take() {
-            match current_command {
+        // Take into temporary variable to free lock right away.
+        let current_command = self.current_command_mut().take();
+
+        if let Some(command) = current_command {
+            match command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
             };
@@ -390,8 +393,11 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        if let Some(current_command) = self.current_command_mut().take() {
-            match current_command {
+        // Take into temporary variable to free lock right away.
+        let current_command = self.current_command_mut().take();
+
+        if let Some(command) = current_command {
+            match command {
                 Command::Data(_, response) => {
                     debug!("Finalizing data command.");
                     response.handle(Event::TransmissionCompleted);
