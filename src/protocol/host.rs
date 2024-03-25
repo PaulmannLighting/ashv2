@@ -54,18 +54,13 @@ where
     ///
     /// # Errors
     /// Returns [`T::Error`] if the transactions fails.
-    ///
-    /// # Panics
-    /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         for<'r> T: Clone + Default + Response + 'r,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
-            channel
-                .send(Command::new(payload, response.clone()))
-                .expect("Command channel should always accept data.");
+            channel.send(Command::new(payload, response.clone()))?;
             response.await
         } else {
             Err(Error::WorkerNotRunning.into())
@@ -76,15 +71,10 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    ///
-    /// # Panics
-    /// This function panics if the command cannot be sent through the channel.
     pub async fn reset(&mut self) -> Result<(), Error> {
         if let Some(channel) = &mut self.command {
             let response = ResetResponse::default();
-            channel
-                .send(Command::Reset(response.clone()))
-                .expect("Command channel should always accept data.");
+            channel.send(Command::Reset(response.clone()))?;
             response.await
         } else {
             Err(Error::WorkerNotRunning)
