@@ -381,9 +381,7 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        let current_command = self.current_command_mut().take();
-
-        if let Some(current_command) = current_command {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
@@ -392,9 +390,7 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        let current_command = self.current_command_mut().take();
-
-        if let Some(current_command) = current_command {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => {
                     debug!("Finalizing data command.");
