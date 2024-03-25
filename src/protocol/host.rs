@@ -76,10 +76,15 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub async fn reset(&'static mut self) -> Result<(), Error> {
+    ///
+    /// # Panics
+    /// This function panics if the command cannot be sent through the channel.
+    pub async fn reset(&mut self) -> Result<(), Error> {
         if let Some(channel) = &mut self.command {
             let response = ResetResponse::default();
-            channel.send(Command::Reset(response.clone()))?;
+            channel
+                .send(Command::Reset(response.clone()))
+                .expect("Command channel should always accept data.");
             response.await
         } else {
             Err(Error::WorkerNotRunning)
