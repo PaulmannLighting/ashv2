@@ -381,12 +381,7 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        if let Some(current_command) = self
-            .current_command
-            .write()
-            .expect("Current command should always be able to be locked for writing.")
-            .take()
-        {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
@@ -395,12 +390,7 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        if let Some(current_command) = self
-            .current_command
-            .write()
-            .expect("Current command should always be able to be locked for writing.")
-            .take()
-        {
+        if let Some(current_command) = self.current_command_mut().take() {
             match current_command {
                 Command::Data(_, response) => {
                     debug!("Finalizing data command.");
