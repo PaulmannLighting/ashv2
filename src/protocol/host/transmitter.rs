@@ -403,9 +403,11 @@ where
         {
             match current_command {
                 Command::Data(_, response) => {
+                    debug!("Finalizing data command.");
                     response.handle(Event::TransmissionCompleted);
                 }
                 Command::Reset(response) => {
+                    debug!("Finalizing reset command.");
                     response.handle(Event::TransmissionCompleted);
                 }
             };
