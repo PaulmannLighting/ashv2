@@ -12,7 +12,7 @@ use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug)]
 pub struct Listener<S>
@@ -184,13 +184,11 @@ where
     fn forward_data(&mut self, data: &Data) {
         debug!("Forwarding data: {data}");
         let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
-        // Take into temporary variable to free lock right away.
-        let current_command = self.current_command_mut().take();
 
-        if let Some(command) = current_command.as_ref() {
+        if let Some(command) = self.take_current_command() {
             if let Command::Data(_, response) = command {
                 debug!("Forwarding data to current command.");
-                self.forward_data_to_command(payload, response);
+                self.forward_data_to_command(payload, &response);
             } else if let Some(callback) = &self.callback {
                 debug!("Forwarding data to callback.");
                 callback.send(payload).unwrap_or_else(|error| {
@@ -206,13 +204,13 @@ where
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");
-                self.current_command_mut().take();
+                self.take_current_command();
                 response.wake();
             }
             HandleResult::Continue => debug!("Command responded with CONTINUE."),
             HandleResult::Failed => {
                 warn!("Command responded with FAILED.");
-                self.current_command_mut().take();
+                self.take_current_command();
                 response.wake();
             }
             HandleResult::Reject => {
@@ -265,10 +263,10 @@ where
         self.reset_state();
         self.connected.store(true, SeqCst);
 
-        if let Some(Command::Reset(reset_response)) = self.current_command().as_ref() {
+        if let Some(Command::Reset(reset_response)) = self.clone_current_command() {
             match reset_response.handle(Event::DataReceived(Ok(()))) {
                 HandleResult::Completed | HandleResult::Failed => {
-                    self.current_command_mut().take();
+                    self.take_current_command();
                     reset_response.wake();
                 }
                 HandleResult::Continue => (),
@@ -323,23 +321,25 @@ where
             .write_frame(frame, &mut self.write_buffer)
     }
 
-    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
+    fn clone_current_command(&self) -> Option<Command> {
         debug!("Attempting to lock current command ro.");
         let current_command = self
             .current_command
             .read()
-            .expect("Current command should always be able to be locked for reading.");
+            .expect("Current command should always be able to be locked for reading.")
+            .clone();
         debug!("Current command locked ro.");
         current_command
     }
 
-    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
-        debug!("Attempting to lock current command rw.");
+    fn take_current_command(&self) -> Option<Command> {
+        debug!("Locking current command rw.");
         let current_command = self
             .current_command
             .write()
-            .expect("Current command should always be able to be locked for writing.");
-        debug!("Current command locked rw.");
+            .expect("Current command should always be able to be locked for writing.")
+            .take();
+        debug!("Releasing rw lock on current command.");
         current_command
     }
 

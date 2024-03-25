@@ -13,7 +13,7 @@ use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
@@ -89,7 +89,7 @@ where
 
     fn main(&mut self) {
         if self.connected.load(SeqCst) {
-            if self.current_command().is_some() {
+            if self.clone_current_command().is_some() {
                 trace!("Waiting for current transaction to complete.");
             } else {
                 self.process_next_command();
@@ -107,10 +107,9 @@ where
     }
 
     fn process_command(&mut self, command: Command) {
-        self.current_command_mut().replace(command);
-        let current_command = self.current_command().clone();
+        self.replace_current_command(command);
 
-        if let Some(command) = current_command {
+        if let Some(command) = self.clone_current_command() {
             match command {
                 Command::Data(payload, _) => self.transmit_data(&payload),
                 Command::Reset(_) => self.reset(),
@@ -381,10 +380,7 @@ where
     }
 
     fn abort_current_command(&mut self, error: Error) {
-        // Take into temporary variable to free lock right away.
-        let current_command = self.current_command_mut().take();
-
-        if let Some(command) = current_command {
+        if let Some(command) = self.take_current_command() {
             match command {
                 Command::Data(_, response) => response.abort(error),
                 Command::Reset(response) => response.abort(error),
@@ -393,10 +389,7 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        // Take into temporary variable to free lock right away.
-        let current_command = self.current_command_mut().take();
-
-        if let Some(command) = current_command {
+        if let Some(command) = self.take_current_command() {
             match command {
                 Command::Data(_, response) => {
                     debug!("Finalizing data command.");
@@ -421,23 +414,36 @@ where
             .write_frame(frame, &mut self.buffer)
     }
 
-    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
-        debug!("Attempting to lock current command ro.");
+    fn clone_current_command(&self) -> Option<Command> {
+        debug!("Locking current command ro.");
         let current_command = self
             .current_command
             .read()
-            .expect("Current command should always be able to be locked for reading.");
-        debug!("Current command locked ro.");
+            .expect("Current command lock should never be poisoned.")
+            .clone();
+        debug!("Releasing ro lock on current command.");
         current_command
     }
 
-    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
-        debug!("Attempting to lock current command rw.");
+    fn take_current_command(&self) -> Option<Command> {
+        debug!("Locking current command rw.");
         let current_command = self
             .current_command
             .write()
-            .expect("Current command should always be able to be locked for writing.");
-        debug!("Current command locked rw.");
+            .expect("Current command lock should never be poisoned.")
+            .take();
+        debug!("Releasing rw lock on current command.");
+        current_command
+    }
+
+    fn replace_current_command(&self, command: Command) -> Option<Command> {
+        debug!("Locking current command rw.");
+        let current_command = self
+            .current_command
+            .write()
+            .expect("Current command lock should never be poisoned.")
+            .replace(command);
+        debug!("Releasing rw lock on current command.");
         current_command
     }
 
