@@ -26,7 +26,7 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter<'a, S>
+pub struct Transmitter<S>
 where
     S: SerialPort,
 {
@@ -34,8 +34,8 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    command: Receiver<Command<'a>>,
-    current_command: Arc<RwLock<Option<Command<'a>>>>,
+    command: Receiver<Command>,
+    current_command: Arc<RwLock<Option<Command>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -47,7 +47,7 @@ where
     t_rx_ack: Duration,
 }
 
-impl<'a, S> Transmitter<'a, S>
+impl<S> Transmitter<S>
 where
     S: SerialPort,
 {
@@ -56,8 +56,8 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        command: Receiver<Command<'a>>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        command: Receiver<Command>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -106,7 +106,7 @@ where
         }
     }
 
-    fn process_command(&mut self, command: Command<'a>) {
+    fn process_command(&mut self, command: Command) {
         self.current_command_mut().replace(command);
         let current_command = self.current_command().clone();
 
@@ -423,13 +423,13 @@ where
             .write_frame(frame, &mut self.buffer)
     }
 
-    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command<'a>>> {
+    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
         self.current_command
             .read()
             .expect("Current command should always be able to be locked for reading.")
     }
 
-    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command<'a>>> {
+    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
         self.current_command
             .write()
             .expect("Current command should always be able to be locked for writing.")

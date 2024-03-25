@@ -15,7 +15,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug)]
-pub struct Listener<'a, S>
+pub struct Listener<S>
 where
     S: SerialPort,
 {
@@ -23,7 +23,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    current_command: Arc<RwLock<Option<Command<'a>>>>,
+    current_command: Arc<RwLock<Option<Command>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
@@ -35,7 +35,7 @@ where
     last_received_frame_number: Option<u8>,
 }
 
-impl<'a, S> Listener<'a, S>
+impl<S> Listener<S>
 where
     S: SerialPort,
 {
@@ -44,7 +44,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
@@ -70,7 +70,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        current_command: Arc<RwLock<Option<Command>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
@@ -203,7 +203,7 @@ where
     fn forward_data_to_command(
         &self,
         payload: Arc<[u8]>,
-        response: &Arc<dyn Handler<Arc<[u8]>> + 'a>,
+        response: &Arc<dyn Handler<Arc<[u8]>> + 'static>,
     ) {
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
@@ -325,14 +325,14 @@ where
             .write_frame(frame, &mut self.write_buffer)
     }
 
-    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command<'a>>> {
+    fn current_command(&self) -> RwLockReadGuard<'_, Option<Command>> {
         trace!("Retrieving current command.");
         self.current_command
             .read()
             .expect("Current command should always be able to be locked for reading.")
     }
 
-    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command<'a>>> {
+    fn current_command_mut(&self) -> RwLockWriteGuard<'_, Option<Command>> {
         trace!("Retrieving current command.");
         self.current_command
             .write()

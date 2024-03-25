@@ -21,21 +21,21 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
-pub struct Host<'a, S>
+pub struct Host<S>
 where
-    S: SerialPort + 'a,
+    S: SerialPort + 'static,
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
-    command: Option<Sender<Command<'a>>>,
+    command: Option<Sender<Command>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl<'a, S> Host<'a, S>
+impl<S> Host<S>
 where
-    S: SerialPort + 'a,
+    S: SerialPort + 'static,
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
@@ -59,7 +59,7 @@ where
     /// This function panics if the command cannot be sent through the channel.
     pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        T: Clone + Default + Response + 'a,
+        T: Clone + Default + Response + 'static,
     {
         if let Some(channel) = &mut self.command {
             let response = T::default();
@@ -106,7 +106,7 @@ where
     ///
     /// # Panics
     /// This function may panic, when the serial port Mutex is poisoned.
-    pub fn start(&'static mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
+    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
         if self.is_running() {
             return Err(Error::AlreadyRunning);
         }
@@ -167,14 +167,14 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub fn restart(&'static mut self) -> Result<(), Error> {
+    pub fn restart(&mut self) -> Result<(), Error> {
         self.stop();
         let callback = self.callback.take();
         self.start(callback)
     }
 }
 
-impl<'a, S> Drop for Host<'a, S>
+impl<S> Drop for Host<S>
 where
     S: SerialPort,
 {
