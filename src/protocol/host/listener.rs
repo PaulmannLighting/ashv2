@@ -101,7 +101,7 @@ where
             }
         }
 
-        info!("Terminating.");
+        debug!("Terminating.");
         self.callback
     }
 

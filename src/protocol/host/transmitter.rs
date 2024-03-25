@@ -84,7 +84,7 @@ where
             self.main();
         }
 
-        info!("Terminating.");
+        debug!("Terminating.");
     }
 
     fn main(&mut self) {
@@ -127,7 +127,7 @@ where
             error!("{error}");
             self.abort_current_command(error);
         } else {
-            info!("Transmission completed.");
+            debug!("Transmission completed.");
             self.complete_current_command();
         }
     }
@@ -163,7 +163,7 @@ where
         while self.sent.len() < MAX_TIMEOUTS {
             if let Some(mut data) = self.retransmit.pop_front() {
                 retransmits += 1;
-                info!("Retransmitting: {data}");
+                debug!("Retransmitting: {data}");
                 trace!("{data:#04X?}");
                 data.set_is_retransmission(true);
 
@@ -325,9 +325,9 @@ where
         let mut sent_rst_timestamp: SystemTime;
 
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
-            info!("Establishing ASH connection. Attempt #{attempt}");
+            debug!("Establishing ASH connection. Attempt #{attempt}");
             self.reset();
-            info!("Connection reset.");
+            debug!("Connection reset.");
             sent_rst_timestamp = SystemTime::now();
 
             debug!("Waiting for NCP to start up.");
@@ -348,7 +348,7 @@ where
 
             debug!("Checking whether NCP has started.");
             if self.connected.load(SeqCst) {
-                info!("ASH connection established.");
+                debug!("ASH connection established.");
                 return;
             }
         }
@@ -357,7 +357,7 @@ where
     }
 
     fn reset(&mut self) {
-        info!("Resetting connection.");
+        debug!("Resetting connection.");
         self.connected.store(false, SeqCst);
         debug!("Resetting state.");
         self.reset_state();
