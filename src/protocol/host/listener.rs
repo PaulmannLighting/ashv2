@@ -185,7 +185,7 @@ where
         debug!("Forwarding data: {data}");
         let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
 
-        if let Some(command) = self.current_command().as_ref() {
+        if let Some(command) = self.current_command_mut().take().as_ref() {
             if let Command::Data(_, response) = command {
                 debug!("Forwarding data to current command.");
                 self.forward_data_to_command(payload, response);
