@@ -5,7 +5,7 @@ use crate::protocol::Mask;
 use crate::util::next_three_bit_number;
 use crate::{AshRead, AshWrite};
 use itertools::Itertools;
-use log::{debug, error, info, trace, warn};
+use log::{debug, error, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
 use std::io::ErrorKind;
@@ -15,7 +15,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug)]
-pub struct Listener<S>
+pub struct Listener<'a, S>
 where
     S: SerialPort,
 {
@@ -23,7 +23,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    current_command: Arc<RwLock<Option<Command>>>,
+    current_command: Arc<RwLock<Option<Command<'a>>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
@@ -35,7 +35,7 @@ where
     last_received_frame_number: Option<u8>,
 }
 
-impl<S> Listener<S>
+impl<'a, S> Listener<'a, S>
 where
     S: SerialPort,
 {
@@ -44,7 +44,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command>>>,
+        current_command: Arc<RwLock<Option<Command<'a>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
@@ -70,7 +70,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command>>>,
+        current_command: Arc<RwLock<Option<Command<'a>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
@@ -200,7 +200,11 @@ where
         }
     }
 
-    fn forward_data_to_command(&self, payload: Arc<[u8]>, response: &Arc<dyn Handler<Arc<[u8]>>>) {
+    fn forward_data_to_command(
+        &self,
+        payload: Arc<[u8]>,
+        response: &Arc<dyn Handler<Arc<[u8]>> + 'a>,
+    ) {
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");
@@ -321,7 +325,7 @@ where
             .write_frame(frame, &mut self.write_buffer)
     }
 
-    fn clone_current_command(&self) -> Option<Command> {
+    fn clone_current_command(&self) -> Option<Command<'a>> {
         debug!("Attempting to lock current command ro.");
         let current_command = self
             .current_command
@@ -332,7 +336,7 @@ where
         current_command
     }
 
-    fn take_current_command(&self) -> Option<Command> {
+    fn take_current_command(&self) -> Option<Command<'a>> {
         debug!("Locking current command rw.");
         let current_command = self
             .current_command

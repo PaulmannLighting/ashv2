@@ -1,21 +1,19 @@
-mod reset_response;
-mod response;
+use std::sync::Arc;
 
 pub use reset_response::ResetResponse;
 pub use response::{Event, HandleResult, Handler, Response};
-use std::sync::Arc;
+
+mod reset_response;
+mod response;
 
 #[derive(Clone, Debug)]
-pub enum Command {
-    Data(Arc<[u8]>, Arc<dyn Handler<Arc<[u8]>>>),
+pub enum Command<'a> {
+    Data(Arc<[u8]>, Arc<dyn Handler<Arc<[u8]>> + 'a>),
     Reset(ResetResponse),
 }
 
-impl Command {
-    pub fn new<T>(payload: &[u8], handler: T) -> Self
-    where
-        for<'handler> T: Handler<Arc<[u8]>> + 'handler,
-    {
-        Self::Data(Arc::from(payload), Arc::new(handler))
+impl<'a> Command<'a> {
+    pub fn new(payload: &[u8], handler: Arc<dyn Handler<Arc<[u8]>> + 'a>) -> Self {
+        Self::Data(Arc::from(payload), handler)
     }
 }

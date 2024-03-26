@@ -21,21 +21,21 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
-pub struct Host<S>
+pub struct Host<'a, S>
 where
-    for<'s> S: SerialPort + 's,
+    S: SerialPort + 'a,
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
-    command: Option<Mutex<Sender<Command>>>,
+    command: Option<Mutex<Sender<Command<'a>>>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl<S> Host<S>
+impl<'a, S> Host<'a, S>
 where
-    for<'s> S: SerialPort + 's,
+    S: SerialPort,
 {
     /// Creates a new `ASHv2` host.
     #[must_use]
@@ -59,10 +59,11 @@ where
     /// This function will panic if the sender's mutex is poisoned.
     pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        for<'r> T: Clone + Default + Response + 'r,
+        Self: 'static,
+        T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
-        self.send(Command::new(payload, response.clone()))?;
+        self.send(Command::new(payload, Arc::new(response.clone())))?;
         response.await
     }
 
@@ -73,7 +74,10 @@ where
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub async fn reset(&self) -> Result<(), Error> {
+    pub async fn reset(&self) -> Result<(), Error>
+    where
+        Self: 'static,
+    {
         let response = ResetResponse::default();
         self.send(Command::Reset(response.clone()))?;
         response.await
@@ -94,7 +98,10 @@ where
     ///
     /// # Panics
     /// This function may panic if any locks are poisoned.
-    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error> {
+    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error>
+    where
+        Self: 'static,
+    {
         self.serial_port
             .lock()
             .expect("Socket should not be poisoned.")
@@ -123,8 +130,8 @@ where
         );
         self.command = Some(Mutex::new(command_sender));
         self.running.store(true, SeqCst);
-        self.listener_thread = Some(spawn(|| listener.run()));
-        self.transmitter_thread = Some(spawn(|| transmitter.run()));
+        self.listener_thread = Some(spawn(move || listener.run()));
+        self.transmitter_thread = Some(spawn(move || transmitter.run()));
         Ok(())
     }
 
@@ -147,7 +154,10 @@ where
         drop(self.command.take());
     }
 
-    fn send(&self, command: Command) -> Result<(), Error> {
+    fn send(&self, command: Command<'a>) -> Result<(), Error>
+    where
+        Self: 'static,
+    {
         if let Some(channel) = &self.command {
             Ok(channel
                 .lock()
@@ -159,9 +169,9 @@ where
     }
 }
 
-impl<S> Drop for Host<S>
+impl<S> Drop for Host<'_, S>
 where
-    for<'s> S: SerialPort + 's,
+    S: SerialPort,
 {
     fn drop(&mut self) {
         self.stop();

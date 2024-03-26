@@ -5,7 +5,7 @@ use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
 use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
-use log::{debug, error, info, trace};
+use log::{debug, error, trace};
 use serialport::SerialPort;
 use std::fmt::Debug;
 use std::iter::Copied;
@@ -26,7 +26,7 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter<S>
+pub struct Transmitter<'a, S>
 where
     S: SerialPort,
 {
@@ -34,8 +34,8 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    command: Receiver<Command>,
-    current_command: Arc<RwLock<Option<Command>>>,
+    command: Receiver<Command<'a>>,
+    current_command: Arc<RwLock<Option<Command<'a>>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -47,7 +47,7 @@ where
     t_rx_ack: Duration,
 }
 
-impl<S> Transmitter<S>
+impl<'a, S> Transmitter<'a, S>
 where
     S: SerialPort,
 {
@@ -56,8 +56,8 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        command: Receiver<Command>,
-        current_command: Arc<RwLock<Option<Command>>>,
+        command: Receiver<Command<'a>>,
+        current_command: Arc<RwLock<Option<Command<'a>>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -106,7 +106,7 @@ where
         }
     }
 
-    fn process_command(&mut self, command: Command) {
+    fn process_command(&mut self, command: Command<'a>) {
         self.replace_current_command(command);
 
         if let Some(command) = self.clone_current_command() {
@@ -379,7 +379,7 @@ where
         self.t_rx_ack = T_RX_ACK_INIT;
     }
 
-    fn abort_current_command(&mut self, error: Error) {
+    fn abort_current_command(&self, error: Error) {
         if let Some(command) = self.take_current_command() {
             match command {
                 Command::Data(_, response) => response.abort(error),
@@ -414,7 +414,7 @@ where
             .write_frame(frame, &mut self.buffer)
     }
 
-    fn clone_current_command(&self) -> Option<Command> {
+    fn clone_current_command(&self) -> Option<Command<'a>> {
         debug!("Locking current command ro.");
         let current_command = self
             .current_command
@@ -425,7 +425,7 @@ where
         current_command
     }
 
-    fn take_current_command(&self) -> Option<Command> {
+    fn take_current_command(&self) -> Option<Command<'a>> {
         debug!("Locking current command rw.");
         let current_command = self
             .current_command
@@ -436,7 +436,7 @@ where
         current_command
     }
 
-    fn replace_current_command(&self, command: Command) -> Option<Command> {
+    fn replace_current_command(&self, command: Command<'a>) -> Option<Command> {
         debug!("Locking current command rw.");
         let current_command = self
             .current_command
