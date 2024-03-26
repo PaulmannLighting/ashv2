@@ -1,7 +1,7 @@
 use super::response::{HandleResult, Handler};
 use crate::protocol::host::command::response::Event;
 use crate::Error;
-use log::error;
+use log::{error, trace};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
@@ -40,15 +40,19 @@ impl Future for ResetResponse {
     type Output = Result<(), Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        trace!("Locking result.");
         if let Ok(mut result) = self.result.lock() {
             if let Some(result) = result.take() {
                 return Poll::Ready(result);
             }
         }
+        trace!("Releasing result.");
 
+        trace!("Locking waker.");
         if let Ok(mut waker) = self.waker.lock() {
             waker.replace(cx.waker().clone());
         }
+        trace!("Releasing waker.");
 
         Poll::Pending
     }
@@ -60,7 +64,8 @@ impl Handler<()> for ResetResponse {
             Event::TransmissionCompleted => {
                 self.transmission_complete.store(true, SeqCst);
 
-                self.result.lock().map_or_else(
+                trace!("Locking result.");
+                let result = self.result.lock().map_or_else(
                     |_| {
                         error!("Could not lock result.");
                         HandleResult::Reject
@@ -73,42 +78,53 @@ impl Handler<()> for ResetResponse {
                             HandleResult::Continue
                         }
                     },
-                )
+                );
+                trace!("Releasing result.");
+                result
             }
-            Event::DataReceived(data) => self.result.lock().map_or_else(
-                |_| {
-                    error!("Could not lock result.");
-                    HandleResult::Reject
-                },
-                |mut result| {
-                    if result.is_some() {
+            Event::DataReceived(data) => {
+                trace!("Locking result.");
+                let result = self.result.lock().map_or_else(
+                    |_| {
+                        error!("Could not lock result.");
                         HandleResult::Reject
-                    } else {
-                        result.replace(data);
-
-                        if self.transmission_complete.load(SeqCst) {
-                            self.wake();
-                            HandleResult::Completed
+                    },
+                    |mut result| {
+                        if result.is_some() {
+                            HandleResult::Reject
                         } else {
-                            HandleResult::Continue
+                            result.replace(data);
+
+                            if self.transmission_complete.load(SeqCst) {
+                                self.wake();
+                                HandleResult::Completed
+                            } else {
+                                HandleResult::Continue
+                            }
                         }
-                    }
-                },
-            ),
+                    },
+                );
+                trace!("Releasing result.");
+                result
+            }
         }
     }
 
     fn abort(&self, error: Error) {
+        trace!("Locking result.");
         if let Ok(mut result) = self.result.lock() {
             result.replace(Err(error));
         }
+        trace!("Releasing result.");
     }
 
     fn wake(&self) {
+        trace!("Locking waker.");
         if let Ok(mut waker) = self.waker.lock() {
             if let Some(waker) = waker.take() {
                 waker.wake();
             }
         }
+        trace!("Releasing waker.");
     }
 }
