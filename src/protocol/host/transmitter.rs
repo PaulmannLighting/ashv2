@@ -113,7 +113,7 @@ where
 
         match command {
             Command::Data(payload, _) => self.transmit_data(&payload),
-            Command::Reset(_) => self.initialize(),
+            Command::Reset(_) => self.reset(),
         };
     }
 
@@ -387,7 +387,7 @@ where
                     response.wake();
                 }
                 Command::Reset(response) => {
-                    response.abort(error);
+                    response.handle(Event::TransmissionCompleted);
                     response.wake();
                 }
             };
