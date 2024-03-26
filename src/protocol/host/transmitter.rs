@@ -433,6 +433,7 @@ where
             .write()
             .expect("Current command lock should never be poisoned.")
             .take();
+        debug!("Took command: {:?}", current_command.clone());
         debug!("Releasing rw lock on current command.");
         current_command
     }

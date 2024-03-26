@@ -370,6 +370,7 @@ where
             .write()
             .expect("Current command should always be able to be locked for writing.")
             .take();
+        debug!("Took command: {:?}", current_command.clone());
         debug!("Releasing rw lock on current command.");
         current_command
     }
