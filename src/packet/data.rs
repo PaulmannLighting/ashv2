@@ -1,4 +1,5 @@
 use crate::frame::Frame;
+use crate::protocol::Mask;
 use crate::{FrameError, CRC};
 use log::warn;
 use std::array::IntoIter;
@@ -40,7 +41,7 @@ impl Data {
     ) -> Self {
         Self::new(
             ((frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK) + (ack_num & ACK_NUM_MASK),
-            payload,
+            payload.mask().collect(),
         )
     }
 
