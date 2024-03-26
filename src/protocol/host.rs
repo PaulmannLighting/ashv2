@@ -57,14 +57,18 @@ where
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
+    pub fn communicate<T>(&'a self, payload: &[u8]) -> T
     where
         Self: 'static,
         T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
-        self.send(Command::new(payload, Arc::new(response.clone())))?;
-        response.await
+
+        if let Err(error) = self.send(Command::new(payload, Arc::new(response.clone()))) {
+            response.abort(error);
+        }
+
+        response
     }
 
     /// Reset the NCP.
