@@ -334,7 +334,7 @@ where
             .read()
             .expect("Current command should always be able to be locked for reading.")
             .clone();
-        debug!("Current command locked ro.");
+        debug!("Releasing ro lock on current command.");
         current_command
     }
 
