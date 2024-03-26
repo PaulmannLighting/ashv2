@@ -101,8 +101,6 @@ impl Handler<()> for ResetResponse {
         if let Ok(mut result) = self.result.lock() {
             result.replace(Err(error));
         }
-
-        self.wake();
     }
 
     fn wake(&self) {

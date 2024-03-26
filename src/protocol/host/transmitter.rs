@@ -382,8 +382,14 @@ where
     fn abort_current_command(&self, error: Error) {
         if let Some(command) = self.take_current_command() {
             match command {
-                Command::Data(_, response) => response.abort(error),
-                Command::Reset(response) => response.abort(error),
+                Command::Data(_, response) => {
+                    response.abort(error);
+                    response.wake();
+                }
+                Command::Reset(response) => {
+                    response.abort(error);
+                    response.wake();
+                }
             };
         }
     }
