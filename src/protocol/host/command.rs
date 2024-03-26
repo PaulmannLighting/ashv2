@@ -7,13 +7,13 @@ mod reset_response;
 mod response;
 
 #[derive(Clone, Debug)]
-pub enum Command<'a> {
-    Data(Arc<[u8]>, Arc<dyn Handler<Arc<[u8]>> + 'a>),
+pub enum Command<'handler> {
+    Data(Arc<[u8]>, Arc<dyn Handler<Arc<[u8]>> + 'handler>),
     Reset(ResetResponse),
 }
 
-impl<'a> Command<'a> {
-    pub fn new(payload: &[u8], handler: Arc<dyn Handler<Arc<[u8]>> + 'a>) -> Self {
+impl<'handler> Command<'handler> {
+    pub fn new(payload: &[u8], handler: Arc<dyn Handler<Arc<[u8]>> + 'handler>) -> Self {
         Self::Data(Arc::from(payload), handler)
     }
 }

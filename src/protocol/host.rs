@@ -21,19 +21,19 @@ const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
 
 #[derive(Debug)]
-pub struct Host<'a, S>
+pub struct Host<'cmd, S>
 where
-    S: SerialPort + 'a,
+    S: SerialPort,
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
-    command: Option<Mutex<Sender<Command<'a>>>>,
+    command: Option<Mutex<Sender<Command<'cmd>>>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl<'a, S> Host<'a, S>
+impl<'cmd, S> Host<'cmd, S>
 where
     S: SerialPort,
 {
@@ -57,18 +57,14 @@ where
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub fn communicate<T>(&'a self, payload: &[u8]) -> T
+    pub async fn communicate<'t: 'cmd, T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         Self: 'static,
-        T: Clone + Default + Response + Sync + Send + 'a,
+        T: Clone + Default + Response + Sync + Send + 't,
     {
         let response = T::default();
-
-        if let Err(error) = self.send(Command::new(payload, Arc::new(response.clone()))) {
-            response.abort(error);
-        }
-
-        response
+        self.send(Command::new(payload, Arc::new(response.clone())))?;
+        response.await
     }
 
     /// Reset the NCP.
@@ -158,7 +154,7 @@ where
         drop(self.command.take());
     }
 
-    fn send(&self, command: Command<'a>) -> Result<(), Error>
+    fn send(&self, command: Command<'cmd>) -> Result<(), Error>
     where
         Self: 'static,
     {
