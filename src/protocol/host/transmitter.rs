@@ -427,6 +427,7 @@ where
 
     fn take_current_command(&self) -> Option<Command<'a>> {
         debug!("Locking current command rw.");
+        debug!("Taking current command");
         let current_command = self
             .current_command
             .write()
@@ -438,6 +439,7 @@ where
 
     fn replace_current_command(&self, command: Command<'a>) {
         debug!("Locking current command rw.");
+        debug!("Replacing current command");
         self.current_command
             .write()
             .expect("Current command lock should never be poisoned.")
