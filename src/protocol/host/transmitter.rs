@@ -436,15 +436,13 @@ where
         current_command
     }
 
-    fn replace_current_command(&self, command: Command<'a>) -> Option<Command> {
+    fn replace_current_command(&self, command: Command<'a>) {
         debug!("Locking current command rw.");
-        let current_command = self
-            .current_command
+        self.current_command
             .write()
             .expect("Current command lock should never be poisoned.")
             .replace(command);
         debug!("Releasing rw lock on current command.");
-        current_command
     }
 
     fn is_transaction_complete(&self) -> bool {

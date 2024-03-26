@@ -265,8 +265,10 @@ where
             },
         );
         self.reset_state();
+        trace!("Setting connected flag.");
         self.connected.store(true, SeqCst);
 
+        trace!("Handling current command.");
         if let Some(Command::Reset(reset_response)) = self.clone_current_command() {
             debug!("Handling reset response.");
             match reset_response.handle(Event::DataReceived(Ok(()))) {
@@ -282,6 +284,8 @@ where
             error!("Expected reset response, but got command response.");
             response.abort(crate::Error::Aborted);
             response.wake();
+        } else {
+            error!("No current command registered.");
         }
     }
 
