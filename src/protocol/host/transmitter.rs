@@ -113,7 +113,7 @@ where
 
         match command {
             Command::Data(payload, _) => self.transmit_data(&payload),
-            Command::Reset(_) => self.reset(),
+            Command::Reset(_) => self.initialize(),
         };
     }
 
