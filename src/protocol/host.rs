@@ -62,17 +62,7 @@ where
         for<'r> T: Clone + Default + Response + 'r,
     {
         let response = T::default();
-
-        if let Some(channel) = &self.command {
-            channel
-                .lock()
-                .expect("Channel mutex should never be poisoned.")
-                .send(Command::new(payload, response.clone()))
-                .map_err(Error::from)?;
-        } else {
-            return Err(Error::WorkerNotRunning.into());
-        }
-
+        self.send(Command::new(payload, response.clone()))?;
         response.await
     }
 
@@ -85,16 +75,7 @@ where
     /// This function will panic if the sender's mutex is poisoned.
     pub async fn reset(&self) -> Result<(), Error> {
         let response = ResetResponse::default();
-
-        if let Some(channel) = &self.command {
-            channel
-                .lock()
-                .expect("Channel mutex should never be poisoned.")
-                .send(Command::Reset(response.clone()))?;
-        } else {
-            return Err(Error::WorkerNotRunning);
-        }
-
+        self.send(Command::Reset(response.clone()))?;
         response.await
     }
 
@@ -164,6 +145,17 @@ where
         }
 
         drop(self.command.take());
+    }
+
+    fn send(&self, command: Command) -> Result<(), Error> {
+        if let Some(channel) = &self.command {
+            Ok(channel
+                .lock()
+                .expect("Channel mutex should never be poisoned.")
+                .send(command)?)
+        } else {
+            Err(Error::WorkerNotRunning)
+        }
     }
 }
 
