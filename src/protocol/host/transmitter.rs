@@ -375,6 +375,8 @@ where
         self.sent.clear();
         debug!("Resetting frame number.");
         self.frame_number = 0;
+        debug!("Resetting ACK number.");
+        self.ack_number.store(0, SeqCst);
         debug!("Resetting T_RX_ACK.");
         self.t_rx_ack = T_RX_ACK_INIT;
     }
