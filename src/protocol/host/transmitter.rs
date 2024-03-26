@@ -387,7 +387,7 @@ where
                     response.wake();
                 }
                 Command::Reset(response) => {
-                    response.handle(Event::TransmissionCompleted);
+                    response.abort(error);
                     response.wake();
                 }
             };
@@ -395,7 +395,7 @@ where
     }
 
     fn complete_current_command(&mut self) {
-        if let Some(command) = self.take_current_command() {
+        if let Some(command) = self.clone_current_command() {
             match command {
                 Command::Data(_, response) => {
                     debug!("Finalizing data command.");
