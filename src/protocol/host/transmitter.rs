@@ -3,6 +3,7 @@ use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::host::command::{Command, Event, Handler};
 use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
+use crate::Event::TransmissionCompleted;
 use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
 use log::{debug, error, trace};
@@ -113,7 +114,7 @@ where
 
         match command {
             Command::Data(payload, _) => self.transmit_data(&payload),
-            Command::Reset(_) => self.reset(),
+            Command::Reset(_) => self.initialize(),
         };
     }
 
@@ -359,11 +360,11 @@ where
     fn reset(&mut self) {
         debug!("Resetting connection.");
         self.connected.store(false, SeqCst);
-        debug!("Resetting state.");
-        self.reset_state();
         debug!("Sending RST.");
         self.write_frame(&Rst::default())
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
+        debug!("Resetting state.");
+        self.reset_state();
     }
 
     fn reset_state(&mut self) {
@@ -387,7 +388,7 @@ where
                     response.wake();
                 }
                 Command::Reset(response) => {
-                    response.abort(error);
+                    response.handle(TransmissionCompleted);
                     response.wake();
                 }
             };
