@@ -27,7 +27,7 @@ where
 {
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
-    command: Option<Sender<Command>>,
+    command: Option<Mutex<Sender<Command>>>,
     listener_thread: Option<JoinHandle<OptionalBytesSender>>,
     transmitter_thread: Option<JoinHandle<()>>,
     callback: Option<Sender<Arc<[u8]>>>,
@@ -54,14 +54,19 @@ where
     ///
     /// # Errors
     /// Returns [`T::Error`] if the transactions fails.
-    pub async fn communicate<T>(&mut self, payload: &[u8]) -> Result<T::Result, T::Error>
+    ///
+    /// # Panics
+    /// This function will panic if the sender's mutex is poisoned.
+    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         for<'r> T: Clone + Default + Response + 'r,
     {
         let response = T::default();
 
-        if let Some(channel) = &mut self.command {
+        if let Some(channel) = &self.command {
             channel
+                .lock()
+                .expect("Channel mutex should never be poisoned.")
                 .send(Command::new(payload, response.clone()))
                 .map_err(Error::from)?;
         } else {
@@ -75,11 +80,17 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    pub async fn reset(&mut self) -> Result<(), Error> {
+    ///
+    /// # Panics
+    /// This function will panic if the sender's mutex is poisoned.
+    pub async fn reset(&self) -> Result<(), Error> {
         let response = ResetResponse::default();
 
-        if let Some(channel) = &mut self.command {
-            channel.send(Command::Reset(response.clone()))?;
+        if let Some(channel) = &self.command {
+            channel
+                .lock()
+                .expect("Channel mutex should never be poisoned.")
+                .send(Command::Reset(response.clone()))?;
         } else {
             return Err(Error::WorkerNotRunning);
         }
@@ -129,7 +140,7 @@ where
             ack_receiver,
             nak_receiver,
         );
-        self.command = Some(command_sender);
+        self.command = Some(Mutex::new(command_sender));
         self.running.store(true, SeqCst);
         self.listener_thread = Some(spawn(|| listener.run()));
         self.transmitter_thread = Some(spawn(|| transmitter.run()));
