@@ -92,6 +92,7 @@ where
             if self.clone_current_command().is_some() {
                 trace!("Waiting for current transaction to complete.");
             } else {
+                trace!("Processing next command.");
                 self.process_next_command();
             }
         } else {
@@ -107,14 +108,13 @@ where
     }
 
     fn process_command(&mut self, command: Command<'a>) {
-        self.replace_current_command(command);
+        trace!("Processing command: {command:?}");
+        self.replace_current_command(command.clone());
 
-        if let Some(command) = self.clone_current_command() {
-            match command {
-                Command::Data(payload, _) => self.transmit_data(&payload),
-                Command::Reset(_) => self.reset(),
-            };
-        }
+        match command {
+            Command::Data(payload, _) => self.transmit_data(&payload),
+            Command::Reset(_) => self.reset(),
+        };
     }
 
     fn transmit_data(&mut self, payload: &[u8]) {
