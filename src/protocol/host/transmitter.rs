@@ -415,39 +415,34 @@ where
     }
 
     fn clone_current_command(&self) -> Option<Command<'a>> {
-        debug!("Locking current command ro.");
+        trace!("Locking current command ro.");
         let current_command = self
             .current_command
             .read()
             .expect("Current command lock should never be poisoned.")
             .clone();
-        debug!("Releasing ro lock on current command.");
+        trace!("Releasing ro lock on current command.");
         current_command
     }
 
     fn take_current_command(&self) -> Option<Command<'a>> {
-        debug!("Locking current command rw.");
-        debug!("Taking current command");
+        trace!("Locking current command rw.");
         let current_command = self
             .current_command
             .write()
             .expect("Current command lock should never be poisoned.")
             .take();
-        debug!("Took command: {:?}", current_command.clone());
-        debug!("Releasing rw lock on current command.");
+        trace!("Releasing rw lock on current command.");
         current_command
     }
 
     fn replace_current_command(&self, command: Command<'a>) {
-        debug!("Locking current command rw.");
-        debug!("Replacing current command");
-        let old_command = self
-            .current_command
+        trace!("Locking current command rw.");
+        self.current_command
             .write()
             .expect("Current command lock should never be poisoned.")
-            .replace(command.clone());
-        debug!("Replaced {:?} with {:?}", old_command, command);
-        debug!("Releasing rw lock on current command.");
+            .replace(command);
+        trace!("Releasing rw lock on current command.");
     }
 
     fn is_transaction_complete(&self) -> bool {

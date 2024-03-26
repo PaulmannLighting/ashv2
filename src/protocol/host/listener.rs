@@ -352,26 +352,24 @@ where
     }
 
     fn clone_current_command(&self) -> Option<Command<'a>> {
-        debug!("Attempting to lock current command ro.");
+        trace!("Attempting to lock current command ro.");
         let current_command = self
             .current_command
             .read()
             .expect("Current command should always be able to be locked for reading.")
             .clone();
-        debug!("Releasing ro lock on current command.");
+        trace!("Releasing ro lock on current command.");
         current_command
     }
 
     fn take_current_command(&self) -> Option<Command<'a>> {
-        debug!("Locking current command rw.");
-        debug!("Taking current command");
+        trace!("Locking current command rw.");
         let current_command = self
             .current_command
             .write()
             .expect("Current command should always be able to be locked for writing.")
             .take();
-        debug!("Took command: {:?}", current_command.clone());
-        debug!("Releasing rw lock on current command.");
+        trace!("Releasing rw lock on current command.");
         current_command
     }
 
