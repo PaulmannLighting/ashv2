@@ -208,13 +208,11 @@ where
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");
-                self.take_current_command();
                 response.wake();
             }
             HandleResult::Continue => debug!("Command responded with CONTINUE."),
             HandleResult::Failed => {
                 warn!("Command responded with FAILED.");
-                self.take_current_command();
                 response.wake();
             }
             HandleResult::Reject => {
@@ -274,7 +272,6 @@ where
                     response.wake();
                 }
                 Command::Reset(response) => {
-                    response.handle(Event::TransmissionCompleted);
                     response.wake();
                 }
             }

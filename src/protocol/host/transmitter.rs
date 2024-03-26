@@ -3,7 +3,6 @@ use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::host::command::{Command, Event, Handler};
 use crate::protocol::AshChunks;
 use crate::util::next_three_bit_number;
-use crate::Event::TransmissionCompleted;
 use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
 use log::{debug, error, trace};
@@ -388,8 +387,8 @@ where
                     response.wake();
                 }
                 Command::Reset(response) => {
-                    response.handle(TransmissionCompleted);
-                    response.wake();
+                    response.handle(Event::TransmissionCompleted);
+                    self.replace_current_command(Command::Reset(response));
                 }
             };
         }
