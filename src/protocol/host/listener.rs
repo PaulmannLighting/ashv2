@@ -268,7 +268,7 @@ where
         self.connected.store(true, SeqCst);
 
         if let Some(Command::Reset(reset_response)) = self.clone_current_command() {
-            debug!("Handling response.");
+            debug!("Handling reset response.");
             match reset_response.handle(Event::DataReceived(Ok(()))) {
                 HandleResult::Completed | HandleResult::Failed => {
                     debug!("Reset handled.");
@@ -278,6 +278,8 @@ where
                 HandleResult::Continue => warn!("Reset should never continue."),
                 HandleResult::Reject => warn!("Reset response handler rejected our reset."),
             }
+        } else {
+            error!("Current command is not a reset response.");
         }
     }
 
