@@ -186,9 +186,12 @@ where
         let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
 
         if let Some(command) = self.take_current_command() {
-            if let Command::Data(_, response) = command {
+            if let Command::Data(request, response) = command {
                 debug!("Forwarding data to current command.");
-                self.forward_data_to_command(payload, &response);
+
+                if let Some(response) = self.forward_data_to_command(payload, response) {
+                    self.replace_current_command(Command::Data(request, response));
+                }
             } else if let Some(callback) = &self.callback {
                 debug!("Forwarding data to callback.");
                 callback.send(payload).unwrap_or_else(|error| {
@@ -203,17 +206,22 @@ where
     fn forward_data_to_command(
         &self,
         payload: Arc<[u8]>,
-        response: &Arc<dyn Handler<Arc<[u8]>> + 'a>,
-    ) {
+        response: Arc<dyn Handler<Arc<[u8]>> + 'a>,
+    ) -> Option<Arc<dyn Handler<Arc<[u8]>> + 'a>> {
         match response.handle(Event::DataReceived(Ok(payload.clone()))) {
             HandleResult::Completed => {
                 debug!("Command responded with COMPLETED.");
                 response.wake();
+                None
             }
-            HandleResult::Continue => debug!("Command responded with CONTINUE."),
+            HandleResult::Continue => {
+                debug!("Command responded with CONTINUE.");
+                Some(response)
+            }
             HandleResult::Failed => {
                 warn!("Command responded with FAILED.");
                 response.wake();
+                None
             }
             HandleResult::Reject => {
                 debug!("Command responded with REJECT.");
@@ -225,8 +233,9 @@ where
                         error!("Failed to send data to callback channel: {error}");
                     });
                 });
+                None
             }
-        };
+        }
     }
 
     fn handle_error(&mut self, error: &Error) {
@@ -324,26 +333,24 @@ where
             .write_frame(frame, &mut self.write_buffer)
     }
 
-    fn clone_current_command(&self) -> Option<Command<'a>> {
-        trace!("Attempting to lock current command ro.");
-        let current_command = self
-            .current_command
-            .read()
-            .expect("Current command should always be able to be locked for reading.")
-            .clone();
-        trace!("Releasing ro lock on current command.");
-        current_command
-    }
-
     fn take_current_command(&self) -> Option<Command<'a>> {
         trace!("Locking current command rw.");
         let current_command = self
             .current_command
             .write()
-            .expect("Current command should always be able to be locked for writing.")
+            .expect("Current command lock should never be poisoned.")
             .take();
         trace!("Releasing rw lock on current command.");
         current_command
+    }
+
+    fn replace_current_command(&self, command: Command<'a>) {
+        trace!("Locking current command rw.");
+        self.current_command
+            .write()
+            .expect("Current command lock should never be poisoned.")
+            .replace(command);
+        trace!("Releasing rw lock on current command.");
     }
 
     const fn ack_number(&self) -> u8 {
