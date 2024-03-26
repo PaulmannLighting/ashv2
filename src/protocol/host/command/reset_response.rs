@@ -1,7 +1,7 @@
 use super::response::{HandleResult, Handler};
 use crate::protocol::host::command::response::Event;
 use crate::Error;
-use log::error;
+use log::{error, info, trace};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
@@ -56,6 +56,7 @@ impl Future for ResetResponse {
 
 impl Handler<()> for ResetResponse {
     fn handle(&self, event: Event<Result<(), Error>>) -> HandleResult {
+        trace!("Handling event: {event:?}.");
         match event {
             Event::TransmissionCompleted => {
                 self.transmission_complete.store(true, SeqCst);
@@ -98,14 +99,18 @@ impl Handler<()> for ResetResponse {
     }
 
     fn abort(&self, error: Error) {
+        trace!("Aborting.");
         if let Ok(mut result) = self.result.lock() {
+            info!("Really aborting.");
             result.replace(Err(error));
         }
     }
 
     fn wake(&self) {
+        trace!("Waking.");
         if let Ok(mut waker) = self.waker.lock() {
             if let Some(waker) = waker.take() {
+                info!("Really waking.");
                 waker.wake();
             }
         }

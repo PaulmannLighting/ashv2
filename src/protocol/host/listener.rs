@@ -275,6 +275,7 @@ where
         self.connected.store(true, SeqCst);
 
         if let Some(command) = self.take_current_command() {
+            trace!("Aborting current command.");
             match command {
                 Command::Data(_, response) => {
                     response.abort(crate::Error::Aborted);
