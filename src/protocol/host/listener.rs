@@ -266,6 +266,19 @@ where
         );
         self.reset_state();
         self.connected.store(true, SeqCst);
+
+        if let Some(command) = self.take_current_command() {
+            match command {
+                Command::Data(_, response) => {
+                    response.abort(crate::Error::Aborted);
+                    response.wake();
+                }
+                Command::Reset(response) => {
+                    response.handle(Event::TransmissionCompleted);
+                    response.wake();
+                }
+            }
+        }
     }
 
     fn reset_state(&mut self) {
