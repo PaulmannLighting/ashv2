@@ -440,10 +440,12 @@ where
     fn replace_current_command(&self, command: Command<'a>) {
         debug!("Locking current command rw.");
         debug!("Replacing current command");
-        self.current_command
+        let old_command = self
+            .current_command
             .write()
             .expect("Current command lock should never be poisoned.")
-            .replace(command);
+            .replace(command.clone());
+        debug!("Replaced {:?} with {:?}", old_command, command);
         debug!("Releasing rw lock on current command.");
     }
 
