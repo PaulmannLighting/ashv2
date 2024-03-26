@@ -278,8 +278,10 @@ where
                 HandleResult::Continue => warn!("Reset should never continue."),
                 HandleResult::Reject => warn!("Reset response handler rejected our reset."),
             }
-        } else {
-            error!("Current command is not a reset response.");
+        } else if let Some(Command::Data(_, response)) = self.take_current_command() {
+            error!("Expected reset response, but got command response.");
+            response.abort(crate::Error::Aborted);
+            response.wake();
         }
     }
 
