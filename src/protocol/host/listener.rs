@@ -256,10 +256,6 @@ where
     }
 
     fn handle_rst_ack(&mut self, rst_ack: &RstAck) {
-        trace!(
-            "Current command #1: {:?}",
-            self.clone_current_command().is_some()
-        );
         rst_ack.code().map_or_else(
             || {
                 warn!("NCP acknowledged reset with invalid error code.");
@@ -268,41 +264,8 @@ where
                 debug!("NCP acknowledged reset due to: {code}");
             },
         );
-        trace!(
-            "Current command #2: {:?}",
-            self.clone_current_command().is_some()
-        );
         self.reset_state();
-        trace!(
-            "Current command #3: {:?}",
-            self.clone_current_command().is_some()
-        );
-        trace!("Setting connected flag.");
         self.connected.store(true, SeqCst);
-        trace!(
-            "Current command #4: {:?}",
-            self.clone_current_command().is_some()
-        );
-
-        trace!("Handling current command.");
-        if let Some(Command::Reset(reset_response)) = self.clone_current_command() {
-            debug!("Handling reset response.");
-            match reset_response.handle(Event::DataReceived(Ok(()))) {
-                HandleResult::Completed | HandleResult::Failed => {
-                    debug!("Reset handled.");
-                    self.take_current_command();
-                    reset_response.wake();
-                }
-                HandleResult::Continue => warn!("Reset should never continue."),
-                HandleResult::Reject => warn!("Reset response handler rejected our reset."),
-            }
-        } else if let Some(Command::Data(_, response)) = self.take_current_command() {
-            error!("Expected reset response, but got command response.");
-            response.abort(crate::Error::Aborted);
-            response.wake();
-        } else {
-            error!("No current command registered.");
-        }
     }
 
     fn reset_state(&mut self) {
