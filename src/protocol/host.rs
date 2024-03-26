@@ -58,15 +58,17 @@ where
     where
         for<'r> T: Clone + Default + Response + 'r,
     {
+        let response = T::default();
+
         if let Some(channel) = &mut self.command {
-            let response = T::default();
             channel
                 .send(Command::new(payload, response.clone()))
                 .map_err(Error::from)?;
-            response.await
         } else {
-            Err(Error::WorkerNotRunning.into())
+            return Err(Error::WorkerNotRunning.into());
         }
+
+        response.await
     }
 
     /// Reset the NCP.
@@ -74,13 +76,15 @@ where
     /// # Errors
     /// Returns an [`Error`] on I/O, protocol or parsing errors.
     pub async fn reset(&mut self) -> Result<(), Error> {
+        let response = ResetResponse::default();
+
         if let Some(channel) = &mut self.command {
-            let response = ResetResponse::default();
             channel.send(Command::Reset(response.clone()))?;
-            response.await
         } else {
-            Err(Error::WorkerNotRunning)
+            return Err(Error::WorkerNotRunning);
         }
+
+        response.await
     }
 
     /// Queries whether the host is running.
