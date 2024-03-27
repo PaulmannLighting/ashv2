@@ -163,8 +163,7 @@ where
                     .lock()
                     .expect("Channel mutex should never be poisoned.")
                     .send(command)
-                    .expect("Could not send command through channel.");
-                Ok(())
+                    .map_err(|_| Error::Terminated)
             },
         )
     }
