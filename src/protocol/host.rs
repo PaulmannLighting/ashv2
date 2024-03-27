@@ -50,6 +50,21 @@ where
         }
     }
 
+    /// Creates and starts the host.
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the host could not be started.
+    ///
+    /// # Panics
+    /// This function may panic if any locks are poisoned.
+    pub fn spawn(serial_port: S, callback: Option<Sender<Arc<[u8]>>>) -> Result<Self, Error>
+    where
+        Self: 'static,
+    {
+        let mut instance = Self::new(serial_port);
+        instance.start(callback).map(|()| instance)
+    }
+
     /// Communicate with the NCP, returning [`T::Result`].
     ///
     /// # Errors
