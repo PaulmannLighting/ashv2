@@ -14,8 +14,8 @@ const RETRANSMIT_MASK: u8 = 0b0000_1000;
 const FRAME_NUM_OFFSET: u8 = 4;
 const HEADER_SIZE: usize = 1;
 const CRC_CHECKSUM_SIZE: usize = 2;
-pub const MIN_PAYLOAD_SIZE: usize = 3;
 pub const METADATA_SIZE: usize = HEADER_SIZE + CRC_CHECKSUM_SIZE;
+pub const MIN_PAYLOAD_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
 
 type Payload = heapless::Vec<u8, MAX_PAYLOAD_SIZE>;
