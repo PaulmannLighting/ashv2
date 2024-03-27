@@ -1,17 +1,16 @@
-mod command;
 mod listener;
 mod transmitter;
 
+use crate::protocol::{Command, Response};
+use crate::util::NonPoisonedRwLock;
 use crate::Error;
-use command::{Command, ResetResponse};
-pub use command::{Event, HandleResult, Handler, Response};
 use listener::Listener;
 use log::error;
 use serialport::SerialPort;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use transmitter::Transmitter;
@@ -78,23 +77,7 @@ where
         T: Clone + Default + Response + Sync + Send + 't,
     {
         let response = T::default();
-        self.send(Command::new(payload, Arc::new(response.clone())))?;
-        response.await
-    }
-
-    /// Reset the NCP.
-    ///
-    /// # Errors
-    /// Returns an [`Error`] on I/O, protocol or parsing errors.
-    ///
-    /// # Panics
-    /// This function will panic if the sender's mutex is poisoned.
-    pub async fn reset(&self) -> Result<(), Error>
-    where
-        Self: 'static,
-    {
-        let response = ResetResponse::default();
-        self.send(Command::Reset(response.clone()))?;
+        self.send(Command::new(Arc::from(payload), Arc::new(response.clone())))?;
         response.await
     }
 
@@ -123,13 +106,13 @@ where
             .set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
-        let current_command = Arc::new(RwLock::new(None));
+        let handler = Arc::new(NonPoisonedRwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
             self.serial_port.clone(),
             self.running.clone(),
             connected.clone(),
-            current_command.clone(),
+            handler.clone(),
             ack_number.clone(),
             callback,
         );
@@ -138,7 +121,7 @@ where
             self.running.clone(),
             connected,
             command_receiver,
-            current_command,
+            handler,
             ack_number,
             ack_receiver,
             nak_receiver,

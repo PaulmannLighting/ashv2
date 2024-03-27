@@ -1,8 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
-use crate::protocol::host::command::{Command, Event, HandleResult, Handler};
-use crate::protocol::Mask;
-use crate::util::next_three_bit_number;
+use crate::protocol::{Event, HandleResult, Handler, Mask};
+use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::{AshRead, AshWrite};
 use itertools::Itertools;
 use log::{debug, error, trace, warn};
@@ -12,7 +11,7 @@ use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct Listener<'a, S>
@@ -23,7 +22,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    current_command: Arc<RwLock<Option<Command<'a>>>>,
+    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
@@ -44,7 +43,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
@@ -54,7 +53,7 @@ where
             serial_port,
             running,
             connected,
-            current_command,
+            handler,
             ack_number,
             callback,
             ack_sender,
@@ -70,7 +69,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
@@ -80,7 +79,7 @@ where
             serial_port,
             running,
             connected,
-            current_command,
+            handler,
             ack_number,
             callback,
             ack_sender,
@@ -185,56 +184,41 @@ where
         debug!("Forwarding data: {data}");
         let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
 
-        if let Some(command) = self.take_current_command() {
-            if let Command::Data(request, response) = command {
-                debug!("Forwarding data to current command.");
+        if let Some(handler) = self.handler.write().take() {
+            debug!("Forwarding data to current handler.");
 
-                if let Some(response) = self.forward_data_to_command(payload, response) {
-                    self.replace_current_command(Command::Data(request, response));
+            match handler.handle(Event::DataReceived(Ok(payload.clone()))) {
+                HandleResult::Completed => {
+                    debug!("Command responded with COMPLETED.");
+                    handler.wake();
                 }
-            } else if let Some(callback) = &self.callback {
-                debug!("Forwarding data to callback.");
-                callback.send(payload).unwrap_or_else(|error| {
-                    error!("Failed to send data to callback channel: {error}");
-                });
-            } else {
-                error!("There is neither an active response handler nor a callback handler registered. Dropping packet.");
-            }
-        }
-    }
-
-    fn forward_data_to_command(
-        &self,
-        payload: Arc<[u8]>,
-        response: Arc<dyn Handler<Arc<[u8]>> + 'a>,
-    ) -> Option<Arc<dyn Handler<Arc<[u8]>> + 'a>> {
-        match response.handle(Event::DataReceived(Ok(payload.clone()))) {
-            HandleResult::Completed => {
-                debug!("Command responded with COMPLETED.");
-                response.wake();
-                None
-            }
-            HandleResult::Continue => {
-                debug!("Command responded with CONTINUE.");
-                Some(response)
-            }
-            HandleResult::Failed => {
-                warn!("Command responded with FAILED.");
-                response.wake();
-                None
-            }
-            HandleResult::Reject => {
-                debug!("Command responded with REJECT.");
-                self.callback.as_ref().map_or_else(|| {
-                    error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
-                }, |callback| {
-                    debug!("Forwarding rejected data to callback.");
-                    callback.send(payload).unwrap_or_else(|error| {
-                        error!("Failed to send data to callback channel: {error}");
+                HandleResult::Continue => {
+                    debug!("Command responded with CONTINUE.");
+                    self.handler.write().replace(handler);
+                }
+                HandleResult::Failed => {
+                    warn!("Command responded with FAILED.");
+                    handler.wake();
+                }
+                HandleResult::Reject => {
+                    debug!("Command responded with REJECT.");
+                    self.callback.as_ref().map_or_else(|| {
+                        error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
+                    }, |callback| {
+                        debug!("Forwarding rejected data to callback.");
+                        callback.send(payload).unwrap_or_else(|error| {
+                            error!("Failed to send data to callback channel: {error}");
+                        });
                     });
-                });
-                None
+                }
             }
+        } else if let Some(callback) = &self.callback {
+            debug!("Forwarding data to callback.");
+            callback.send(payload).unwrap_or_else(|error| {
+                error!("Failed to send data to callback channel: {error}");
+            });
+        } else {
+            error!("There is neither an active response handler nor a callback handler registered. Dropping packet.");
         }
     }
 
@@ -274,17 +258,10 @@ where
         self.reset_state();
         self.connected.store(true, SeqCst);
 
-        if let Some(command) = self.take_current_command() {
+        if let Some(handler) = self.handler.write().take() {
             trace!("Aborting current command.");
-            match command {
-                Command::Data(_, response) => {
-                    response.abort(crate::Error::Aborted);
-                    response.wake();
-                }
-                Command::Reset(response) => {
-                    response.wake();
-                }
-            }
+            handler.abort(crate::Error::Aborted);
+            handler.wake();
         }
     }
 
@@ -332,26 +309,6 @@ where
             .lock()
             .expect("Serial port should always be able to be locked.")
             .write_frame(frame, &mut self.write_buffer)
-    }
-
-    fn take_current_command(&self) -> Option<Command<'a>> {
-        trace!("Locking current command rw.");
-        let current_command = self
-            .current_command
-            .write()
-            .expect("Current command lock should never be poisoned.")
-            .take();
-        trace!("Releasing rw lock on current command.");
-        current_command
-    }
-
-    fn replace_current_command(&self, command: Command<'a>) {
-        trace!("Locking current command rw.");
-        self.current_command
-            .write()
-            .expect("Current command lock should never be poisoned.")
-            .replace(command);
-        trace!("Releasing rw lock on current command.");
     }
 
     const fn ack_number(&self) -> u8 {

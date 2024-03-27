@@ -1,8 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
-use crate::protocol::host::command::{Command, Event, Handler};
-use crate::protocol::AshChunks;
-use crate::util::next_three_bit_number;
+use crate::protocol::{AshChunks, Command, Event, Handler};
+use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
 use log::{debug, error, trace};
@@ -13,7 +12,7 @@ use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
@@ -35,7 +34,7 @@ where
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command<'a>>,
-    current_command: Arc<RwLock<Option<Command<'a>>>>,
+    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -57,7 +56,7 @@ where
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command<'a>>,
-        current_command: Arc<RwLock<Option<Command<'a>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -67,7 +66,7 @@ where
             running,
             connected,
             command,
-            current_command,
+            handler,
             ack_number,
             ack_receiver,
             nak_receiver,
@@ -89,7 +88,7 @@ where
 
     fn main(&mut self) {
         if self.connected.load(SeqCst) {
-            if self.clone_current_command().is_some() {
+            if self.handler.read().is_some() {
                 trace!("Waiting for current transaction to complete.");
             } else {
                 trace!("Processing next command.");
@@ -109,12 +108,8 @@ where
 
     fn process_command(&mut self, command: Command<'a>) {
         trace!("Processing command: {command:?}");
-        self.replace_current_command(command.clone());
-
-        match command {
-            Command::Data(payload, _) => self.transmit_data(&payload),
-            Command::Reset(_) => self.initialize(),
-        };
+        self.handler.write().replace(command.handler);
+        self.transmit_data(&command.payload);
     }
 
     fn transmit_data(&mut self, payload: &[u8]) {
@@ -125,10 +120,10 @@ where
             .and_then(|chunks| self.transmit_chunks(chunks.into_iter()))
         {
             error!("{error}");
-            self.abort_current_command(error);
+            self.abort_current_transaction(error);
         } else {
             debug!("Transmission completed.");
-            self.complete_current_command();
+            self.set_transmission_completed();
         }
     }
 
@@ -368,7 +363,7 @@ where
 
     fn reset_state(&mut self) {
         debug!("Aborting current command.");
-        self.abort_current_command(Error::Aborted);
+        self.abort_current_transaction(Error::Aborted);
         debug!("Cleaning buffer.");
         self.buffer.clear();
         debug!("Clearing sent queue.");
@@ -381,33 +376,17 @@ where
         self.t_rx_ack = T_RX_ACK_INIT;
     }
 
-    fn abort_current_command(&self, error: Error) {
-        if let Some(command) = self.take_current_command() {
-            match command {
-                Command::Data(_, response) => {
-                    response.abort(error);
-                    response.wake();
-                }
-                Command::Reset(response) => {
-                    response.handle(Event::TransmissionCompleted);
-                    self.replace_current_command(Command::Reset(response));
-                }
-            };
+    fn abort_current_transaction(&self, error: Error) {
+        if let Some(handler) = self.handler.write().take() {
+            handler.abort(error);
+            handler.wake();
         }
     }
 
-    fn complete_current_command(&mut self) {
-        if let Some(command) = self.clone_current_command() {
-            match command {
-                Command::Data(_, response) => {
-                    debug!("Finalizing data command.");
-                    response.handle(Event::TransmissionCompleted);
-                }
-                Command::Reset(response) => {
-                    debug!("Finalizing reset command.");
-                    response.handle(Event::TransmissionCompleted);
-                }
-            };
+    fn set_transmission_completed(&mut self) {
+        if let Some(handler) = self.handler.write().clone() {
+            debug!("Finalizing data command.");
+            handler.handle(Event::TransmissionCompleted);
         }
     }
 
@@ -420,37 +399,6 @@ where
             .lock()
             .expect("Serial port should always be able to be locked.")
             .write_frame(frame, &mut self.buffer)
-    }
-
-    fn clone_current_command(&self) -> Option<Command<'a>> {
-        trace!("Locking current command ro.");
-        let current_command = self
-            .current_command
-            .read()
-            .expect("Current command lock should never be poisoned.")
-            .clone();
-        trace!("Releasing ro lock on current command.");
-        current_command
-    }
-
-    fn take_current_command(&self) -> Option<Command<'a>> {
-        trace!("Locking current command rw.");
-        let current_command = self
-            .current_command
-            .write()
-            .expect("Current command lock should never be poisoned.")
-            .take();
-        trace!("Releasing rw lock on current command.");
-        current_command
-    }
-
-    fn replace_current_command(&self, command: Command<'a>) {
-        trace!("Locking current command rw.");
-        self.current_command
-            .write()
-            .expect("Current command lock should never be poisoned.")
-            .replace(command);
-        trace!("Releasing rw lock on current command.");
     }
 
     fn is_transaction_complete(&self) -> bool {

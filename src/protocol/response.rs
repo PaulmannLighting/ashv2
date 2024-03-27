@@ -12,25 +12,18 @@ pub enum HandleResult {
 }
 
 #[derive(Debug)]
-pub enum Event<T>
-where
-    T: Debug,
-{
+pub enum Event {
     TransmissionCompleted,
-    DataReceived(T),
+    DataReceived(Result<Arc<[u8]>, Error>),
 }
 
-pub trait Handler<T>: Debug + Send + Sync
-where
-    T: Debug + Send + Sync,
-{
-    fn handle(&self, event: Event<Result<T, Error>>) -> HandleResult;
+pub trait Handler: Debug + Send + Sync {
+    fn handle(&self, event: Event) -> HandleResult;
     fn abort(&self, error: Error);
     fn wake(&self);
 }
 
-pub trait Response:
-    Future<Output = Result<Self::Result, Self::Error>> + Handler<Arc<[u8]>>
+pub trait Response: Future<Output = Result<Self::Result, Self::Error>> + Handler
 where
     Self::Error: From<Error>,
 {
