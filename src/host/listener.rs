@@ -3,7 +3,6 @@ use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
 use crate::protocol::{Event, HandleResult, Handler, Mask};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::{AshRead, AshWrite};
-use itertools::Itertools;
 use log::{debug, error, trace, warn};
 use serialport::SerialPort;
 use std::fmt::Debug;
@@ -139,7 +138,11 @@ where
         trace!("Frame details: {data:#04X?}");
         trace!(
             "Unmasked payload: {:#04X?}",
-            data.payload().iter().copied().mask().collect_vec()
+            data.payload()
+                .iter()
+                .copied()
+                .mask()
+                .collect::<FrameBuffer>()
         );
 
         if !data.is_crc_valid() {
@@ -182,7 +185,14 @@ where
 
     fn forward_data(&mut self, data: &Data) {
         debug!("Forwarding data: {data}");
-        let payload: Arc<[u8]> = data.payload().iter().copied().mask().collect_vec().into();
+        let payload: Arc<[u8]> = data
+            .payload()
+            .iter()
+            .copied()
+            .mask()
+            .collect::<FrameBuffer>()
+            .as_slice()
+            .into();
 
         if let Some(handler) = self.handler.write().take() {
             debug!("Forwarding data to current handler.");
