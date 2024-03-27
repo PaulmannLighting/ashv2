@@ -15,4 +15,4 @@ pub use ash_chunks::AshChunks;
 pub use command::Command;
 pub use randomization::{Mask, MaskGenerator, MaskIterator};
 pub use response::{Event, HandleResult, Handler, Response};
-pub use stuffing::{Stuff, Stuffer, Unstuff, Unstuffer};
+pub use stuffing::{Stuff, Unstuff};
