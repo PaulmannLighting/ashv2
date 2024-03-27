@@ -108,7 +108,7 @@ where
 
     fn process_command(&mut self, command: Command<'a>) {
         trace!(
-            "Processing command {:#04X?} with handler {:?}",
+            "Processing command {:#04X?} with handler {:#?}",
             &command.payload,
             &command.handler
         );
