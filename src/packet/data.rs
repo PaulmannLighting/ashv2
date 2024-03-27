@@ -16,17 +16,19 @@ pub const MIN_PAYLOAD_SIZE: usize = 3;
 pub const HEADER_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
 
+type Payload = heapless::Vec<u8, MAX_PAYLOAD_SIZE>;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
     header: u8,
-    payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>,
+    payload: Payload,
     crc: u16,
 }
 
 impl Data {
     /// Creates a new data packet.
     #[must_use]
-    pub fn new(header: u8, payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> Self {
+    pub fn new(header: u8, payload: Payload) -> Self {
         Self {
             header,
             crc: calculate_crc(header, &payload),
@@ -35,11 +37,7 @@ impl Data {
     }
 
     #[must_use]
-    pub fn create(
-        frame_num: u8,
-        ack_num: u8,
-        payload: heapless::Vec<u8, MAX_PAYLOAD_SIZE>,
-    ) -> Self {
+    pub fn create(frame_num: u8, ack_num: u8, payload: Payload) -> Self {
         Self::new(
             ((frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK) + (ack_num & ACK_NUM_MASK),
             payload.mask().collect(),
@@ -166,7 +164,7 @@ impl TryFrom<&[u8]> for Data {
     }
 }
 
-fn calculate_crc(header: u8, payload: &heapless::Vec<u8, MAX_PAYLOAD_SIZE>) -> u16 {
+fn calculate_crc(header: u8, payload: &Payload) -> u16 {
     let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
     bytes
         .push(header)
