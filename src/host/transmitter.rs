@@ -107,7 +107,11 @@ where
     }
 
     fn process_command(&mut self, command: Command<'a>) {
-        trace!("Processing command: {command:?}");
+        trace!(
+            "Processing command {:#04X?} with handler {:?}",
+            &command.payload,
+            command.handler
+        );
         self.handler.write().replace(command.handler);
         self.transmit_data(&command.payload);
     }
