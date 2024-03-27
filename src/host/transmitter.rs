@@ -110,7 +110,7 @@ where
         trace!(
             "Processing command {:#04X?} with handler {:?}",
             &command.payload,
-            command.handler
+            &command.handler
         );
         self.handler.write().replace(command.handler);
         self.transmit_data(&command.payload);
