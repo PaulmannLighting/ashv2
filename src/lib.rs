@@ -12,7 +12,7 @@ mod util;
 
 use code::Code;
 use crc::{Crc, CRC_16_IBM_3740};
-pub use error::{Error, FrameError};
+pub use error::Error;
 pub const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 pub use ash_read::AshRead;
 pub use ash_write::AshWrite;

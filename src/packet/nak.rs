@@ -1,5 +1,6 @@
+use crate::error::frame::Error;
 use crate::frame::Frame;
-use crate::{FrameError, CRC};
+use crate::CRC;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
@@ -85,7 +86,7 @@ impl IntoIterator for &Nak {
 }
 
 impl TryFrom<&[u8]> for Nak {
-    type Error = FrameError;
+    type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {

@@ -5,8 +5,8 @@ mod nak;
 mod rst;
 mod rst_ack;
 
+use crate::error::frame;
 use crate::frame::Frame;
-use crate::FrameError;
 pub use ack::Ack;
 pub use data::{Data, HEADER_SIZE, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use error::Error;
@@ -123,7 +123,7 @@ impl<'a> IntoIterator for &'a Packet {
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = FrameError;
+    type Error = frame::Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
         match *buffer

@@ -156,14 +156,17 @@ where
     where
         Self: 'static,
     {
-        if let Some(channel) = &self.command {
-            Ok(channel
-                .lock()
-                .expect("Channel mutex should never be poisoned.")
-                .send(command)?)
-        } else {
-            Err(Error::WorkerNotRunning)
-        }
+        self.command.as_ref().map_or_else(
+            || Err(Error::WorkerNotRunning),
+            |channel| {
+                channel
+                    .lock()
+                    .expect("Channel mutex should never be poisoned.")
+                    .send(command)
+                    .expect("Could not send command through channel.");
+                Ok(())
+            },
+        )
     }
 }
 

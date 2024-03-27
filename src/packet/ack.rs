@@ -1,3 +1,4 @@
+use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::CRC;
 use std::array::IntoIter;
@@ -86,7 +87,7 @@ impl IntoIterator for &Ack {
 }
 
 impl TryFrom<&[u8]> for Ack {
-    type Error = crate::FrameError;
+    type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == SIZE {

@@ -1,6 +1,7 @@
+use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::protocol::Mask;
-use crate::{FrameError, CRC};
+use crate::CRC;
 use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
@@ -132,7 +133,7 @@ impl<'a> IntoIterator for &'a Data {
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = FrameError;
+    type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() < HEADER_SIZE {
