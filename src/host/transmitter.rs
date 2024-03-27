@@ -4,8 +4,9 @@ use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::{AshWrite, Error, FrameError};
 use itertools::Chunks;
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use serialport::SerialPort;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::iter::Copied;
 use std::slice::Iter;
@@ -42,6 +43,7 @@ where
     buffer: FrameBuffer,
     sent: heapless::Vec<(SystemTime, Data), MAX_TIMEOUTS>,
     retransmit: heapless::Deque<Data, MAX_TIMEOUTS>,
+    retransmits: HashMap<u8, usize>,
     frame_number: u8,
     t_rx_ack: Duration,
 }
@@ -73,6 +75,7 @@ where
             buffer: FrameBuffer::new(),
             sent: heapless::Vec::new(),
             retransmit: heapless::Deque::new(),
+            retransmits: HashMap::new(),
             frame_number: 0,
             t_rx_ack: T_RX_ACK_INIT,
         }
@@ -125,6 +128,8 @@ where
         {
             error!("{error}");
             self.abort_current_transaction(error);
+            info!("Re-initializing connection.");
+            self.initialize();
         } else {
             debug!("Transmission completed.");
             self.set_transmission_completed();
@@ -161,6 +166,14 @@ where
 
         while self.sent.len() < MAX_TIMEOUTS {
             if let Some(mut data) = self.retransmit.pop_front() {
+                let cnt = self.retransmits.entry(data.frame_num()).or_default();
+                *cnt += 1;
+
+                if *cnt > MAX_TIMEOUTS {
+                    error!("Max retransmits exceeded for frame #{}", data.frame_num());
+                    return Err(Error::MaxRetransmitsExceeded);
+                }
+
                 retransmits += 1;
                 debug!("Retransmitting: {data}");
                 trace!("{data:#04X?}");
@@ -372,6 +385,10 @@ where
         self.buffer.clear();
         debug!("Clearing sent queue.");
         self.sent.clear();
+        debug!("Clearing retransmit queue.");
+        self.retransmits.clear();
+        debug!("Clearing retransmit counter.");
+        self.retransmit.clear();
         debug!("Resetting frame number.");
         self.frame_number = 0;
         debug!("Resetting ACK number.");
