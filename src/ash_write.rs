@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::FrameBuffer;
-use crate::protocol::{Stuffing, FLAG};
+use crate::protocol::{Stuff, FLAG};
 use log::{debug, trace};
 use std::io::{Error, ErrorKind, Result, Write};
 use std::iter::once;
