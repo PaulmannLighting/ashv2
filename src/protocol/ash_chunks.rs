@@ -2,10 +2,9 @@ use crate::packet::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 use crate::Error;
 use itertools::{IntoChunks, Itertools};
 
-pub trait AshChunks: IntoIterator<Item = u8>
+pub trait AshChunks: IntoIterator<Item = u8> + Sized
 where
     <Self as IntoIterator>::IntoIter: ExactSizeIterator,
-    Self: Sized,
 {
     /// Return an iterator over chunks that fit into ASH data frames.
     ///
