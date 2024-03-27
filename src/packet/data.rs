@@ -13,7 +13,7 @@ const FRAME_NUM_MASK: u8 = 0b0111_0000;
 const RETRANSMIT_MASK: u8 = 0b0000_1000;
 const FRAME_NUM_OFFSET: u8 = 4;
 pub const MIN_PAYLOAD_SIZE: usize = 3;
-pub const HEADER_SIZE: usize = 3;
+pub const METADATA_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
 
 type Payload = heapless::Vec<u8, MAX_PAYLOAD_SIZE>;
@@ -134,9 +134,9 @@ impl TryFrom<&[u8]> for Data {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < HEADER_SIZE {
+        if buffer.len() < METADATA_SIZE {
             return Err(Self::Error::BufferTooSmall {
-                expected: HEADER_SIZE,
+                expected: METADATA_SIZE,
                 found: buffer.len(),
             });
         }

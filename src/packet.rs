@@ -8,7 +8,7 @@ mod rst_ack;
 use crate::error::frame;
 use crate::frame::Frame;
 pub use ack::Ack;
-pub use data::{Data, HEADER_SIZE, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+pub use data::{Data, MAX_PAYLOAD_SIZE, METADATA_SIZE, MIN_PAYLOAD_SIZE};
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;
@@ -16,7 +16,7 @@ pub use rst_ack::RstAck;
 use std::fmt::{Debug, Display, Formatter};
 
 // In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
-pub const MAX_FRAME_SIZE: usize = (HEADER_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;
+pub const MAX_FRAME_SIZE: usize = (METADATA_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;
 pub type FrameBuffer = heapless::Vec<u8, MAX_FRAME_SIZE>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
