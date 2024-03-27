@@ -1,8 +1,9 @@
+use crate::error::frame;
 use crate::frame::Frame;
 use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
-use crate::{AshWrite, Error, FrameError};
+use crate::{AshWrite, Error};
 use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::SerialPort;
@@ -83,43 +84,51 @@ where
 
     pub fn run(mut self) {
         while self.running.load(SeqCst) {
-            self.main();
+            if let Err(error) = self.main() {
+                error!("{error}");
+                self.running.store(false, SeqCst);
+                break;
+            }
         }
 
         debug!("Terminating.");
     }
 
-    fn main(&mut self) {
+    fn main(&mut self) -> Result<(), Error> {
         if self.connected.load(SeqCst) {
             if self.handler.read().is_some() {
                 trace!("Waiting for current transaction to complete.");
+                Ok(())
             } else {
                 trace!("Processing next command.");
-                self.process_next_command();
+                self.process_next_command()
             }
         } else {
-            self.initialize();
+            self.initialize()
         }
     }
 
-    fn process_next_command(&mut self) {
+    fn process_next_command(&mut self) -> Result<(), Error> {
         match self.command.recv() {
             Ok(command) => self.process_command(command),
-            Err(error) => error!("Error receiving command: {error}"),
+            Err(error) => {
+                error!("Error receiving command: {error}");
+                Ok(())
+            }
         }
     }
 
-    fn process_command(&mut self, command: Command<'a>) {
+    fn process_command(&mut self, command: Command<'a>) -> Result<(), Error> {
         trace!(
             "Processing command {:#04X?} with handler {:#?}",
             &command.payload,
             &command.handler
         );
         self.handler.write().replace(command.handler);
-        self.transmit_data(&command.payload);
+        self.transmit_data(&command.payload)
     }
 
-    fn transmit_data(&mut self, payload: &[u8]) {
+    fn transmit_data(&mut self, payload: &[u8]) -> Result<(), Error> {
         if let Err(error) = payload
             .iter()
             .copied()
@@ -129,10 +138,11 @@ where
             error!("{error}");
             self.abort_current_transaction(error);
             info!("Re-initializing connection.");
-            self.initialize();
+            self.initialize()
         } else {
             debug!("Transmission completed.");
             self.set_transmission_completed();
+            Ok(())
         }
     }
 
@@ -219,7 +229,7 @@ where
             self.next_frame_number(),
             self.ack_number.load(SeqCst),
             self.buffer.as_slice().try_into().map_err(|()| {
-                Error::Frame(FrameError::PayloadTooLarge {
+                Error::Frame(frame::Error::PayloadTooLarge {
                     max: MAX_PAYLOAD_SIZE,
                     size: self.buffer.len(),
                 })
@@ -333,7 +343,7 @@ where
         frame_number
     }
 
-    fn initialize(&mut self) {
+    fn initialize(&mut self) -> Result<(), Error> {
         let mut sent_rst_timestamp: SystemTime;
 
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
@@ -361,11 +371,12 @@ where
             debug!("Checking whether NCP has started.");
             if self.connected.load(SeqCst) {
                 debug!("ASH connection established.");
-                return;
+                return Ok(());
             }
         }
 
         error!("Failed to establish ASH connection.");
+        Err(Error::InitializationFailed)
     }
 
     fn reset(&mut self) {
