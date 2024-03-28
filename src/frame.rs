@@ -1,5 +1,6 @@
-use crate::CRC;
 use std::fmt::{Debug, Display};
+
+use crate::CRC;
 
 pub trait Frame: Debug + Display {
     /// Returns the frame's header.

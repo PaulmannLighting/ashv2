@@ -1,9 +1,10 @@
-use crate::error::frame::Error;
-use crate::frame::Frame;
-use crate::CRC;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
+
+use crate::error::frame::Error;
+use crate::frame::Frame;
+use crate::CRC;
 
 const ACK_RDY_MASK: u8 = 0b0000_1000;
 const ACK_NUM_MASK: u8 = 0b0000_0111;
@@ -102,8 +103,9 @@ impl TryFrom<&[u8]> for Ack {
 
 #[cfg(test)]
 mod tests {
-    use super::Ack;
     use crate::frame::Frame;
+
+    use super::Ack;
 
     const ACK1: Ack = Ack {
         header: 0x81,

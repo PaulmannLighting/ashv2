@@ -1,7 +1,8 @@
-use crate::Error;
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Arc;
+
+use crate::Error;
 
 #[derive(Debug)]
 pub enum HandleResult {

@@ -1,12 +1,10 @@
-use crate::BaudRate;
-
-use serialport::FlowControl;
-
 #[cfg(windows)]
 use serialport::COMPort as SerialPort;
-
+use serialport::FlowControl;
 #[cfg(unix)]
 use serialport::TTYPort as SerialPort;
+
+use crate::BaudRate;
 
 /// Opens a serial port depending on the local operating system.
 ///

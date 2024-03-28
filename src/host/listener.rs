@@ -1,16 +1,18 @@
-use crate::frame::Frame;
-use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
-use crate::protocol::{Event, HandleResult, Handler, Mask};
-use crate::util::{next_three_bit_number, NonPoisonedRwLock};
-use crate::{AshRead, AshWrite};
-use log::{debug, error, trace, warn};
-use serialport::SerialPort;
 use std::fmt::Debug;
 use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+
+use log::{debug, error, trace, warn};
+use serialport::SerialPort;
+
+use crate::frame::Frame;
+use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
+use crate::protocol::{Event, HandleResult, Handler, Mask};
+use crate::util::{next_three_bit_number, NonPoisonedRwLock};
+use crate::{AshRead, AshWrite};
 
 #[derive(Debug)]
 pub struct Listener<'cmd, S>

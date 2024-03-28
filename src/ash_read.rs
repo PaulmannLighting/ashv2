@@ -1,8 +1,10 @@
+use std::io::{ErrorKind, Read};
+
+use log::{debug, trace};
+
 use crate::packet::{FrameBuffer, Packet};
 use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::Error;
-use log::{debug, trace};
-use std::io::{ErrorKind, Read};
 
 pub trait AshRead: Read {
     /// Read an ASH [`Packet`].

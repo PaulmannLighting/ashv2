@@ -1,8 +1,10 @@
+use std::fmt::{Display, Formatter};
+
+use num_traits::FromPrimitive;
+
 use crate::error::frame;
 use crate::frame::Frame;
 use crate::{Code, CRC};
-use num_traits::FromPrimitive;
-use std::fmt::{Display, Formatter};
 
 pub const HEADER: u8 = 0xC2;
 const SIZE: usize = 5;

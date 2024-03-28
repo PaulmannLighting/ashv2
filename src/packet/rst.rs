@@ -1,8 +1,9 @@
-use crate::error::frame::Error;
-use crate::frame::Frame;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::Chain;
+
+use crate::error::frame::Error;
+use crate::frame::Frame;
 
 pub const HEADER: u8 = 0xC0;
 const SIZE: usize = 3;
@@ -85,8 +86,9 @@ impl TryFrom<&[u8]> for Rst {
 
 #[cfg(test)]
 mod tests {
-    use super::Rst;
     use crate::frame::Frame;
+
+    use super::Rst;
 
     const RST: Rst = Rst {
         header: 0xC0,

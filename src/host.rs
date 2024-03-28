@@ -1,19 +1,22 @@
-mod listener;
-mod transmitter;
-
-use crate::protocol::{Command, Response};
-use crate::util::NonPoisonedRwLock;
-use crate::Error;
-use listener::Listener;
-use log::error;
-use serialport::SerialPort;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
+
+use log::error;
+use serialport::SerialPort;
+
+use listener::Listener;
 use transmitter::Transmitter;
+
+use crate::protocol::{Command, Response};
+use crate::util::NonPoisonedRwLock;
+use crate::Error;
+
+mod listener;
+mod transmitter;
 
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 

@@ -1,19 +1,21 @@
-mod ack;
-mod data;
-mod error;
-mod nak;
-mod rst;
-mod rst_ack;
+use std::fmt::{Debug, Display, Formatter};
 
-use crate::error::frame;
-use crate::frame::Frame;
 pub use ack::Ack;
 pub use data::{Data, MAX_PAYLOAD_SIZE, METADATA_SIZE, MIN_PAYLOAD_SIZE};
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;
 pub use rst_ack::RstAck;
-use std::fmt::{Debug, Display, Formatter};
+
+use crate::error::frame;
+use crate::frame::Frame;
+
+mod ack;
+mod data;
+mod error;
+mod nak;
+mod rst;
+mod rst_ack;
 
 // In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
 const MAX_FRAME_SIZE: usize = (METADATA_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;

@@ -1,5 +1,6 @@
-use super::response::Handler;
 use std::sync::Arc;
+
+use super::response::Handler;
 
 #[derive(Clone, Debug)]
 pub struct Command<'cmd> {

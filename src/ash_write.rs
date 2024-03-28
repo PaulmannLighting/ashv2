@@ -1,7 +1,9 @@
+use std::io::{Result, Write};
+
+use log::{debug, trace};
+
 use crate::frame::Frame;
 use crate::protocol::{Stuff, FLAG};
-use log::{debug, trace};
-use std::io::{Result, Write};
 
 pub trait AshWrite {
     /// Writes an ASH [`Frame`].

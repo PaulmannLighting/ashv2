@@ -1,6 +1,7 @@
+use itertools::{IntoChunks, Itertools};
+
 use crate::packet::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 use crate::Error;
-use itertools::{IntoChunks, Itertools};
 
 pub trait AshChunks: IntoIterator<Item = u8> + Sized
 where
@@ -35,9 +36,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::AshChunks;
-    use crate::protocol::ash_chunks::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
     use itertools::Itertools;
+
+    use crate::protocol::ash_chunks::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+
+    use super::AshChunks;
 
     #[test]
     fn test_ash_chunks() {

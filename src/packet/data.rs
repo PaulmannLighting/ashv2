@@ -1,12 +1,14 @@
-use crate::error::frame::Error;
-use crate::frame::Frame;
-use crate::protocol::Mask;
-use crate::CRC;
-use log::warn;
 use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
 use std::iter::{Chain, Copied};
 use std::slice::Iter;
+
+use log::warn;
+
+use crate::error::frame::Error;
+use crate::frame::Frame;
+use crate::protocol::Mask;
+use crate::CRC;
 
 const ACK_NUM_MASK: u8 = 0b0000_0111;
 const FRAME_NUM_MASK: u8 = 0b0111_0000;
@@ -176,10 +178,11 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
-    use super::Data;
     use crate::frame::Frame;
     use crate::protocol::Mask;
     use crate::CRC;
+
+    use super::Data;
 
     #[test]
     fn test_is_valid() {

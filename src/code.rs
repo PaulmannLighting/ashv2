@@ -1,6 +1,7 @@
+use std::fmt::{Display, Formatter};
+
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
-use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum Code {

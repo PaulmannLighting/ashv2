@@ -1,3 +1,9 @@
+pub use ash_chunks::AshChunks;
+pub use command::Command;
+pub use randomization::{Mask, MaskGenerator, MaskIterator};
+pub use response::{Event, HandleResult, Handler, Response};
+pub use stuffing::{Stuff, Unstuff};
+
 mod ash_chunks;
 mod command;
 mod randomization;
@@ -11,8 +17,3 @@ pub const X_OFF: u8 = 0x13;
 pub const SUBSTITUTE: u8 = 0x18;
 pub const CANCEL: u8 = 0x1A;
 pub const WAKE: u8 = 0xFF;
-pub use ash_chunks::AshChunks;
-pub use command::Command;
-pub use randomization::{Mask, MaskGenerator, MaskIterator};
-pub use response::{Event, HandleResult, Handler, Response};
-pub use stuffing::{Stuff, Unstuff};
