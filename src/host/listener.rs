@@ -87,7 +87,7 @@ where
         (listener, ack_receiver, nak_receiver)
     }
 
-    pub fn run(mut self) -> Option<Sender<Arc<[u8]>>> {
+    pub fn run(mut self) {
         while self.running.load(SeqCst) {
             match self.read_frame() {
                 Ok(packet) => {
@@ -100,7 +100,6 @@ where
         }
 
         debug!("Terminating.");
-        self.callback
     }
 
     fn handle_frame(&mut self, frame: &Packet) {

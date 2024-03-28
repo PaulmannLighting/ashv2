@@ -17,38 +17,15 @@ use transmitter::Transmitter;
 
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 
-type OptionalBytesSender = Option<Sender<Arc<[u8]>>>;
-
 #[derive(Debug)]
-pub struct Host<'cmd, S>
-where
-    S: SerialPort,
-{
-    serial_port: Arc<Mutex<S>>,
+pub struct Host<'cmd> {
     running: Arc<AtomicBool>,
-    command: Option<Mutex<Sender<Command<'cmd>>>>,
-    listener_thread: Option<JoinHandle<OptionalBytesSender>>,
+    command: Sender<Command<'cmd>>,
+    listener_thread: Option<JoinHandle<()>>,
     transmitter_thread: Option<JoinHandle<()>>,
-    callback: Option<Sender<Arc<[u8]>>>,
 }
 
-impl<'cmd, S> Host<'cmd, S>
-where
-    S: SerialPort,
-{
-    /// Creates a new `ASHv2` host.
-    #[must_use]
-    pub fn new(serial_port: S) -> Self {
-        Self {
-            serial_port: Arc::new(Mutex::new(serial_port)),
-            running: Arc::new(AtomicBool::new(false)),
-            command: None,
-            listener_thread: None,
-            transmitter_thread: None,
-            callback: None,
-        }
-    }
-
+impl<'cmd> Host<'cmd> {
     /// Creates and starts the host.
     ///
     /// # Errors
@@ -56,51 +33,14 @@ where
     ///
     /// # Panics
     /// This function may panic if any locks are poisoned.
-    pub fn spawn(serial_port: S, callback: Option<Sender<Arc<[u8]>>>) -> Result<Self, Error>
+    pub fn spawn<S>(serial_port: S, callback: Option<Sender<Arc<[u8]>>>) -> Result<Self, Error>
     where
         Self: 'static,
+        S: SerialPort + 'cmd,
     {
-        let mut instance = Self::new(serial_port);
-        instance.start(callback).map(|()| instance)
-    }
-
-    /// Communicate with the NCP, returning [`T::Result`].
-    ///
-    /// # Errors
-    /// Returns [`T::Error`] if the transactions fails.
-    ///
-    /// # Panics
-    /// This function will panic if the sender's mutex is poisoned.
-    pub async fn communicate<'t: 'cmd, T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
-    where
-        Self: 'static,
-        T: Clone + Default + Response + Sync + Send + 't,
-    {
-        let response = T::default();
-        self.send(Command::new(Arc::from(payload), Arc::new(response.clone())))?;
-        response.await
-    }
-
-    /// Queries whether the host is running.
-    #[must_use]
-    pub fn is_running(&self) -> bool {
-        self.running.load(SeqCst)
-            || self.listener_thread.is_some()
-            || self.transmitter_thread.is_some()
-    }
-
-    /// Starts the host.
-    ///
-    /// # Errors
-    /// Returns an [`Error`] if the host could not be started.
-    ///
-    /// # Panics
-    /// This function may panic if any locks are poisoned.
-    pub fn start(&mut self, callback: Option<Sender<Arc<[u8]>>>) -> Result<(), Error>
-    where
-        Self: 'static,
-    {
-        self.serial_port
+        let serial_port = Arc::new(Mutex::new(serial_port));
+        let running = Arc::new(AtomicBool::new(true));
+        serial_port
             .lock()
             .expect("Socket should not be poisoned.")
             .set_timeout(SOCKET_TIMEOUT)?;
@@ -109,16 +49,16 @@ where
         let handler = Arc::new(NonPoisonedRwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
-            self.serial_port.clone(),
-            self.running.clone(),
+            serial_port.clone(),
+            running.clone(),
             connected.clone(),
             handler.clone(),
             ack_number.clone(),
             callback,
         );
         let transmitter = Transmitter::new(
-            self.serial_port.clone(),
-            self.running.clone(),
+            serial_port,
+            running.clone(),
             connected,
             command_receiver,
             handler,
@@ -126,54 +66,49 @@ where
             ack_receiver,
             nak_receiver,
         );
-        self.command = Some(Mutex::new(command_sender));
-        self.running.store(true, SeqCst);
-        self.listener_thread = Some(spawn(move || listener.run()));
-        self.transmitter_thread = Some(spawn(move || transmitter.run()));
-        Ok(())
+
+        Ok(Self {
+            command: command_sender,
+            running,
+            listener_thread: Some(spawn(move || listener.run())),
+            transmitter_thread: Some(spawn(move || transmitter.run())),
+        })
     }
 
-    pub fn stop(&mut self) {
-        self.running.store(false, SeqCst);
-
-        if let Some(listener_thread) = self.listener_thread.take() {
-            self.callback = listener_thread.join().unwrap_or_else(|_| {
-                error!("Failed to join listener thread.");
-                None
-            });
-        }
-
-        if let Some(transmitter_thread) = self.transmitter_thread.take() {
-            transmitter_thread
-                .join()
-                .unwrap_or_else(|_| error!("Failed to join transmitter thread."));
-        }
-
-        drop(self.command.take());
-    }
-
-    fn send(&self, command: Command<'cmd>) -> Result<(), Error>
+    /// Communicate with the NCP, returning [`T::Result`].
+    ///
+    /// # Errors
+    /// Returns [`T::Error`] if the transactions fails.
+    ///Option<Sender<Arc<[u8]>>
+    /// # Panics
+    /// This function will panic if the sender's mutex is poisoned.
+    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         Self: 'static,
+        T: Clone + Default + Response + Sync + Send + 'cmd,
     {
-        self.command.as_ref().map_or_else(
-            || Err(Error::WorkerNotRunning),
-            |channel| {
-                channel
-                    .lock()
-                    .expect("Channel mutex should never be poisoned.")
-                    .send(command)
-                    .map_err(|_| Error::Terminated)
-            },
-        )
+        let response = T::default();
+        self.command
+            .send(Command::new(Arc::from(payload), Arc::new(response.clone())))
+            .map_err(|_| Error::Terminated)?;
+        response.await
     }
 }
 
-impl<S> Drop for Host<'_, S>
-where
-    S: SerialPort,
-{
+impl Drop for Host<'_> {
     fn drop(&mut self) {
-        self.stop();
+        self.running.store(false, SeqCst);
+
+        if let Some(thread) = self.listener_thread.take() {
+            thread.join().unwrap_or_else(|_| {
+                error!("Failed to join listener thread.");
+            });
+        }
+
+        if let Some(thread) = self.transmitter_thread.take() {
+            thread
+                .join()
+                .unwrap_or_else(|_| error!("Failed to join transmitter thread."));
+        }
     }
 }
