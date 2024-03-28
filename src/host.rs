@@ -33,7 +33,7 @@ impl<'cmd> Host<'cmd> {
     ///
     /// # Panics
     /// This function may panic if any locks are poisoned.
-    pub fn spawn<S>(
+    pub fn spawn(
         mut serial_port: TTYPort,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> Result<Self, Error>
