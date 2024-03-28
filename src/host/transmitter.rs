@@ -416,7 +416,7 @@ where
     }
 
     fn set_transmission_completed(&mut self) {
-        if let Some(handler) = self.handler.write().clone() {
+        if let Some(handler) = self.handler.read().clone() {
             debug!("Finalizing data command.");
             handler.handle(Event::TransmissionCompleted);
         }
