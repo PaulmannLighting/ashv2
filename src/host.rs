@@ -6,11 +6,11 @@ use crate::util::NonPoisonedRwLock;
 use crate::Error;
 use listener::Listener;
 use log::error;
-use serialport::{SerialPort, TTYPort};
+use serialport::SerialPort;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 use transmitter::Transmitter;
@@ -33,23 +33,20 @@ impl<'cmd> Host<'cmd> {
     ///
     /// # Panics
     /// This function may panic if any locks are poisoned.
-    pub fn spawn(
-        mut serial_port: TTYPort,
-        callback: Option<Sender<Arc<[u8]>>>,
-    ) -> Result<Self, Error>
+    pub fn spawn<S>(mut serial_port: S, callback: Option<Sender<Arc<[u8]>>>) -> Result<Self, Error>
     where
         Self: 'static,
+        S: SerialPort + 'cmd,
     {
         let running = Arc::new(AtomicBool::new(true));
         serial_port.set_timeout(SOCKET_TIMEOUT)?;
+        let serial_port = Arc::new(Mutex::new(serial_port));
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
         let handler = Arc::new(NonPoisonedRwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::create(
-            serial_port
-                .try_clone_native()
-                .expect("Serial port should be cloneable."),
+            serial_port.clone(),
             running.clone(),
             connected.clone(),
             handler.clone(),

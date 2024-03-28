@@ -14,7 +14,7 @@ use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
@@ -32,7 +32,7 @@ where
     S: SerialPort,
 {
     // Shared state
-    serial_port: S,
+    serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command<'a>>,
@@ -55,7 +55,7 @@ where
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        serial_port: S,
+        serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command<'a>>,
@@ -427,7 +427,10 @@ where
         F: Frame,
         for<'f> &'f F: IntoIterator<Item = u8>,
     {
-        self.serial_port.write_frame(frame, &mut self.buffer)
+        self.serial_port
+            .lock()
+            .expect("Serial port should always be able to be locked.")
+            .write_frame(frame, &mut self.buffer)
     }
 
     fn is_transaction_complete(&self) -> bool {
