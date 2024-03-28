@@ -84,7 +84,6 @@ impl<'cmd> Host<'cmd> {
     /// This function will panic if the sender's mutex is poisoned.
     pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        Self: 'static,
         T: Clone + Default + Response + Sync + Send + 'cmd,
     {
         let response = T::default();
