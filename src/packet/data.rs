@@ -79,11 +79,6 @@ impl Data {
 
         self.crc = self.calculate_crc();
     }
-
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
 }
 
 impl Display for Data {
@@ -116,6 +111,7 @@ impl Frame for Data {
     }
 }
 
+#[allow(clippy::into_iter_without_iter)]
 impl<'a> IntoIterator for &'a Data {
     type Item = u8;
     type IntoIter = Chain<

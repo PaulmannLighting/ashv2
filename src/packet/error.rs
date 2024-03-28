@@ -2,9 +2,7 @@ use crate::error::frame;
 use crate::frame::Frame;
 use crate::{Code, CRC};
 use num_traits::FromPrimitive;
-use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
-use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC2;
 const SIZE: usize = 5;
@@ -42,11 +40,6 @@ impl Error {
     pub fn code(&self) -> Option<Code> {
         Code::from_u8(self.error_code)
     }
-
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
 }
 
 impl Display for Error {
@@ -73,23 +66,6 @@ impl Frame for Error {
     }
 }
 
-impl IntoIterator for &Error {
-    type Item = u8;
-    type IntoIter = Chain<
-        Chain<Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 1>>, IntoIter<Self::Item, 1>>,
-        IntoIter<Self::Item, 2>,
-    >;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.header
-            .to_be_bytes()
-            .into_iter()
-            .chain(self.version.to_be_bytes())
-            .chain(self.error_code.to_be_bytes())
-            .chain(self.crc.to_be_bytes())
-    }
-}
-
 impl TryFrom<&[u8]> for Error {
     type Error = frame::Error;
 
@@ -112,9 +88,10 @@ impl TryFrom<&[u8]> for Error {
 
 #[cfg(test)]
 mod tests {
-    use super::Error;
     use crate::frame::Frame;
     use crate::Code;
+
+    use super::Error;
 
     const ERROR: Error = Error {
         header: 0xC2,

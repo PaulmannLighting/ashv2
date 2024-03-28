@@ -41,11 +41,6 @@ impl Nak {
     pub const fn ack_num(&self) -> u8 {
         self.header % 0x08
     }
-
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
 }
 
 impl Display for Nak {
@@ -73,6 +68,7 @@ impl Frame for Nak {
     }
 }
 
+#[allow(clippy::into_iter_without_iter)]
 impl IntoIterator for &Nak {
     type Item = u8;
     type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;

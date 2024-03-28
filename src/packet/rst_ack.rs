@@ -3,9 +3,7 @@ use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::CRC;
 use num_traits::FromPrimitive;
-use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
-use std::iter::Chain;
 
 pub const HEADER: u8 = 0xC1;
 const SIZE: usize = 5;
@@ -44,11 +42,6 @@ impl RstAck {
     pub fn code(&self) -> Option<Code> {
         Code::from_u8(self.reset_code)
     }
-
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
 }
 
 impl Display for RstAck {
@@ -75,23 +68,6 @@ impl Frame for RstAck {
     }
 }
 
-impl IntoIterator for &RstAck {
-    type Item = u8;
-    type IntoIter = Chain<
-        Chain<Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 1>>, IntoIter<Self::Item, 1>>,
-        IntoIter<Self::Item, 2>,
-    >;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.header
-            .to_be_bytes()
-            .into_iter()
-            .chain(self.version.to_be_bytes())
-            .chain(self.reset_code.to_be_bytes())
-            .chain(self.crc.to_be_bytes())
-    }
-}
-
 impl TryFrom<&[u8]> for RstAck {
     type Error = Error;
 
@@ -114,9 +90,10 @@ impl TryFrom<&[u8]> for RstAck {
 
 #[cfg(test)]
 mod tests {
-    use super::RstAck;
     use crate::frame::Frame;
     use crate::Code;
+
+    use super::RstAck;
 
     const RST_ACK: RstAck = RstAck {
         header: 0xC1,

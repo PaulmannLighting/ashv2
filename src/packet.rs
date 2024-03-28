@@ -29,13 +29,6 @@ pub enum Packet {
     RstAck(RstAck),
 }
 
-impl Packet {
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
-}
-
 impl Display for Packet {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -102,22 +95,6 @@ impl Frame for Packet {
             Self::Nak(nak) => nak.is_valid(),
             Self::Rst(rst) => rst.is_valid(),
             Self::RstAck(rst_ack) => rst_ack.is_valid(),
-        }
-    }
-}
-
-impl<'a> IntoIterator for &'a Packet {
-    type Item = u8;
-    type IntoIter = Box<dyn Iterator<Item = u8> + 'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Packet::Ack(ack) => Box::new(ack.into_iter()),
-            Packet::Data(data) => Box::new(data.into_iter()),
-            Packet::Error(error) => Box::new(error.into_iter()),
-            Packet::Nak(nak) => Box::new(nak.into_iter()),
-            Packet::Rst(rst) => Box::new(rst.into_iter()),
-            Packet::RstAck(rst_ack) => Box::new(rst_ack.into_iter()),
         }
     }
 }

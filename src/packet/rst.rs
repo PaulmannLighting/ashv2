@@ -24,11 +24,6 @@ impl Rst {
             crc: CRC,
         }
     }
-
-    #[must_use]
-    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        self.into_iter()
-    }
 }
 
 impl Default for Rst {
@@ -57,6 +52,7 @@ impl Frame for Rst {
     }
 }
 
+#[allow(clippy::into_iter_without_iter)]
 impl IntoIterator for &Rst {
     type Item = u8;
     type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
