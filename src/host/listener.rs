@@ -36,7 +36,6 @@ impl<'cmd, S> Listener<'cmd, S>
 where
     S: SerialPort,
 {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
@@ -44,10 +43,10 @@ where
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
-        ack_sender: Sender<u8>,
-        nak_sender: Sender<u8>,
-    ) -> Self {
-        Self {
+    ) -> (Self, Receiver<u8>, Receiver<u8>) {
+        let (ack_sender, ack_receiver) = channel();
+        let (nak_sender, nak_receiver) = channel();
+        let listener = Self {
             serial_port,
             running,
             connected,
@@ -59,29 +58,7 @@ where
             read_buffer: FrameBuffer::new(),
             is_rejecting: false,
             last_received_frame_number: None,
-        }
-    }
-
-    pub fn create(
-        serial_port: Arc<Mutex<S>>,
-        running: Arc<AtomicBool>,
-        connected: Arc<AtomicBool>,
-        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
-        ack_number: Arc<AtomicU8>,
-        callback: Option<Sender<Arc<[u8]>>>,
-    ) -> (Self, Receiver<u8>, Receiver<u8>) {
-        let (ack_sender, ack_receiver) = channel();
-        let (nak_sender, nak_receiver) = channel();
-        let listener = Self::new(
-            serial_port,
-            running,
-            connected,
-            handler,
-            ack_number,
-            callback,
-            ack_sender,
-            nak_sender,
-        );
+        };
         (listener, ack_receiver, nak_receiver)
     }
 

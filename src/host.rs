@@ -45,7 +45,7 @@ impl<'cmd> Host<'cmd> {
         let connected = Arc::new(AtomicBool::new(false));
         let handler = Arc::new(NonPoisonedRwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
-        let (listener, ack_receiver, nak_receiver) = Listener::create(
+        let (listener, ack_receiver, nak_receiver) = Listener::new(
             serial_port.clone(),
             running.clone(),
             connected.clone(),
