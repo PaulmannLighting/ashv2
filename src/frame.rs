@@ -1,10 +1,7 @@
 use crate::CRC;
 use std::fmt::{Debug, Display};
 
-pub trait Frame: Debug + Display
-where
-    for<'a> &'a Self: IntoIterator<Item = u8>,
-{
+pub trait Frame: Debug + Display {
     /// Returns the frame's header.
     fn header(&self) -> u8;
 

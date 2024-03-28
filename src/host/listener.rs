@@ -28,7 +28,6 @@ where
     nak_sender: Sender<u8>,
     // Local state
     read_buffer: FrameBuffer,
-    write_buffer: FrameBuffer,
     is_rejecting: bool,
     last_received_frame_number: Option<u8>,
 }
@@ -58,7 +57,6 @@ where
             ack_sender,
             nak_sender,
             read_buffer: FrameBuffer::new(),
-            write_buffer: FrameBuffer::new(),
             is_rejecting: false,
             last_received_frame_number: None,
         }
@@ -314,10 +312,12 @@ where
         F: Frame,
         for<'f> &'f F: IntoIterator<Item = u8>,
     {
-        self.serial_port
-            .lock()
-            .expect("Serial port should always be able to be locked.")
-            .write_frame(frame, &mut self.write_buffer)
+        frame.write_to(
+            &mut *self
+                .serial_port
+                .lock()
+                .expect("Serial port should never be poisoned."),
+        )
     }
 
     const fn ack_number(&self) -> u8 {

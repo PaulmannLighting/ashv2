@@ -1,11 +1,9 @@
 use crate::frame::Frame;
-use crate::packet::FrameBuffer;
 use crate::protocol::{Stuff, FLAG};
 use log::{debug, trace};
-use std::io::{Error, ErrorKind, Result, Write};
-use std::iter::once;
+use std::io::{Result, Write};
 
-pub trait AshWrite: Write {
+pub trait AshWrite {
     /// Writes an ASH [`Frame`].
     ///
     /// # Arguments
@@ -13,24 +11,27 @@ pub trait AshWrite: Write {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O error occurs.
-    fn write_frame<F>(&mut self, frame: &F, buffer: &mut FrameBuffer) -> Result<()>
+    fn write_to<W>(&self, writer: &mut W) -> Result<()>
     where
-        F: Frame,
-        for<'a> &'a F: IntoIterator<Item = u8>,
-    {
-        debug!("Writing frame: {frame}");
-        trace!("{frame:#04X?}");
-        buffer.clear();
-
-        for byte in frame.into_iter().stuff().chain(once(FLAG)) {
-            buffer
-                .push(byte)
-                .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Buffer overflow."))?;
-        }
-
-        trace!("Buffer: {:#04X?}", buffer);
-        self.write_all(buffer)
-    }
+        W: Write;
 }
 
-impl<T> AshWrite for T where T: Write {}
+impl<T> AshWrite for T
+where
+    T: Frame,
+    for<'a> &'a T: IntoIterator<Item = u8>,
+{
+    fn write_to<W>(&self, writer: &mut W) -> Result<()>
+    where
+        W: Write,
+    {
+        debug!("Writing frame: {self}");
+        trace!("{self:#04X?}");
+
+        for byte in self.into_iter().stuff() {
+            writer.write_all(&[byte])?;
+        }
+
+        writer.write_all(&[FLAG])
+    }
+}

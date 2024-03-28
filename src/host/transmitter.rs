@@ -429,10 +429,12 @@ where
         F: Frame,
         for<'f> &'f F: IntoIterator<Item = u8>,
     {
-        self.serial_port
-            .lock()
-            .expect("Serial port should always be able to be locked.")
-            .write_frame(frame, &mut self.buffer)
+        frame.write_to(
+            &mut *self
+                .serial_port
+                .lock()
+                .expect("Serial port should never be poisoned."),
+        )
     }
 
     fn is_transaction_complete(&self) -> bool {
