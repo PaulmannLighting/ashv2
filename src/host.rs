@@ -105,9 +105,9 @@ impl Drop for Host<'_> {
         }
 
         if let Some(thread) = self.transmitter_thread.take() {
-            thread
-                .join()
-                .unwrap_or_else(|_| error!("Failed to join transmitter thread."));
+            thread.join().unwrap_or_else(|_| {
+                error!("Failed to join transmitter thread.");
+            });
         }
     }
 }
