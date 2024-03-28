@@ -27,7 +27,7 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter<'a, S>
+pub struct Transmitter<'cmd, S>
 where
     S: SerialPort,
 {
@@ -35,8 +35,8 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    command: Receiver<Command<'a>>,
-    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
+    command: Receiver<Command<'cmd>>,
+    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
     ack_number: Arc<AtomicU8>,
     ack_receiver: Receiver<u8>,
     nak_receiver: Receiver<u8>,
@@ -49,7 +49,7 @@ where
     t_rx_ack: Duration,
 }
 
-impl<'a, S> Transmitter<'a, S>
+impl<'cmd, S> Transmitter<'cmd, S>
 where
     S: SerialPort,
 {
@@ -58,8 +58,8 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        command: Receiver<Command<'a>>,
-        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
+        command: Receiver<Command<'cmd>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
         ack_number: Arc<AtomicU8>,
         ack_receiver: Receiver<u8>,
         nak_receiver: Receiver<u8>,
@@ -118,7 +118,7 @@ where
         }
     }
 
-    fn process_command(&mut self, command: Command<'a>) -> Result<(), Error> {
+    fn process_command(&mut self, command: Command<'cmd>) -> Result<(), Error> {
         trace!(
             "Processing command {:#04X?} with handler {:#?}",
             &command.payload,

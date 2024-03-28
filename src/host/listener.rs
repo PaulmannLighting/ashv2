@@ -13,7 +13,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
-pub struct Listener<'a, S>
+pub struct Listener<'cmd, S>
 where
     S: SerialPort,
 {
@@ -21,7 +21,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
+    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<Arc<[u8]>>>,
     ack_sender: Sender<u8>,
@@ -32,7 +32,7 @@ where
     last_received_frame_number: Option<u8>,
 }
 
-impl<'a, S> Listener<'a, S>
+impl<'cmd, S> Listener<'cmd, S>
 where
     S: SerialPort,
 {
@@ -41,7 +41,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
         ack_sender: Sender<u8>,
@@ -66,7 +66,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<Arc<[u8]>>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
