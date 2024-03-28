@@ -261,12 +261,13 @@ where
     }
 
     fn handle_naks(&mut self) {
-        self.buffer.clear();
-        self.buffer.extend(self.nak_receiver.try_iter());
-
-        // Hack around non-Polonius issue.
-        for index in 0..self.buffer.len() {
-            self.handle_nak(*unsafe { self.buffer.get_unchecked(index) });
+        #[allow(clippy::needless_collect)] // Polonius issue.
+        for ack_num in self
+            .nak_receiver
+            .try_iter()
+            .collect::<heapless::Vec<u8, MAX_TIMEOUTS>>()
+        {
+            self.handle_nak(ack_num);
         }
     }
 
@@ -284,12 +285,13 @@ where
     }
 
     fn handle_acks(&mut self) {
-        self.buffer.clear();
-        self.buffer.extend(self.ack_receiver.try_iter());
-
-        // Hack around non-Polonius issue.
-        for index in 0..self.buffer.len() {
-            self.handle_ack(*unsafe { self.buffer.get_unchecked(index) });
+        #[allow(clippy::needless_collect)] // Polonius issue.
+        for ack_num in self
+            .ack_receiver
+            .try_iter()
+            .collect::<heapless::Vec<u8, MAX_TIMEOUTS>>()
+        {
+            self.handle_ack(ack_num);
         }
     }
 
