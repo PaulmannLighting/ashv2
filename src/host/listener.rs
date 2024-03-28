@@ -10,7 +10,7 @@ use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Listener<'a, S>
@@ -18,7 +18,7 @@ where
     S: SerialPort,
 {
     // Shared state
-    serial_port: Arc<Mutex<S>>,
+    serial_port: S,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
@@ -39,7 +39,7 @@ where
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        serial_port: Arc<Mutex<S>>,
+        serial_port: S,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
@@ -65,7 +65,7 @@ where
     }
 
     pub fn create(
-        serial_port: Arc<Mutex<S>>,
+        serial_port: S,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'a>>>>,
@@ -295,8 +295,6 @@ where
 
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
         self.serial_port
-            .lock()
-            .expect("Serial port should always be able to be locked.")
             .read_packet(&mut self.read_buffer)
             .map(Some)
             .or_else(|error| {
@@ -314,10 +312,7 @@ where
         F: Frame,
         for<'f> &'f F: IntoIterator<Item = u8>,
     {
-        self.serial_port
-            .lock()
-            .expect("Serial port should always be able to be locked.")
-            .write_frame(frame, &mut self.write_buffer)
+        self.serial_port.write_frame(frame, &mut self.write_buffer)
     }
 
     const fn ack_number(&self) -> u8 {
