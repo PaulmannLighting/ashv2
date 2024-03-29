@@ -29,7 +29,7 @@ where
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
     // Local state
-    read_buffer: FrameBuffer,
+    buffer: FrameBuffer,
     is_rejecting: bool,
     last_received_frame_number: Option<u8>,
 }
@@ -57,7 +57,7 @@ where
             callback,
             ack_sender,
             nak_sender,
-            read_buffer: FrameBuffer::new(),
+            buffer: FrameBuffer::new(),
             is_rejecting: false,
             last_received_frame_number: None,
         };
@@ -253,7 +253,7 @@ where
 
     fn reset_state(&mut self) {
         trace!("Resetting state variables.");
-        self.read_buffer.clear();
+        self.buffer.clear();
         self.is_rejecting = false;
         self.last_received_frame_number = None;
     }
@@ -274,7 +274,7 @@ where
         self.serial_port
             .lock()
             .expect("Serial port should always be able to be locked.")
-            .read_packet(&mut self.read_buffer)
+            .read_packet(&mut self.buffer)
             .map(Some)
             .or_else(|error| {
                 if let crate::Error::Io(io_error) = &error {
