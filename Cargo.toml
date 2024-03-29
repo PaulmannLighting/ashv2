@@ -19,3 +19,6 @@ log = "0.4.20"
 num-derive = "0.4.2"
 num-traits = "0.2.18"
 serialport = { version = "4.3.0", default-features = false }
+
+[features]
+clap = ["dep:clap"]
