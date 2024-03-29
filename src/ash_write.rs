@@ -34,6 +34,7 @@ where
             writer.write_all(&[byte])?;
         }
 
-        writer.write_all(&[FLAG])
+        writer.write_all(&[FLAG])?;
+        writer.flush()
     }
 }
