@@ -14,8 +14,8 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_packet(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
-        self.read_frame(buffer)?;
+    fn read_packet_buffered(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
+        self.read_frame_buffered(buffer)?;
         Ok(Packet::try_from(&**buffer)?)
     }
 
@@ -26,7 +26,7 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`std::io::Error`] if any I/O or protocol error occurs.
-    fn read_frame(&mut self, buffer: &mut FrameBuffer) -> std::io::Result<()> {
+    fn read_frame_buffered(&mut self, buffer: &mut FrameBuffer) -> std::io::Result<()> {
         buffer.clear();
         let mut error = false;
 

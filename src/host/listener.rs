@@ -274,7 +274,7 @@ where
         self.serial_port
             .lock()
             .expect("Serial port should always be able to be locked.")
-            .read_packet(&mut self.buffer)
+            .read_packet_buffered(&mut self.buffer)
             .map(Some)
             .or_else(|error| {
                 if let crate::Error::Io(io_error) = &error {

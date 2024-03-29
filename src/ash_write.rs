@@ -8,9 +8,6 @@ use crate::protocol::{Stuff, FLAG};
 pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
     ///
-    /// # Arguments
-    /// * `buffer` The buffer used for output buffering.
-    ///
     /// # Errors
     /// Returns an [`Error`] if any I/O error occurs.
     fn write_frame<F>(&mut self, frame: &F) -> Result<()>
