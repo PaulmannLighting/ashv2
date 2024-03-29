@@ -5,7 +5,7 @@ use log::{debug, trace};
 use crate::frame::Frame;
 use crate::protocol::{Stuff, FLAG};
 
-pub trait AshWrite {
+pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
     ///
     /// # Arguments
@@ -13,28 +13,29 @@ pub trait AshWrite {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O error occurs.
-    fn write_to<W>(&self, writer: &mut W) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> Result<()>
     where
-        W: Write;
+        F: Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>;
 }
 
 impl<T> AshWrite for T
 where
-    T: Frame,
-    for<'a> &'a T: IntoIterator<Item = u8>,
+    T: Write,
 {
-    fn write_to<W>(&self, writer: &mut W) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> Result<()>
     where
-        W: Write,
+        F: Frame,
+        for<'a> &'a F: IntoIterator<Item = u8>,
     {
-        debug!("Writing frame: {self}");
-        trace!("{self:#04X?}");
+        debug!("Writing frame: {frame}");
+        trace!("{frame:#04X?}");
 
-        for byte in self.into_iter().stuff() {
-            writer.write_all(&[byte])?;
+        for byte in frame.into_iter().stuff() {
+            self.write_all(&[byte])?;
         }
 
-        writer.write_all(&[FLAG])?;
-        writer.flush()
+        self.write_all(&[FLAG])?;
+        self.flush()
     }
 }

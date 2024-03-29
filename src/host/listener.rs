@@ -291,12 +291,10 @@ where
         F: Frame,
         for<'f> &'f F: IntoIterator<Item = u8>,
     {
-        frame.write_to(
-            &mut *self
-                .serial_port
-                .lock()
-                .expect("Serial port should never be poisoned."),
-        )
+        self.serial_port
+            .lock()
+            .expect("Serial port should never be poisoned.")
+            .write_frame(frame)
     }
 
     const fn ack_number(&self) -> u8 {
