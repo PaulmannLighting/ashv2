@@ -6,6 +6,7 @@ pub use baud_rate::BaudRate;
 use code::Code;
 pub use error::Error;
 pub use host::Host;
+pub use packet::FrameBuffer;
 pub use protocol::{Event, HandleResult, Handler, Response};
 pub use serial_port::open;
 

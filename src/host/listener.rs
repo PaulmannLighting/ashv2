@@ -25,7 +25,7 @@ where
     connected: Arc<AtomicBool>,
     handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
     ack_number: Arc<AtomicU8>,
-    callback: Option<Sender<Arc<[u8]>>>,
+    callback: Option<Sender<FrameBuffer>>,
     ack_sender: Sender<u8>,
     nak_sender: Sender<u8>,
     // Local state
@@ -44,7 +44,7 @@ where
         connected: Arc<AtomicBool>,
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
         ack_number: Arc<AtomicU8>,
-        callback: Option<Sender<Arc<[u8]>>>,
+        callback: Option<Sender<FrameBuffer>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
         let (ack_sender, ack_receiver) = channel();
         let (nak_sender, nak_receiver) = channel();
@@ -161,19 +161,12 @@ where
 
     fn forward_data(&mut self, data: &Data) {
         debug!("Forwarding data: {data}");
-        let payload: Arc<[u8]> = data
-            .payload()
-            .iter()
-            .copied()
-            .mask()
-            .collect::<FrameBuffer>()
-            .as_slice()
-            .into();
+        let payload: FrameBuffer = data.payload().iter().copied().mask().collect();
 
         if let Some(handler) = self.handler.write().take() {
             debug!("Forwarding data to current handler.");
 
-            match handler.handle(Event::DataReceived(Ok(payload.clone()))) {
+            match handler.handle(Event::DataReceived(Ok(&payload))) {
                 HandleResult::Completed => {
                     debug!("Command responded with COMPLETED.");
                     handler.wake();

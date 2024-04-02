@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::future::Future;
-use std::sync::Arc;
 
 use crate::Error;
 
@@ -13,9 +12,9 @@ pub enum HandleResult {
 }
 
 #[derive(Debug)]
-pub enum Event {
+pub enum Event<'data> {
     TransmissionCompleted,
-    DataReceived(Result<Arc<[u8]>, Error>),
+    DataReceived(Result<&'data [u8], Error>),
 }
 
 pub trait Handler: Debug + Send + Sync {

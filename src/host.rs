@@ -11,6 +11,7 @@ use serialport::SerialPort;
 use listener::Listener;
 use transmitter::Transmitter;
 
+use crate::packet::FrameBuffer;
 use crate::protocol::{Command, Response};
 use crate::util::NonPoisonedRwLock;
 use crate::Error;
@@ -36,7 +37,10 @@ impl<'cmd> Host<'cmd> {
     ///
     /// # Panics
     /// This function may panic if any locks are poisoned.
-    pub fn spawn<S>(mut serial_port: S, callback: Option<Sender<Arc<[u8]>>>) -> Result<Self, Error>
+    pub fn spawn<S>(
+        mut serial_port: S,
+        callback: Option<Sender<FrameBuffer>>,
+    ) -> Result<Self, Error>
     where
         Self: 'static,
         S: SerialPort + 'cmd,
