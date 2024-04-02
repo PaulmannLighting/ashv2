@@ -1,4 +1,0 @@
-* Limit max retransmits
-* Refactor ResponseHandler
-    - handle(data): only data (no error)
-    - abort(error): Pass error and actively cancel transaction
