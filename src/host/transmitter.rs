@@ -353,12 +353,11 @@ where
         for attempt in 1..=MAX_STARTUP_ATTEMPTS {
             debug!("Establishing ASH connection. Attempt #{attempt}");
             self.reset();
-            debug!("Connection reset.");
             sent_rst_timestamp = SystemTime::now();
 
             debug!("Waiting for NCP to start up.");
             while !self.connected.load(SeqCst) {
-                debug!("Waiting for NCP to become ready.");
+                trace!("Waiting for NCP to become ready.");
                 sleep(T_REMOTE_NOTRDY);
 
                 match SystemTime::now().duration_since(sent_rst_timestamp) {
@@ -372,7 +371,6 @@ where
                 }
             }
 
-            debug!("Checking whether NCP has started.");
             if self.connected.load(SeqCst) {
                 debug!("ASH connection established.");
                 return Ok(());
