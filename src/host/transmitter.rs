@@ -394,21 +394,14 @@ where
     }
 
     fn reset_state(&mut self) {
-        debug!("Aborting current command.");
+        debug!("Resetting current state.");
         self.abort_current_transaction(Error::Aborted);
-        debug!("Cleaning buffer.");
         self.buffer.clear();
-        debug!("Clearing sent queue.");
         self.sent.clear();
-        debug!("Clearing retransmit queue.");
         self.retransmits.clear();
-        debug!("Clearing retransmit counter.");
         self.retransmit.clear();
-        debug!("Resetting frame number.");
         self.frame_number = 0;
-        debug!("Resetting ACK number.");
         self.ack_number.store(0, SeqCst);
-        debug!("Resetting T_RX_ACK.");
         self.t_rx_ack = T_RX_ACK_INIT;
     }
 
