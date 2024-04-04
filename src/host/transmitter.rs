@@ -386,15 +386,14 @@ where
     fn reset(&mut self) {
         debug!("Resetting connection.");
         self.connected.store(false, SeqCst);
-        debug!("Sending RST.");
+        trace!("Sending RST.");
         self.write_frame(&Rst::default())
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
-        debug!("Resetting state.");
         self.reset_state();
     }
 
     fn reset_state(&mut self) {
-        debug!("Resetting current state.");
+        debug!("Resetting state.");
         self.abort_current_transaction(Error::Aborted);
         self.buffer.clear();
         self.sent.clear();
