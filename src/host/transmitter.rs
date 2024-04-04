@@ -298,14 +298,14 @@ where
     }
 
     fn handle_ack(&mut self, ack_num: u8) {
-        debug!("Handling ACK: {ack_num}");
+        trace!("Handling ACK: {ack_num}");
         if let Some((timestamp, data)) = self
             .sent
             .iter()
             .position(|(_, data)| next_three_bit_number(data.frame_num()) == ack_num)
             .map(|index| self.sent.remove(index))
         {
-            debug!("ACKed packet #{}", data.frame_num());
+            trace!("ACKed packet #{}", data.frame_num());
             if let Ok(duration) = SystemTime::now().duration_since(timestamp) {
                 self.update_t_rx_ack(Some(duration));
             }
@@ -343,7 +343,6 @@ where
     fn next_frame_number(&mut self) -> u8 {
         let frame_number = self.frame_number;
         self.frame_number = next_three_bit_number(frame_number);
-        trace!("Returning frame number: {frame_number}");
         frame_number
     }
 
