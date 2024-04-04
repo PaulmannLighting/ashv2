@@ -279,10 +279,10 @@ where
             })
     }
 
-    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
+    fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> std::io::Result<()>
     where
         F: Frame,
-        for<'f> &'f F: IntoIterator<Item = u8>,
+        &'frame F: IntoIterator<Item = u8>,
     {
         self.serial_port
             .lock()
