@@ -367,7 +367,10 @@ where
                             break;
                         }
                     }
-                    Err(error) => error!("System time jumped: {error}"),
+                    Err(error) => {
+                        error!("System time jumped: {error}");
+                        sent_rst_timestamp = SystemTime::now();
+                    }
                 }
             }
 
