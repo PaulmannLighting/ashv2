@@ -21,8 +21,8 @@ impl<T> NonPoisonedRwLock<T> {
 }
 
 /// Return the respective next 3-bit number wrapping around on overflows.
-pub const fn next_three_bit_number(number: u8) -> u8 {
-    (number + 1) % 8
+pub fn next_three_bit_number(number: u8) -> u8 {
+    number.checked_add(1).map_or(0, |next| next % 8)
 }
 
 #[cfg(test)]

@@ -290,11 +290,8 @@ where
             .write_frame(frame)
     }
 
-    const fn ack_number(&self) -> u8 {
-        if let Some(last_received_frame_number) = self.last_received_frame_number {
-            next_three_bit_number(last_received_frame_number)
-        } else {
-            0
-        }
+    fn ack_number(&self) -> u8 {
+        self.last_received_frame_number
+            .map_or(0, next_three_bit_number)
     }
 }
