@@ -16,7 +16,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidHeader(header) => match header {
-                Some(id) => write!(f, "Invalid header ID: {id}."),
+                Some(id) => write!(f, "Invalid header ID: {id}"),
                 None => write!(f, "No header received."),
             },
             Self::BufferTooSmall { expected, found } => {
