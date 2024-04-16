@@ -110,8 +110,7 @@ where
     }
 
     fn handle_data(&mut self, data: &Data) {
-        debug!("Received frame: {data}");
-        trace!("Frame details: {data:#04X?}");
+        debug!("Received frame: {data:#04X?}");
         trace!(
             "Unmasked payload: {:#04X?}",
             data.payload()
