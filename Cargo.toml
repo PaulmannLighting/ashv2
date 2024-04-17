@@ -11,14 +11,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.5.4", optional = true }
-crc = "3.1.0-beta.2"
-heapless = "0.8.0"
-itertools = "0.12.1"
-log = "0.4.20"
-num-derive = "0.4.2"
-num-traits = "0.2.18"
-serialport = { version = "4.3.0", default-features = false }
+clap = { version = "4.5", optional = true }
+crc = "3.2"
+heapless = "0.8"
+itertools = "0.12"
+log = "0.4"
+num-derive = "0.4"
+num-traits = "0.2"
+serialport = { version = "4.3", default-features = false }
 
 [features]
 clap = ["dep:clap"]
