@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
@@ -22,14 +23,14 @@ mod transmitter;
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 
 #[derive(Debug)]
-pub struct Host<'cmd> {
+pub struct Host {
     running: Arc<AtomicBool>,
-    command: Sender<Command<'cmd>>,
+    command: Sender<Command>,
     listener_thread: Option<JoinHandle<()>>,
     transmitter_thread: Option<JoinHandle<()>>,
 }
 
-impl<'cmd> Host<'cmd> {
+impl Host {
     /// Creates and starts the host.
     ///
     /// # Errors
@@ -42,8 +43,7 @@ impl<'cmd> Host<'cmd> {
         callback: Option<Sender<FrameBuffer>>,
     ) -> Result<Self, Error>
     where
-        Self: 'static,
-        S: SerialPort + 'cmd,
+        for<'a> S: SerialPort + 'a,
     {
         let running = Arc::new(AtomicBool::new(true));
         serial_port.set_timeout(SOCKET_TIMEOUT)?;
@@ -86,19 +86,26 @@ impl<'cmd> Host<'cmd> {
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
+    pub fn communicate<'borrow, 'obj: 'borrow, 'payload: 'borrow, T>(
+        &'borrow self,
+        payload: &'payload [u8],
+    ) -> impl Future<Output = Result<T::Result, T::Error>> + 'borrow
     where
-        T: Clone + Default + Response + Sync + Send + 'cmd,
+        Self: 'obj,
+        for<'a> T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
-        self.command
-            .send(Command::new(Arc::from(payload), Arc::new(response.clone())))
-            .map_err(|_| Error::Terminated)?;
-        response.await
+        let clone = Arc::new(response.clone());
+        async move {
+            self.command
+                .send(Command::new(Arc::from(payload), clone))
+                .map_err(|_| Error::Terminated)?;
+            response.await
+        }
     }
 }
 
-impl Drop for Host<'_> {
+impl Drop for Host {
     fn drop(&mut self) {
         self.running.store(false, SeqCst);
 

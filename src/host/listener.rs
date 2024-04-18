@@ -15,7 +15,7 @@ use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::{AshRead, AshWrite};
 
 #[derive(Debug)]
-pub struct Listener<'cmd, S>
+pub struct Listener<S>
 where
     S: SerialPort,
 {
@@ -23,7 +23,7 @@ where
     serial_port: Arc<Mutex<S>>,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
-    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
+    handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<FrameBuffer>>,
     ack_sender: Sender<u8>,
@@ -34,7 +34,7 @@ where
     last_received_frame_number: Option<u8>,
 }
 
-impl<'cmd, S> Listener<'cmd, S>
+impl<S> Listener<S>
 where
     S: SerialPort,
 {
@@ -42,7 +42,7 @@ where
         serial_port: Arc<Mutex<S>>,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
-        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler + 'cmd>>>>,
+        handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<FrameBuffer>>,
     ) -> (Self, Receiver<u8>, Receiver<u8>) {
