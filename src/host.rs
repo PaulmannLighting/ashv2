@@ -42,7 +42,7 @@ impl Host {
         callback: Option<Sender<FrameBuffer>>,
     ) -> Result<Self, Error>
     where
-        for<'a> S: SerialPort + 'a,
+        S: SerialPort + 'static,
     {
         let running = Arc::new(AtomicBool::new(true));
         serial_port.set_timeout(SOCKET_TIMEOUT)?;
@@ -87,7 +87,7 @@ impl Host {
     /// This function will panic if the sender's mutex is poisoned.
     pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
-        for<'a> T: Clone + Default + Response + Sync + Send + 'a,
+        T: Clone + Default + Response + Sync + Send + 'static,
     {
         let response = T::default();
         self.command
