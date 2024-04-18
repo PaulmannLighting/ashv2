@@ -79,10 +79,10 @@ impl<'cmd> Host<'cmd> {
         })
     }
 
-    /// Communicate with the NCP, returning [`T::Result`].
+    /// Communicate with the NCP, returning [`T::Result`](Response::Result).
     ///
     /// # Errors
-    /// Returns [`T::Error`] if the transactions fails.
+    /// Returns [`T::Error`](Response::Error) if the transactions fails.
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
