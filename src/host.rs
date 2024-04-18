@@ -90,9 +90,8 @@ impl Host {
         for<'a> T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
-        let clone = Arc::new(response.clone());
         self.command
-            .send(Command::new(Arc::from(payload), clone))
+            .send(Command::new(Arc::from(payload), Arc::new(response.clone())))
             .map_err(|_| Error::Terminated)?;
         response.await
     }
