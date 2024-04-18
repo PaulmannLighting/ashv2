@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
@@ -86,21 +85,16 @@ impl Host {
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub fn communicate<'borrow, 'payload: 'borrow, T>(
-        &'borrow self,
-        payload: &'payload [u8],
-    ) -> impl Future<Output = Result<T::Result, T::Error>> + 'borrow
+    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         for<'a> T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
         let clone = Arc::new(response.clone());
-        async move {
-            self.command
-                .send(Command::new(Arc::from(payload), clone))
-                .map_err(|_| Error::Terminated)?;
-            response.await
-        }
+        self.command
+            .send(Command::new(Arc::from(payload), clone))
+            .map_err(|_| Error::Terminated)?;
+        response.await
     }
 }
 
