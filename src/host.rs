@@ -86,12 +86,11 @@ impl Host {
     ///
     /// # Panics
     /// This function will panic if the sender's mutex is poisoned.
-    pub fn communicate<'borrow, 'obj: 'borrow, 'payload: 'borrow, T>(
+    pub fn communicate<'borrow, 'payload: 'borrow, T>(
         &'borrow self,
         payload: &'payload [u8],
     ) -> impl Future<Output = Result<T::Result, T::Error>> + 'borrow
     where
-        Self: 'obj,
         for<'a> T: Clone + Default + Response + Sync + Send + 'a,
     {
         let response = T::default();
