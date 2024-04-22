@@ -8,11 +8,12 @@ use std::sync::{Arc, Mutex};
 use log::{debug, error, trace, warn};
 use serialport::SerialPort;
 
+use crate::ash_read::AshRead;
+use crate::ash_write::AshWrite;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
 use crate::protocol::{Event, HandleResult, Handler, Mask};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
-use crate::{AshRead, AshWrite};
 
 #[derive(Debug)]
 pub struct Listener<S>
@@ -202,6 +203,11 @@ where
 
     fn handle_error(&mut self, error: &Error) {
         trace!("Received ERROR: {error:#04X?}");
+
+        if !error.is_ash_v2() {
+            error!("{error} is not ASHv2: {}", error.version());
+        }
+
         self.connected.store(false, SeqCst);
         error.code().map_or_else(
             || {
@@ -225,6 +231,10 @@ where
     }
 
     fn handle_rst_ack(&mut self, rst_ack: &RstAck) {
+        if !rst_ack.is_ash_v2() {
+            error!("{rst_ack} is not ASHv2: {}", rst_ack.version());
+        }
+
         rst_ack.code().map_or_else(
             || {
                 warn!("NCP acknowledged reset with invalid error code.");

@@ -13,12 +13,13 @@ use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::SerialPort;
 
+use crate::ash_write::AshWrite;
 use crate::error::frame;
 use crate::frame::Frame;
 use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
-use crate::{AshWrite, Error};
+use crate::Error;
 
 const MAX_STARTUP_ATTEMPTS: u8 = 5;
 const MAX_TIMEOUTS: usize = 4;

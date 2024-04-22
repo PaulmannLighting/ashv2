@@ -9,7 +9,6 @@ use crate::CRC;
 
 pub const HEADER: u8 = 0xC1;
 const SIZE: usize = 5;
-const VERSION: u8 = 0x02;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RstAck {
@@ -20,23 +19,18 @@ pub struct RstAck {
 }
 
 impl RstAck {
-    /// Creates a new RSTACK packet.
-    #[must_use]
-    pub fn new(header: u8, reset_code: Code) -> Self {
-        Self {
-            header,
-            version: VERSION,
-            reset_code: reset_code.clone().into(),
-            crc: CRC.checksum(&[header, VERSION, reset_code.into()]),
-        }
-    }
-
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
     #[must_use]
     pub const fn version(&self) -> u8 {
         self.version
+    }
+
+    /// Verifies that this is indeed `ASHv2`.
+    #[must_use]
+    pub const fn is_ash_v2(&self) -> bool {
+        self.version == crate::VERSION
     }
 
     /// Returns the reset code.

@@ -13,22 +13,11 @@ const SIZE: usize = 5;
 pub struct Error {
     header: u8,
     version: u8,
-    error_code: u8,
+    code: u8,
     crc: u16,
 }
 
 impl Error {
-    /// Creates a new ERROR packet.
-    #[must_use]
-    pub const fn new(header: u8, version: u8, error_code: u8) -> Self {
-        Self {
-            header,
-            version,
-            error_code,
-            crc: CRC.checksum(&[header, version, error_code]),
-        }
-    }
-
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
@@ -37,16 +26,22 @@ impl Error {
         self.version
     }
 
+    /// Verifies that this is indeed `ASHv2`.
+    #[must_use]
+    pub const fn is_ash_v2(&self) -> bool {
+        self.version == crate::VERSION
+    }
+
     /// Returns the error code.
     #[must_use]
     pub fn code(&self) -> Option<Code> {
-        Code::from_u8(self.error_code)
+        Code::from_u8(self.code)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ERROR({:#04X}, {:#04X})", self.version, self.error_code)
+        write!(f, "ERROR({:#04X}, {:#04X})", self.version, self.code)
     }
 }
 
@@ -64,7 +59,7 @@ impl Frame for Error {
     }
 
     fn calculate_crc(&self) -> u16 {
-        CRC.checksum(&[self.header, self.version, self.error_code])
+        CRC.checksum(&[self.header, self.version, self.code])
     }
 }
 
@@ -76,7 +71,7 @@ impl TryFrom<&[u8]> for Error {
             Ok(Self {
                 header: buffer[0],
                 version: buffer[1],
-                error_code: buffer[2],
+                code: buffer[2],
                 crc: u16::from_be_bytes([buffer[3], buffer[4]]),
             })
         } else {
@@ -98,7 +93,7 @@ mod tests {
     const ERROR: Error = Error {
         header: 0xC2,
         version: 0x02,
-        error_code: 0x51,
+        code: 0x51,
         crc: 0xA8BD,
     };
 

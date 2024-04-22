@@ -29,7 +29,7 @@ pub enum Event<'data> {
     DataReceived(Result<&'data [u8], Error>),
 }
 
-/// Handle ASHv2 protocol events.
+/// Handle `ASHv2` protocol events.
 pub trait Handler: Debug + Send + Sync {
     /// Handle the incoming  [`Event`] and return an appropriate [`HandleResult`].
     fn handle(&self, event: Event) -> HandleResult;
