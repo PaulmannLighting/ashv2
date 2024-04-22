@@ -21,6 +21,7 @@ mod transmitter;
 
 const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 
+/// A host controller to communicate with an NCP via the `ASHv2` protocol.
 #[derive(Debug)]
 pub struct Host {
     running: Arc<AtomicBool>,
