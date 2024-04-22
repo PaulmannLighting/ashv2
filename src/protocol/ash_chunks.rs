@@ -11,6 +11,14 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
+    fn ash_chunks(self) -> Result<IntoChunks<Self::IntoIter>, Error>;
+}
+
+impl<T> AshChunks for T
+where
+    T: IntoIterator<Item = u8>,
+    <T as IntoIterator>::IntoIter: ExactSizeIterator,
+{
     fn ash_chunks(self) -> Result<IntoChunks<Self::IntoIter>, Error> {
         let iterator = self.into_iter();
         let mut frame_size = MAX_PAYLOAD_SIZE;
@@ -25,13 +33,6 @@ where
                 .ok_or_else(|| Error::CannotFindViableChunkSize(iterator.len()))?;
         }
     }
-}
-
-impl<T> AshChunks for T
-where
-    T: IntoIterator<Item = u8>,
-    <T as IntoIterator>::IntoIter: ExactSizeIterator,
-{
 }
 
 #[cfg(test)]
