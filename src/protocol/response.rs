@@ -7,8 +7,8 @@ use crate::Error;
 ///
 /// This enum is returned from [`Handler::handle`] to indicate the outcome of handling the respective event.
 ///
-/// * [`HandleResult::Completed`] indicates that the handler is done and does not expect any more data.  
-/// * [`HandleResult::Continue`] indicates that the handler is expecting more data.
+/// * [`HandleResult::Completed`] indicates that the handler successfully processed the data and does not expect any more data.  
+/// * [`HandleResult::Continue`] indicates that the handler successfully processed the data and is expecting more data.
 /// * [`HandleResult::Failed`] indicates that the handler was unable to process the passed data and cannot continue.
 /// * [`HandleResult::Reject`] indicates that the handler was unable to process the passed data and is expecting more data.
 #[derive(Debug)]
@@ -22,7 +22,7 @@ pub enum HandleResult {
 /// Events sent to a [`Handler`].
 ///
 /// * [`Event::TransmissionCompleted`] indicates that the requested payload has been transmitted completely.
-/// * [`Event::DataReceived`] indicates that the listener has received a data packet that it is not forwarding to the handler for processing.
+/// * [`Event::DataReceived`] indicates that the listener has received a potential data packet that it is forwarding to the handler for processing.
 #[derive(Debug)]
 pub enum Event<'data> {
     TransmissionCompleted,
