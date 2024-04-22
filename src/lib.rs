@@ -14,11 +14,11 @@ mod ash_read;
 mod ash_write;
 mod baud_rate;
 mod code;
-pub mod error;
-pub mod frame;
+mod error;
+mod frame;
 mod host;
-pub mod packet;
-pub mod protocol;
+mod packet;
+mod protocol;
 mod serial_port;
 mod util;
 

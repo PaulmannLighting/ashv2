@@ -1,6 +1,6 @@
 pub use ash_chunks::AshChunks;
 pub use command::Command;
-pub use randomization::{Mask, MaskGenerator, MaskIterator};
+pub use randomization::Mask;
 pub use response::{Event, HandleResult, Handler, Response};
 pub use stuffing::{Stuff, Unstuff};
 
@@ -8,7 +8,7 @@ mod ash_chunks;
 mod command;
 mod randomization;
 mod response;
-pub mod stuffing;
+mod stuffing;
 
 pub const FLAG: u8 = 0x7E;
 pub const ESCAPE: u8 = 0x7D;
