@@ -41,7 +41,7 @@ pub trait Handler: Debug + Send + Sync {
     fn wake(&self);
 }
 
-/// A response to an NCP request.
+/// A response to a request sent to the NCP.
 ///
 /// This is a composite trait consisting of a [`Future`] and a [`Handler`] implementation.
 /// The Future must output [`Result<Self::Result, Self::Error>`].
