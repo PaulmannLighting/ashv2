@@ -1,6 +1,6 @@
 //! Asynchronous Serial Host version 2 (`ASHv2`)
 //!
-//! This library implement the Asynchronous Serial Host version 2, `ASHv2` for short.
+//! This library implements the Asynchronous Serial Host version 2, `ASHv2` for short.  
 //! You can find the protocol's definition on [siliconlabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-gateway-protocol-reference.pdf).
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
