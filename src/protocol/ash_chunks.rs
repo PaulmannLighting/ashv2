@@ -19,6 +19,14 @@ where
     T: Iterator<Item = u8> + ExactSizeIterator,
 {
     fn ash_chunks(self) -> Result<IntoChunks<Self>, Error> {
+        if self.len() < MIN_PAYLOAD_SIZE {
+            return Err(Error::CannotFindViableChunkSize(self.len()));
+        }
+
+        if self.len() <= MAX_PAYLOAD_SIZE {
+            return Ok(self.chunks(MAX_PAYLOAD_SIZE));
+        }
+
         let mut frame_size = MAX_PAYLOAD_SIZE;
 
         loop {
@@ -35,11 +43,31 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::AshChunks;
+    use super::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
     use itertools::Itertools;
 
-    use crate::protocol::ash_chunks::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+    #[test]
+    fn test_too_few_ash_chunks() {
+        let bytes = (1..MIN_PAYLOAD_SIZE).map(|num| num as u8).collect_vec();
+        let chunks = bytes.into_iter().ash_chunks();
+        assert!(chunks.is_err());
+    }
 
-    use super::AshChunks;
+    #[test]
+    fn test_ash_chunks_max_size() {
+        let bytes = (1..=MAX_PAYLOAD_SIZE).map(|num| num as u8).collect_vec();
+        let chunks: Vec<Vec<_>> = bytes
+            .iter()
+            .copied()
+            .ash_chunks()
+            .expect("Chunks should be valid.")
+            .into_iter()
+            .map(Iterator::collect)
+            .collect();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].len(), bytes.len());
+    }
 
     #[test]
     fn test_ash_chunks() {
