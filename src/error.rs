@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 pub mod frame;
 
+/// Possible error states during `ASHv2` transactions.
 #[derive(Clone, Debug)]
 pub enum Error {
     Frame(frame::Error),

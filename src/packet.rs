@@ -19,6 +19,8 @@ mod rst_ack;
 
 // In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
 const MAX_FRAME_SIZE: usize = (METADATA_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;
+
+/// A stack-allocated buffer that can hold an `ASHv2` frame up to its maximum size.
 pub type FrameBuffer = heapless::Vec<u8, MAX_FRAME_SIZE>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -1,6 +1,7 @@
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::ToPrimitive;
 
+/// Available baud rates that the NCP can operate on.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive)]
 pub enum BaudRate {
     RstCts = 115_200,
