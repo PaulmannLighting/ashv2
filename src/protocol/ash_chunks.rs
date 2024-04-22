@@ -3,7 +3,7 @@ use itertools::{IntoChunks, Itertools};
 use crate::packet::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 use crate::Error;
 
-pub trait AshChunks: IntoIterator<Item = u8> + Sized
+pub trait AshChunks: Iterator<Item = u8> + ExactSizeIterator + Sized
 where
     <Self as IntoIterator>::IntoIter: ExactSizeIterator,
 {
@@ -11,26 +11,24 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
-    fn ash_chunks(self) -> Result<IntoChunks<Self::IntoIter>, Error>;
+    fn ash_chunks(self) -> Result<IntoChunks<Self>, Error>;
 }
 
 impl<T> AshChunks for T
 where
-    T: IntoIterator<Item = u8>,
-    <T as IntoIterator>::IntoIter: ExactSizeIterator,
+    T: Iterator<Item = u8> + ExactSizeIterator,
 {
-    fn ash_chunks(self) -> Result<IntoChunks<Self::IntoIter>, Error> {
-        let iterator = self.into_iter();
+    fn ash_chunks(self) -> Result<IntoChunks<Self>, Error> {
         let mut frame_size = MAX_PAYLOAD_SIZE;
 
         loop {
-            if iterator.len() % frame_size == 0 || iterator.len() % frame_size >= MIN_PAYLOAD_SIZE {
-                return Ok(iterator.chunks(frame_size));
+            if self.len() % frame_size == 0 || self.len() % frame_size >= MIN_PAYLOAD_SIZE {
+                return Ok(self.chunks(frame_size));
             }
 
             frame_size = frame_size
                 .checked_sub(1)
-                .ok_or_else(|| Error::CannotFindViableChunkSize(iterator.len()))?;
+                .ok_or_else(|| Error::CannotFindViableChunkSize(self.len()))?;
         }
     }
 }
