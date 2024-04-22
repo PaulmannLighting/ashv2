@@ -9,7 +9,7 @@ pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
     ///
     /// # Errors
-    /// Returns an [`Error`] if any I/O error occurs.
+    /// Returns an [`Error`](std::io::Error) if any I/O error occurs.
     fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> Result<()>
     where
         F: Frame,
