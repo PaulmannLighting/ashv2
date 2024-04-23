@@ -118,4 +118,12 @@ mod tests {
         buffer.unstuff();
         assert_eq!(&buffer, &[0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D]);
     }
+
+    #[test]
+    fn test_unstuff_unchanged() {
+        let payload:heapless::Vec<_,70>  = b"\xd7\x90\xd7\xa0\xd7\x99 \xd7\x96\xd7\x95\xd7\x9b\xd7\xa8 \xd7\x91\xd7\x9c\xd7\x99\xd7\x9c\xd7\x95\xd7\xaa \xd7\xa9\xd7\x9c \xd7\x99\xd7\xa8\xd7\x97 \xd7\x9e\xd7\x9c\xd7\x90 \xd7\x94\xd7\x99\xd7\x99\xd7\xaa \xd7\x91\xd7\x90\xd7\x94 \xd7\x90\xd7\x9c\xd7\x99".iter().copied().collect();
+        let mut clone = payload.clone();
+        clone.unstuff();
+        assert_eq!(payload, clone);
+    }
 }
