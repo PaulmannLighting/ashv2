@@ -45,6 +45,7 @@ where
 mod tests {
     use super::AshChunks;
     use super::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+    use crate::Error;
     use itertools::Itertools;
 
     #[test]
@@ -84,5 +85,59 @@ mod tests {
                 chunk.len().clamp(MIN_PAYLOAD_SIZE, MAX_PAYLOAD_SIZE)
             );
         }
+    }
+
+    #[test]
+    fn test_min_payload_size() {
+        let bytes = vec![0; MIN_PAYLOAD_SIZE];
+        let chunks: Vec<_> = chunks(&bytes).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].len(), MIN_PAYLOAD_SIZE);
+    }
+
+    #[test]
+    fn test_max_payload_size() {
+        let bytes = vec![0; MAX_PAYLOAD_SIZE];
+        let chunks: Vec<_> = chunks(&bytes).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].len(), MAX_PAYLOAD_SIZE);
+    }
+
+    #[test]
+    fn test_mid_payload_size() {
+        let mid_size = (MIN_PAYLOAD_SIZE + MAX_PAYLOAD_SIZE) / 2;
+        let bytes = vec![0; mid_size];
+        let chunks: Vec<_> = chunks(&bytes).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].len(), mid_size);
+    }
+
+    #[test]
+    fn test_large_even_payload_size() {
+        let size = MAX_PAYLOAD_SIZE * 2;
+        let bytes = vec![0; size];
+        let chunks: Vec<_> = chunks(&bytes).unwrap();
+        assert_eq!(chunks.len(), 2);
+        assert_eq!(chunks[0].len(), MAX_PAYLOAD_SIZE);
+        assert_eq!(chunks[1].len(), MAX_PAYLOAD_SIZE);
+    }
+
+    #[test]
+    fn test_large_odd_payload_size() {
+        let size = MAX_PAYLOAD_SIZE * 2 + MIN_PAYLOAD_SIZE;
+        let bytes = vec![0; size];
+        let chunks: Vec<_> = chunks(&bytes).unwrap();
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[0].len(), MAX_PAYLOAD_SIZE);
+        assert_eq!(chunks[1].len(), MAX_PAYLOAD_SIZE);
+        assert_eq!(chunks[2].len(), MIN_PAYLOAD_SIZE);
+    }
+
+    fn chunks(bytes: &[u8]) -> Result<Vec<Vec<u8>>, Error> {
+        bytes
+            .iter()
+            .copied()
+            .ash_chunks()
+            .map(|chunks| chunks.into_iter().map(Iterator::collect).collect())
     }
 }
