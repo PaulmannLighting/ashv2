@@ -35,9 +35,6 @@ impl Host {
     ///
     /// # Errors
     /// Returns an [`Error`] if the host could not be started.
-    ///
-    /// # Panics
-    /// This function may panic if any locks are poisoned.
     pub fn spawn<S>(
         mut serial_port: S,
         callback: Option<Sender<FrameBuffer>>,
@@ -83,9 +80,6 @@ impl Host {
     ///
     /// # Errors
     /// Returns [`T::Error`](Response::Error) if the transactions fails.
-    ///
-    /// # Panics
-    /// This function will panic if the sender's mutex is poisoned.
     pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
     where
         T: Clone + Default + Response + Sync + Send + 'static,
