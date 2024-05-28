@@ -27,12 +27,12 @@ impl Display for Error {
             Self::CannotFindViableChunkSize(size) => {
                 write!(f, "Cannot find viable chunk size for {size} bytes")
             }
-            Self::MaxRetransmitsExceeded => write!(f, "Maximum amount of retransmits exceeded."),
-            Self::WorkerNotRunning => write!(f, "Worker is not running."),
-            Self::InitializationFailed => write!(f, "ASH protocol initialization failed."),
-            Self::Terminated => write!(f, "Worker terminated."),
-            Self::Aborted => write!(f, "Transaction aborted."),
-            Self::AlreadyRunning => write!(f, "Host is already running."),
+            Self::MaxRetransmitsExceeded => write!(f, "Maximum amount of retransmits exceeded"),
+            Self::WorkerNotRunning => write!(f, "Worker is not running"),
+            Self::InitializationFailed => write!(f, "ASH protocol initialization failed"),
+            Self::Terminated => write!(f, "Worker terminated"),
+            Self::Aborted => write!(f, "Transaction aborted"),
+            Self::AlreadyRunning => write!(f, "Host is already running"),
         }
     }
 }
