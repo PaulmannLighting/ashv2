@@ -159,12 +159,12 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer1: Vec<u8> = vec![0xA6, 0x34, 0xDC];
+        let buffer1 = [0xA6, 0x34, 0xDC];
         assert_eq!(
             Nak::try_from(buffer1.as_slice()).expect("Reference frame should be a valid NAK"),
             NAK1
         );
-        let buffer2: Vec<u8> = vec![0xAD, 0x85, 0xB7];
+        let buffer2 = [0xAD, 0x85, 0xB7];
         assert_eq!(
             Nak::try_from(buffer2.as_slice()).expect("Reference frame should be a valid NAK"),
             NAK2
