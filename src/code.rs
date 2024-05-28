@@ -1,9 +1,9 @@
 use std::fmt::{Display, Formatter};
 
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::ToPrimitive;
+use num_derive::FromPrimitive;
 
-#[derive(Clone, Debug, Eq, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Debug, Eq, PartialEq, FromPrimitive)]
+#[repr(u8)]
 pub enum Code {
     UnknownReason = 0x00,
     External = 0x01,
@@ -36,7 +36,6 @@ impl Display for Code {
 
 impl From<Code> for u8 {
     fn from(code: Code) -> Self {
-        code.to_u8()
-            .expect("Code should always be convertible to u8.")
+        code as Self
     }
 }
