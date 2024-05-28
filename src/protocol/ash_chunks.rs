@@ -50,14 +50,18 @@ mod tests {
 
     #[test]
     fn test_too_few_ash_chunks() {
-        let bytes = (1..MIN_PAYLOAD_SIZE).map(|num| num as u8).collect_vec();
+        let bytes = (1..MIN_PAYLOAD_SIZE)
+            .map(|num| u8::try_from(num).expect("Number should be a valid u8"))
+            .collect_vec();
         let chunks = bytes.into_iter().ash_chunks();
         assert!(chunks.is_err());
     }
 
     #[test]
     fn test_ash_chunks_max_size() {
-        let bytes = (1..=MAX_PAYLOAD_SIZE).map(|num| num as u8).collect_vec();
+        let bytes = (1..=MAX_PAYLOAD_SIZE)
+            .map(|num| u8::try_from(num).expect("Number should be a valid u8"))
+            .collect_vec();
         let chunks: Vec<Vec<_>> = bytes
             .iter()
             .copied()
