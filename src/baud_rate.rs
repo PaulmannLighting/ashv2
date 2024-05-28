@@ -1,8 +1,6 @@
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::ToPrimitive;
-
 /// Available baud rates that the NCP can operate on.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[repr(u32)]
 pub enum BaudRate {
     RstCts = 115_200,
     XOnXOff = 57_600,
@@ -10,9 +8,7 @@ pub enum BaudRate {
 
 impl From<BaudRate> for u32 {
     fn from(baud_rate: BaudRate) -> Self {
-        baud_rate
-            .to_u32()
-            .expect("Baud rate should always be convertible to u32.")
+        baud_rate as Self
     }
 }
 
