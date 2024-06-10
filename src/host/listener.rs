@@ -3,10 +3,10 @@ use std::io::ErrorKind;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use log::{debug, error, trace, warn};
-use serialport::SerialPort;
+use serialport::TTYPort;
 
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
@@ -16,12 +16,9 @@ use crate::protocol::{Event, HandleResult, Handler, Mask};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 
 #[derive(Debug)]
-pub struct Listener<S>
-where
-    S: SerialPort,
-{
+pub struct Listener {
     // Shared state
-    serial_port: Arc<Mutex<S>>,
+    serial_port: TTYPort,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
@@ -35,12 +32,9 @@ where
     last_received_frame_number: Option<u8>,
 }
 
-impl<S> Listener<S>
-where
-    S: SerialPort,
-{
+impl Listener {
     pub fn new(
-        serial_port: Arc<Mutex<S>>,
+        serial_port: TTYPort,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
@@ -155,7 +149,8 @@ where
     }
 
     fn ack_received_data(&mut self, frame_num: u8) {
-        self.write_frame(&Ack::from_ack_num(next_three_bit_number(frame_num)))
+        self.serial_port
+            .write_frame(&Ack::from_ack_num(next_three_bit_number(frame_num)))
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
@@ -268,14 +263,13 @@ where
 
     fn send_nak(&mut self) {
         debug!("Sending NAK: {}", self.ack_number());
-        self.write_frame(&Nak::from_ack_num(self.ack_number()))
+        self.serial_port
+            .write_frame(&Nak::from_ack_num(self.ack_number()))
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 
     fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
         self.serial_port
-            .lock()
-            .expect("Serial port should always be able to be locked.")
             .read_packet_buffered(&mut self.buffer)
             .map(Some)
             .or_else(|error| {
@@ -286,17 +280,6 @@ where
                 }
                 Err(error)
             })
-    }
-
-    fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> std::io::Result<()>
-    where
-        F: Frame,
-        &'frame F: IntoIterator<Item = u8>,
-    {
-        self.serial_port
-            .lock()
-            .expect("Serial port should never be poisoned.")
-            .write_frame(frame)
     }
 
     fn ack_number(&self) -> u8 {

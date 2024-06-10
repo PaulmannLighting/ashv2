@@ -1,12 +1,12 @@
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
 
 use log::error;
-use serialport::SerialPort;
+use serialport::{SerialPort, TTYPort};
 
 use listener::Listener;
 use transmitter::Transmitter;
@@ -35,22 +35,20 @@ impl Host {
     ///
     /// # Errors
     /// Returns an [`Error`] if the host could not be started.
-    pub fn spawn<S>(
-        mut serial_port: S,
+    pub fn spawn(
+        mut serial_port: TTYPort,
         callback: Option<Sender<FrameBuffer>>,
-    ) -> Result<Self, Error>
-    where
-        S: SerialPort + 'static,
-    {
+    ) -> Result<Self, Error> {
         let running = Arc::new(AtomicBool::new(true));
         serial_port.set_timeout(SOCKET_TIMEOUT)?;
-        let serial_port = Arc::new(Mutex::new(serial_port));
+        serial_port.set_exclusive(true)?;
+        let serial_port_clone = serial_port.try_clone_native()?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
         let handler = Arc::new(NonPoisonedRwLock::new(None));
         let ack_number = Arc::new(AtomicU8::new(0));
         let (listener, ack_receiver, nak_receiver) = Listener::new(
-            serial_port.clone(),
+            serial_port_clone,
             running.clone(),
             connected.clone(),
             handler.clone(),

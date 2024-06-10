@@ -5,17 +5,16 @@ use std::slice::Iter;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
 use itertools::Chunks;
 use log::{debug, error, info, trace};
-use serialport::SerialPort;
+use serialport::TTYPort;
 
 use crate::ash_write::AshWrite;
 use crate::error::frame;
-use crate::frame::Frame;
 use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
 use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
@@ -30,12 +29,9 @@ const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 
 #[derive(Debug)]
-pub struct Transmitter<S>
-where
-    S: SerialPort,
-{
+pub struct Transmitter {
     // Shared state
-    serial_port: Arc<Mutex<S>>,
+    serial_port: TTYPort,
     running: Arc<AtomicBool>,
     connected: Arc<AtomicBool>,
     command: Receiver<Command>,
@@ -52,13 +48,10 @@ where
     t_rx_ack: Duration,
 }
 
-impl<S> Transmitter<S>
-where
-    S: SerialPort,
-{
+impl Transmitter {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        serial_port: Arc<Mutex<S>>,
+        serial_port: TTYPort,
         running: Arc<AtomicBool>,
         connected: Arc<AtomicBool>,
         command: Receiver<Command>,
@@ -246,7 +239,7 @@ where
         trace!("{data:#04X?}");
 
         if self.connected.load(SeqCst) {
-            self.write_frame(&data)?;
+            self.serial_port.write_frame(&data)?;
             self.sent
                 .push((SystemTime::now(), data))
                 .expect("Send queue should always accept data.");
@@ -388,7 +381,8 @@ where
         debug!("Resetting connection.");
         self.connected.store(false, SeqCst);
         trace!("Sending RST.");
-        self.write_frame(&Rst::default())
+        self.serial_port
+            .write_frame(&Rst::default())
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
         self.reset_state();
     }
@@ -417,17 +411,6 @@ where
             debug!("Finalizing data command.");
             handler.handle(Event::TransmissionCompleted);
         }
-    }
-
-    fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> std::io::Result<()>
-    where
-        F: Frame,
-        &'frame F: IntoIterator<Item = u8>,
-    {
-        self.serial_port
-            .lock()
-            .expect("Serial port should never be poisoned.")
-            .write_frame(frame)
     }
 
     fn is_transaction_complete(&self) -> bool {
