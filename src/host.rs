@@ -1,12 +1,10 @@
+use log::error;
+use serialport::TTYPort;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
-use std::time::Duration;
-
-use log::error;
-use serialport::{SerialPort, TTYPort};
 
 use listener::Listener;
 use transmitter::Transmitter;
@@ -18,8 +16,6 @@ use crate::Error;
 
 mod listener;
 mod transmitter;
-
-const SOCKET_TIMEOUT: Duration = Duration::from_millis(1);
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 #[derive(Debug)]
@@ -36,11 +32,10 @@ impl Host {
     /// # Errors
     /// Returns an [`Error`] if the host could not be started.
     pub fn spawn(
-        mut serial_port: TTYPort,
+        serial_port: TTYPort,
         callback: Option<Sender<FrameBuffer>>,
     ) -> Result<Self, Error> {
         let running = Arc::new(AtomicBool::new(true));
-        serial_port.set_timeout(SOCKET_TIMEOUT)?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
         let handler = Arc::new(NonPoisonedRwLock::new(None));
