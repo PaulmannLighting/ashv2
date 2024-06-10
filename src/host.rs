@@ -41,7 +41,6 @@ impl Host {
     ) -> Result<Self, Error> {
         let running = Arc::new(AtomicBool::new(true));
         serial_port.set_timeout(SOCKET_TIMEOUT)?;
-        serial_port.set_exclusive(true)?;
         let serial_port_clone = serial_port.try_clone_native()?;
         let (command_sender, command_receiver) = channel();
         let connected = Arc::new(AtomicBool::new(false));
