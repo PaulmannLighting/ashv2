@@ -28,7 +28,9 @@ where
         }
 
         for frame_size in (MIN_PAYLOAD_SIZE..=MAX_PAYLOAD_SIZE).rev() {
-            if self.len() % frame_size == 0 || self.len() % frame_size >= MIN_PAYLOAD_SIZE {
+            let remainder = self.len() % frame_size;
+
+            if remainder == 0 || remainder >= MIN_PAYLOAD_SIZE {
                 return Ok(self.chunks(frame_size));
             }
         }
