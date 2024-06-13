@@ -38,11 +38,14 @@ where
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
+    use itertools::Itertools;
+
+    use crate::Error;
+
     use super::AshChunks;
     use super::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
-    use crate::Error;
-    use itertools::Itertools;
 
     #[test]
     fn test_too_few_ash_chunks() {
