@@ -23,7 +23,7 @@ where
             return Err(Error::CannotFindViableChunkSize(self.len()));
         }
 
-        if self.len() <= MAX_PAYLOAD_SIZE {
+        if self.len() <= MAX_PAYLOAD_SIZE || self.len() % MAX_PAYLOAD_SIZE == 0 {
             return Ok(self.chunks(MAX_PAYLOAD_SIZE));
         }
 
