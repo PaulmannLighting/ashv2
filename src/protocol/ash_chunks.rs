@@ -27,17 +27,13 @@ where
             return Ok(self.chunks(MAX_PAYLOAD_SIZE));
         }
 
-        let mut frame_size = MAX_PAYLOAD_SIZE;
-
-        loop {
+        for frame_size in (MIN_PAYLOAD_SIZE..=MAX_PAYLOAD_SIZE).rev() {
             if self.len() % frame_size == 0 || self.len() % frame_size >= MIN_PAYLOAD_SIZE {
                 return Ok(self.chunks(frame_size));
             }
-
-            frame_size = frame_size
-                .checked_sub(1)
-                .ok_or_else(|| Error::CannotFindViableChunkSize(self.len()))?;
         }
+
+        Err(Error::CannotFindViableChunkSize(self.len()))
     }
 }
 
