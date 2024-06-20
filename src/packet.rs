@@ -121,3 +121,68 @@ impl TryFrom<&[u8]> for Packet {
         }
     }
 }
+
+#[allow(clippy::unwrap_used)]
+#[cfg(test)]
+mod tests {
+    use crate::code::Code;
+
+    use super::Packet;
+    use super::{Ack, Data, Error, Nak, Rst};
+
+    #[test]
+    fn test_rst_try_from_bytes_slice() {
+        const RST: [u8; 4] = [0xC0, 0x38, 0xBC, 0x7E];
+        let packet = Packet::try_from(&RST[..RST.len() - 1]).unwrap();
+        assert_eq!(packet, Packet::Rst(Rst::default()));
+    }
+
+    #[test]
+    fn test_rstack_try_from_bytes_slice() {
+        const RST_ACK: [u8; 6] = [0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
+        let packet = Packet::try_from(&RST_ACK[..RST_ACK.len() - 1]).unwrap();
+        assert_eq!(packet, Packet::RstAck(Code::PowerOn.into()));
+    }
+
+    #[test]
+    fn test_error_try_from_bytes_slice() {
+        const ERROR: [u8; 6] = [0xC2, 0x02, 0x52, 0x98, 0xDE, 0x7E];
+        let packet = Packet::try_from(&ERROR[..ERROR.len() - 1]).unwrap();
+        assert_eq!(packet, Packet::Error(Error::new(ERROR[2])));
+    }
+
+    #[test]
+    fn test_data_try_from_bytes_slice() {
+        const DATA: [u8; 11] = [
+            0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16, 0x7E,
+        ];
+        let packet = Packet::try_from(&DATA[..DATA.len() - 1]).unwrap();
+        assert_eq!(
+            packet,
+            Packet::Data(Data::new(
+                DATA[0],
+                DATA[1..DATA.len() - 3].iter().copied().collect()
+            ))
+        );
+    }
+
+    #[test]
+    fn test_ack_try_from_bytes_slice() {
+        const ACKS: [[u8; 4]; 2] = [[0x81, 0x60, 0x59, 0x7E], [0x8E, 0x91, 0xB6, 0x7E]];
+
+        for ack in ACKS {
+            let packet = Packet::try_from(&ack[..ack.len() - 1]).unwrap();
+            assert_eq!(packet, Packet::Ack(Ack::new(ack[0])));
+        }
+    }
+
+    #[test]
+    fn test_nak_try_from_bytes_slice() {
+        const NAKS: [[u8; 4]; 2] = [[0xA6, 0x34, 0xDC, 0x7E], [0xAD, 0x85, 0xB7, 0x7E]];
+
+        for nak in NAKS {
+            let packet = Packet::try_from(&nak[..nak.len() - 1]).unwrap();
+            assert_eq!(packet, Packet::Nak(Nak::new(nak[0])));
+        }
+    }
+}
