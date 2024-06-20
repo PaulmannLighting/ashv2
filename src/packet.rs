@@ -116,11 +116,11 @@ impl TryFrom<&[u8]> for Packet {
             error::HEADER => Ok(Self::Error(Error::try_from(buffer)?)),
             header => {
                 if header & 0x80 == 0x00 {
-                    Ok(Self::Data(Data::try_from(buffer)?))
+                    Data::try_from(buffer).map(Self::Data)
                 } else if header & 0x60 == 0x00 {
-                    Ok(Self::Ack(Ack::try_from(buffer)?))
+                    Ack::try_from(buffer).map(Self::Ack)
                 } else if header & 0x60 == 0x20 {
-                    Ok(Self::Nak(Nak::try_from(buffer)?))
+                    Nak::try_from(buffer).map(Self::Nak)
                 } else {
                     Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header)))
                 }
