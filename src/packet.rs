@@ -111,9 +111,9 @@ impl TryFrom<&[u8]> for Packet {
             .first()
             .ok_or(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(None))?
         {
-            rst::HEADER => Ok(Self::Rst(Rst::try_from(buffer)?)),
-            rst_ack::HEADER => Ok(Self::RstAck(RstAck::try_from(buffer)?)),
-            error::HEADER => Ok(Self::Error(Error::try_from(buffer)?)),
+            rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
+            rst_ack::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
+            error::HEADER => Error::try_from(buffer).map(Self::Error),
             header => {
                 if header & 0x80 == 0x00 {
                     Data::try_from(buffer).map(Self::Data)
