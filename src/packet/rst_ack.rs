@@ -5,7 +5,7 @@ use num_traits::FromPrimitive;
 use crate::code::Code;
 use crate::error::frame::Error;
 use crate::frame::Frame;
-use crate::CRC;
+use crate::{CRC, VERSION};
 
 pub const HEADER: u8 = 0xC1;
 const SIZE: usize = 5;
@@ -19,6 +19,16 @@ pub struct RstAck {
 }
 
 impl RstAck {
+    #[must_use]
+    pub const fn new(reset_code: u8) -> Self {
+        Self {
+            header: HEADER,
+            version: VERSION,
+            reset_code,
+            crc: CRC.checksum(&[HEADER, VERSION, reset_code]),
+        }
+    }
+
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
@@ -61,6 +71,12 @@ impl Frame for RstAck {
 
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.reset_code])
+    }
+}
+
+impl From<Code> for RstAck {
+    fn from(code: Code) -> Self {
+        Self::new(code.into())
     }
 }
 

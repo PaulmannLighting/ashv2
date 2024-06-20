@@ -18,6 +18,16 @@ pub struct Error {
 }
 
 impl Error {
+    #[must_use]
+    pub const fn new(code: u8) -> Self {
+        Self {
+            header: HEADER,
+            version: crate::VERSION,
+            code,
+            crc: CRC.checksum(&[HEADER, crate::VERSION, code]),
+        }
+    }
+
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
@@ -60,6 +70,12 @@ impl Frame for Error {
 
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.code])
+    }
+}
+
+impl From<Code> for Error {
+    fn from(code: Code) -> Self {
+        Self::new(code.into())
     }
 }
 
