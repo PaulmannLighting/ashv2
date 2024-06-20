@@ -1,10 +1,11 @@
-use log::error;
-use serialport::TTYPort;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
+
+use log::error;
+use serialport::TTYPort;
 
 use listener::Listener;
 use transmitter::Transmitter;
