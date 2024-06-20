@@ -114,17 +114,10 @@ impl TryFrom<&[u8]> for Packet {
             rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
             rst_ack::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
             error::HEADER => Error::try_from(buffer).map(Self::Error),
-            header => {
-                if header & 0x80 == 0x00 {
-                    Data::try_from(buffer).map(Self::Data)
-                } else if header & 0x60 == 0x00 {
-                    Ack::try_from(buffer).map(Self::Ack)
-                } else if header & 0x60 == 0x20 {
-                    Nak::try_from(buffer).map(Self::Nak)
-                } else {
-                    Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header)))
-                }
-            }
+            header if header & 0x80 == 0x00 => Data::try_from(buffer).map(Self::Data),
+            header if header & 0x60 == 0x00 => Ack::try_from(buffer).map(Self::Ack),
+            header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),
+            header => Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header))),
         }
     }
 }
