@@ -184,11 +184,8 @@ impl Transmitter {
                 debug!("Retransmitting: {data}");
                 trace!("{data:#04X?}");
                 data.set_is_retransmission(true);
-
-                if let Err(error) = self.send_data(data) {
-                    error!("Failed to retransmit: {error}");
-                    return Err(error);
-                }
+                self.send_data(data)
+                    .inspect_err(|error| error!("Failed to retransmit: {error}"))?;
             } else {
                 break;
             }
@@ -205,11 +202,8 @@ impl Transmitter {
                 transmits += 1;
                 self.buffer.clear();
                 self.buffer.extend(chunk);
-
-                if let Err(error) = self.send_chunk() {
-                    error!("Error during transmission of chunk: {error}");
-                    return Err(error);
-                }
+                self.send_chunk()
+                    .inspect_err(|error| error!("Error during transmission of chunk: {error}"))?;
             } else {
                 break;
             }
