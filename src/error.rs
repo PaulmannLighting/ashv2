@@ -5,7 +5,6 @@ pub mod frame;
 
 /// Possible error states during `ASHv2` transactions.
 #[derive(Clone, Debug)]
-#[non_exhaustive]
 pub enum Error {
     Frame(frame::Error),
     Io(Arc<std::io::Error>),
