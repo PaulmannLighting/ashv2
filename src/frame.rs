@@ -23,6 +23,7 @@ pub trait Frame: Debug + Display {
     }
 
     /// Determines whether the frame is valid.
+    #[cfg(test)]
     fn is_valid(&self) -> bool {
         self.is_header_valid() && self.is_crc_valid()
     }
