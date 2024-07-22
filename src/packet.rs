@@ -80,25 +80,14 @@ impl Frame for Packet {
         }
     }
 
-    fn is_crc_valid(&self) -> bool {
+    fn calculate_crc(&self) -> u16 {
         match self {
-            Self::Ack(ack) => ack.is_crc_valid(),
-            Self::Data(data) => data.is_crc_valid(),
-            Self::Error(error) => error.is_crc_valid(),
-            Self::Nak(nak) => nak.is_crc_valid(),
-            Self::Rst(rst) => rst.is_crc_valid(),
-            Self::RstAck(rst_ack) => rst_ack.is_crc_valid(),
-        }
-    }
-
-    fn is_valid(&self) -> bool {
-        match self {
-            Self::Ack(ack) => ack.is_valid(),
-            Self::Data(data) => data.is_valid(),
-            Self::Error(error) => error.is_valid(),
-            Self::Nak(nak) => nak.is_valid(),
-            Self::Rst(rst) => rst.is_valid(),
-            Self::RstAck(rst_ack) => rst_ack.is_valid(),
+            Self::Ack(ack) => ack.calculate_crc(),
+            Self::Data(data) => data.calculate_crc(),
+            Self::Error(error) => error.calculate_crc(),
+            Self::Nak(nak) => nak.calculate_crc(),
+            Self::Rst(rst) => rst.calculate_crc(),
+            Self::RstAck(rst_ack) => rst_ack.calculate_crc(),
         }
     }
 }
