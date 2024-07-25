@@ -25,7 +25,11 @@ where
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
-        self.write_all(frame.bytes().as_ref())?;
+
+        for byte in frame.bytes().as_ref().iter().copied().stuff() {
+            self.write_all(&[byte])?;
+        }
+
         self.write_all(&[FLAG])?;
         self.flush()
     }
