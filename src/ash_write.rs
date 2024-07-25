@@ -3,7 +3,7 @@ use std::io::{Result, Write};
 use log::{debug, trace};
 
 use crate::frame::Frame;
-use crate::protocol::{Stuff, FLAG};
+use crate::protocol::FLAG;
 
 pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
@@ -25,11 +25,7 @@ where
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
-
-        for byte in frame.bytes().as_ref().iter().copied().stuff() {
-            self.write_all(&[byte])?;
-        }
-
+        self.write_all(&frame.stuffed())?;
         self.write_all(&[FLAG])?;
         self.flush()
     }
