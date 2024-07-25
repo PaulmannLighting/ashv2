@@ -10,25 +10,23 @@ pub trait AshWrite: Write {
     ///
     /// # Errors
     /// Returns an [`Error`](std::io::Error) if any I/O error occurs.
-    fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> Result<()>
     where
-        F: Frame,
-        &'frame F: IntoIterator<Item = u8>;
+        F: Frame;
 }
 
 impl<T> AshWrite for T
 where
     T: Write,
 {
-    fn write_frame<'frame, F>(&mut self, frame: &'frame F) -> Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> Result<()>
     where
         F: Frame,
-        &'frame F: IntoIterator<Item = u8>,
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
 
-        for byte in frame.into_iter().stuff() {
+        for byte in frame.bytes().as_ref().iter().copied().stuff() {
             self.write_all(&[byte])?;
         }
 

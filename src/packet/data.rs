@@ -1,7 +1,4 @@
-use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
-use std::iter::{Chain, Copied};
-use std::slice::Iter;
 
 use log::warn;
 
@@ -19,8 +16,10 @@ const CRC_CHECKSUM_SIZE: usize = 2;
 pub const METADATA_SIZE: usize = HEADER_SIZE + CRC_CHECKSUM_SIZE;
 pub const MIN_PAYLOAD_SIZE: usize = 3;
 pub const MAX_PAYLOAD_SIZE: usize = 128;
+const BUFFER_SIZE: usize = METADATA_SIZE + MAX_PAYLOAD_SIZE;
 
 type Payload = heapless::Vec<u8, MAX_PAYLOAD_SIZE>;
+type Buffer = heapless::Vec<u8, BUFFER_SIZE>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
@@ -111,22 +110,19 @@ impl Frame for Data {
     fn calculate_crc(&self) -> u16 {
         calculate_crc(self.header, &self.payload)
     }
-}
 
-#[allow(clippy::into_iter_without_iter)]
-impl<'a> IntoIterator for &'a Data {
-    type Item = u8;
-    type IntoIter = Chain<
-        Chain<IntoIter<Self::Item, 1>, Copied<Iter<'a, Self::Item>>>,
-        IntoIter<Self::Item, 2>,
-    >;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.header
-            .to_be_bytes()
-            .into_iter()
-            .chain(self.payload.iter().copied())
-            .chain(self.crc.to_be_bytes())
+    fn bytes(&self) -> impl AsRef<[u8]> {
+        let mut buffer = Buffer::new();
+        buffer
+            .push(self.header)
+            .expect("Buffer should have sufficient size for header.");
+        buffer
+            .extend_from_slice(&self.payload)
+            .expect("Buffer should have sufficient size for payload.");
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .expect("Buffer should have sufficient size for CRC.");
+        buffer
     }
 }
 
@@ -381,7 +377,7 @@ mod tests {
         };
         let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
         assert_eq!(unmasked_payload, payload);
-        let byte_representation: Vec<_> = (&data).into_iter().collect();
+        let byte_representation: Vec<_> = data.bytes().as_ref().to_vec();
         assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);
     }
 }

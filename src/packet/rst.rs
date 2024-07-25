@@ -1,6 +1,4 @@
-use std::array::IntoIter;
 use std::fmt::{Display, Formatter};
-use std::iter::Chain;
 
 use crate::error::frame::Error;
 use crate::frame::Frame;
@@ -51,18 +49,10 @@ impl Frame for Rst {
     fn is_header_valid(&self) -> bool {
         self.header == HEADER
     }
-}
 
-#[allow(clippy::into_iter_without_iter)]
-impl IntoIterator for &Rst {
-    type Item = u8;
-    type IntoIter = Chain<IntoIter<Self::Item, 1>, IntoIter<Self::Item, 2>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.header
-            .to_be_bytes()
-            .into_iter()
-            .chain(self.crc.to_be_bytes())
+    fn bytes(&self) -> impl AsRef<[u8]> {
+        let [crc0, crc1] = self.crc.to_be_bytes();
+        [self.header, crc0, crc1]
     }
 }
 

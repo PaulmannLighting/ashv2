@@ -90,6 +90,17 @@ impl Frame for Packet {
             Self::RstAck(rst_ack) => rst_ack.calculate_crc(),
         }
     }
+
+    fn bytes(&self) -> impl AsRef<[u8]> {
+        match self {
+            Self::Ack(ack) => Box::<[u8]>::from(ack.bytes().as_ref()),
+            Self::Data(data) => Box::<[u8]>::from(data.bytes().as_ref()),
+            Self::Error(error) => Box::<[u8]>::from(error.bytes().as_ref()),
+            Self::Nak(nak) => Box::<[u8]>::from(nak.bytes().as_ref()),
+            Self::Rst(rst) => Box::<[u8]>::from(rst.bytes().as_ref()),
+            Self::RstAck(rst_ack) => Box::<[u8]>::from(rst_ack.bytes().as_ref()),
+        }
+    }
 }
 
 impl TryFrom<&[u8]> for Packet {

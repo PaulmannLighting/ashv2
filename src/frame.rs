@@ -27,4 +27,6 @@ pub trait Frame: Debug + Display {
     fn is_valid(&self) -> bool {
         self.is_header_valid() && self.is_crc_valid()
     }
+
+    fn bytes(&self) -> impl AsRef<[u8]>;
 }

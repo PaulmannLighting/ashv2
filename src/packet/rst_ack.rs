@@ -72,6 +72,11 @@ impl Frame for RstAck {
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.reset_code])
     }
+
+    fn bytes(&self) -> impl AsRef<[u8]> {
+        let [crc0, crc1] = self.crc.to_be_bytes();
+        [self.header, self.version, self.reset_code, crc0, crc1]
+    }
 }
 
 impl From<Code> for RstAck {
