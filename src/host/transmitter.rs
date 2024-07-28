@@ -320,12 +320,12 @@ impl Transmitter {
     }
 
     fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
-        self.t_rx_ack = if let Some(duration) = last_ack_duration {
-            self.t_rx_ack * 7 / 8 + duration / 2
-        } else {
-            self.t_rx_ack * 2
-        }
-        .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
+        self.t_rx_ack = last_ack_duration
+            .map_or_else(
+                || self.t_rx_ack * 2,
+                |duration| self.t_rx_ack * 7 / 8 + duration / 2,
+            )
+            .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
     }
 
     fn next_frame_number(&mut self) -> u8 {
