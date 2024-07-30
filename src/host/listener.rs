@@ -94,7 +94,7 @@ impl Listener {
         }
     }
 
-    fn handle_ack(&mut self, ack: &Ack) {
+    fn handle_ack(&self, ack: &Ack) {
         if !ack.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
         }
@@ -154,7 +154,7 @@ impl Listener {
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
-    fn forward_data(&mut self, data: &Data) {
+    fn forward_data(&self, data: &Data) {
         debug!("Forwarding data: {data}");
         let payload: FrameBuffer = data.payload().iter().copied().mask().collect();
 
@@ -196,7 +196,7 @@ impl Listener {
         }
     }
 
-    fn handle_error(&mut self, error: &Error) {
+    fn handle_error(&self, error: &Error) {
         trace!("Received ERROR: {error:#04X?}");
 
         if !error.is_ash_v2() {
@@ -214,7 +214,7 @@ impl Listener {
         );
     }
 
-    fn handle_nak(&mut self, nak: &Nak) {
+    fn handle_nak(&self, nak: &Nak) {
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
         }

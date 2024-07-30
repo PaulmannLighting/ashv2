@@ -400,7 +400,7 @@ impl Transmitter {
         }
     }
 
-    fn set_transmission_completed(&mut self) {
+    fn set_transmission_completed(&self) {
         if let Some(handler) = self.handler.read().clone() {
             debug!("Finalizing data command.");
             handler.handle(Event::TransmissionCompleted);

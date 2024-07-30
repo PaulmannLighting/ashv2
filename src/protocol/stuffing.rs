@@ -54,14 +54,6 @@ where
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Unstuffer<T>
-where
-    T: Iterator<Item = u8>,
-{
-    bytes: T,
-}
-
 pub trait Unstuff {
     fn unstuff(&mut self);
 }
