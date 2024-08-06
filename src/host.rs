@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::{channel, Sender};
@@ -72,7 +73,7 @@ impl Host {
     ///
     /// # Errors
     /// Returns [`T::Error`](Response::Error) if the transactions fails.
-    pub async fn communicate<T>(&self, payload: &[u8]) -> Result<T::Result, T::Error>
+    pub async fn communicate<T>(&self, payload: &[u8]) -> <T as Future>::Output
     where
         T: Clone + Default + Response + Sync + Send + 'static,
     {
