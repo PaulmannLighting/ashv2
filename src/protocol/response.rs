@@ -45,10 +45,7 @@ pub trait Handler: Debug + Send + Sync {
 ///
 /// This is a composite trait consisting of a [`Future`] and a [`Handler`] implementation.
 /// The Future must output [`Result<Self::Result, Self::Error>`].
-pub trait Response: Future<Output = Result<Self::Result, Self::Error>> + Handler
-where
-    Self::Error: From<Error>,
-{
+pub trait Response: Future<Output = Result<Self::Result, Self::Error>> + Handler {
     type Result;
-    type Error;
+    type Error: From<Error>;
 }
