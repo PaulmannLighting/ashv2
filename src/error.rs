@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use std::rc::Rc;
 
 pub mod frame;
 
@@ -7,7 +7,7 @@ pub mod frame;
 #[derive(Clone, Debug)]
 pub enum Error {
     Frame(frame::Error),
-    Io(Arc<std::io::Error>),
+    Io(Rc<std::io::Error>),
     SerialConnectionError(serialport::Error),
     CannotFindViableChunkSize(usize),
     MaxRetransmitsExceeded,
@@ -52,7 +52,7 @@ impl From<frame::Error> for Error {
 
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
-        Self::Io(Arc::new(error))
+        Self::Io(error.into())
     }
 }
 
