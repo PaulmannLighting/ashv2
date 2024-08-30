@@ -1,8 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use num_derive::FromPrimitive;
-
-#[derive(Clone, Debug, Eq, PartialEq, FromPrimitive)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(u8)]
 pub enum Code {
     UnknownReason = 0x00,
@@ -37,5 +35,26 @@ impl Display for Code {
 impl From<Code> for u8 {
     fn from(code: Code) -> Self {
         code as Self
+    }
+}
+
+impl TryFrom<u8> for Code {
+    type Error = ();
+
+    fn try_from(byte: u8) -> Result<Self, Self::Error> {
+        match byte {
+            byte if byte == Self::UnknownReason as u8 => Ok(Self::UnknownReason),
+            byte if byte == Self::External as u8 => Ok(Self::External),
+            byte if byte == Self::PowerOn as u8 => Ok(Self::PowerOn),
+            byte if byte == Self::Watchdog as u8 => Ok(Self::Watchdog),
+            byte if byte == Self::Assert as u8 => Ok(Self::Assert),
+            byte if byte == Self::Bootloader as u8 => Ok(Self::Bootloader),
+            byte if byte == Self::Software as u8 => Ok(Self::Software),
+            byte if byte == Self::ExceededMaximumAckTimeoutCount as u8 => {
+                Ok(Self::ExceededMaximumAckTimeoutCount)
+            }
+            byte if byte == Self::ChipSpecific as u8 => Ok(Self::ChipSpecific),
+            _ => Err(()),
+        }
     }
 }

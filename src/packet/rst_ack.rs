@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use num_traits::FromPrimitive;
-
 use crate::code::Code;
 use crate::error::frame::Error;
 use crate::frame::Frame;
@@ -46,7 +44,7 @@ impl RstAck {
     /// Returns the reset code.
     #[must_use]
     pub fn code(&self) -> Option<Code> {
-        Code::from_u8(self.reset_code)
+        Code::try_from(self.reset_code).ok()
     }
 }
 

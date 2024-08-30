@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use num_traits::FromPrimitive;
-
 use crate::error::frame;
 use crate::frame::Frame;
 use crate::{Code, CRC};
@@ -45,7 +43,7 @@ impl Error {
     /// Returns the error code.
     #[must_use]
     pub fn code(&self) -> Option<Code> {
-        Code::from_u8(self.code)
+        Code::try_from(self.code).ok()
     }
 }
 
