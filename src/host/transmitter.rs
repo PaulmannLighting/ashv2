@@ -15,7 +15,7 @@ use serialport::TTYPort;
 
 use crate::ash_write::AshWrite;
 use crate::error::frame;
-use crate::packet::{Data, FrameBuffer, Rst, MAX_PAYLOAD_SIZE};
+use crate::packet::{Data, FrameBuffer, Rst};
 use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 use crate::Error;
@@ -220,7 +220,7 @@ impl Transmitter {
             self.ack_number.load(SeqCst),
             self.buffer.as_slice().try_into().map_err(|()| {
                 Error::Frame(frame::Error::PayloadTooLarge {
-                    max: MAX_PAYLOAD_SIZE,
+                    max: Data::MAX_PAYLOAD_SIZE,
                     size: self.buffer.len(),
                 })
             })?,

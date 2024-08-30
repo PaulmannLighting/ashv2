@@ -7,19 +7,8 @@ use crate::frame::Frame;
 use crate::protocol::Mask;
 use crate::CRC;
 
-const ACK_NUM_MASK: u8 = 0b0000_0111;
-const FRAME_NUM_MASK: u8 = 0b0111_0000;
-const RETRANSMIT_MASK: u8 = 0b0000_1000;
-const FRAME_NUM_OFFSET: u8 = 4;
-const HEADER_SIZE: usize = 1;
-const CRC_CHECKSUM_SIZE: usize = 2;
-pub const METADATA_SIZE: usize = HEADER_SIZE + CRC_CHECKSUM_SIZE;
-pub const MIN_PAYLOAD_SIZE: usize = 3;
-pub const MAX_PAYLOAD_SIZE: usize = 128;
-const BUFFER_SIZE: usize = METADATA_SIZE + MAX_PAYLOAD_SIZE;
-
-type Payload = heapless::Vec<u8, MAX_PAYLOAD_SIZE>;
-type Buffer = heapless::Vec<u8, BUFFER_SIZE>;
+type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
+type Buffer = heapless::Vec<u8, { Data::BUFFER_SIZE }>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
@@ -29,6 +18,17 @@ pub struct Data {
 }
 
 impl Data {
+    const ACK_NUM_MASK: u8 = 0b0000_0111;
+    const FRAME_NUM_MASK: u8 = 0b0111_0000;
+    const RETRANSMIT_MASK: u8 = 0b0000_1000;
+    const FRAME_NUM_OFFSET: u8 = 4;
+    const HEADER_SIZE: usize = 1;
+    const CRC_CHECKSUM_SIZE: usize = 2;
+    pub const METADATA_SIZE: usize = Self::HEADER_SIZE + Self::CRC_CHECKSUM_SIZE;
+    pub const MIN_PAYLOAD_SIZE: usize = 3;
+    pub const MAX_PAYLOAD_SIZE: usize = 128;
+    pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;
+
     /// Creates a new data packet.
     #[must_use]
     pub fn new(header: u8, payload: Payload) -> Self {
@@ -42,7 +42,8 @@ impl Data {
     #[must_use]
     pub fn create(frame_num: u8, ack_num: u8, payload: Payload) -> Self {
         Self::new(
-            ((frame_num << FRAME_NUM_OFFSET) & FRAME_NUM_MASK) + (ack_num & ACK_NUM_MASK),
+            ((frame_num << Self::FRAME_NUM_OFFSET) & Self::FRAME_NUM_MASK)
+                + (ack_num & Self::ACK_NUM_MASK),
             payload.mask().collect(),
         )
     }
@@ -50,19 +51,19 @@ impl Data {
     /// Returns the frame number.
     #[must_use]
     pub const fn frame_num(&self) -> u8 {
-        (self.header & FRAME_NUM_MASK) >> FRAME_NUM_OFFSET
+        (self.header & Self::FRAME_NUM_MASK) >> Self::FRAME_NUM_OFFSET
     }
 
     /// Returns the acknowledgment number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        self.header & ACK_NUM_MASK
+        self.header & Self::ACK_NUM_MASK
     }
 
     /// Returns the retransmit flag.
     #[must_use]
     pub const fn is_retransmission(&self) -> bool {
-        (self.header & RETRANSMIT_MASK) != 0
+        (self.header & Self::RETRANSMIT_MASK) != 0
     }
 
     /// Returns the payload data.
@@ -73,9 +74,9 @@ impl Data {
 
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
         if is_retransmission {
-            self.header |= RETRANSMIT_MASK;
+            self.header |= Self::RETRANSMIT_MASK;
         } else {
-            self.header &= 0xFF ^ RETRANSMIT_MASK;
+            self.header &= 0xFF ^ Self::RETRANSMIT_MASK;
         }
 
         self.crc = self.calculate_crc();
@@ -130,38 +131,44 @@ impl TryFrom<&[u8]> for Data {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < METADATA_SIZE {
-            return Err(Self::Error::BufferTooSmall {
-                expected: METADATA_SIZE,
+        if buffer.len() < Self::METADATA_SIZE {
+            return Err(Error::BufferTooSmall {
+                expected: Self::METADATA_SIZE,
                 found: buffer.len(),
             });
         }
 
         let payload = &buffer[1..(buffer.len() - 2)];
 
-        if payload.len() < MIN_PAYLOAD_SIZE {
-            warn!("Payload too small: {} < {MIN_PAYLOAD_SIZE}", payload.len());
+        if payload.len() < Self::MIN_PAYLOAD_SIZE {
+            warn!(
+                "Payload too small: {} < {}",
+                payload.len(),
+                Self::MIN_PAYLOAD_SIZE
+            );
         }
 
-        if payload.len() > MAX_PAYLOAD_SIZE {
-            warn!("Payload too large: {} > {MAX_PAYLOAD_SIZE}", payload.len());
+        if payload.len() > Self::MAX_PAYLOAD_SIZE {
+            warn!(
+                "Payload too large: {} > {}",
+                payload.len(),
+                Self::MAX_PAYLOAD_SIZE
+            );
         }
 
         Ok(Self {
             header: buffer[0],
-            payload: payload
-                .try_into()
-                .map_err(|()| Self::Error::BufferTooSmall {
-                    expected: payload.len(),
-                    found: MAX_PAYLOAD_SIZE,
-                })?,
+            payload: payload.try_into().map_err(|()| Error::BufferTooSmall {
+                expected: payload.len(),
+                found: Self::MAX_PAYLOAD_SIZE,
+            })?,
             crc: u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
         })
     }
 }
 
 fn calculate_crc(header: u8, payload: &Payload) -> u16 {
-    let mut bytes = heapless::Vec::<u8, { MAX_PAYLOAD_SIZE + 1 }>::new();
+    let mut bytes = heapless::Vec::<u8, { Data::MAX_PAYLOAD_SIZE + 1 }>::new();
     bytes
         .push(header)
         .expect("Buffer should have sufficient size for header.");

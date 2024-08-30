@@ -3,10 +3,6 @@ use std::fmt::{Display, Formatter};
 use crate::error::frame::Error;
 use crate::frame::Frame;
 
-pub const HEADER: u8 = 0xC0;
-const SIZE: usize = 3;
-const CRC: u16 = 0x38BC;
-
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Rst {
@@ -15,12 +11,16 @@ pub struct Rst {
 }
 
 impl Rst {
+    const CRC: u16 = 0x38BC;
+    pub const HEADER: u8 = 0xC0;
+    pub const SIZE: usize = 3;
+
     /// Creates a new RST packet.
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            header: HEADER,
-            crc: CRC,
+            header: Self::HEADER,
+            crc: Self::CRC,
         }
     }
 }
@@ -47,7 +47,7 @@ impl Frame for Rst {
     }
 
     fn is_header_valid(&self) -> bool {
-        self.header == HEADER
+        self.header == Self::HEADER
     }
 
     fn bytes(&self) -> impl AsRef<[u8]> {
@@ -60,14 +60,14 @@ impl TryFrom<&[u8]> for Rst {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == SIZE {
+        if buffer.len() == Self::SIZE {
             Ok(Self {
                 header: buffer[0],
                 crc: u16::from_be_bytes([buffer[1], buffer[2]]),
             })
         } else {
-            Err(Self::Error::InvalidBufferSize {
-                expected: SIZE,
+            Err(Error::InvalidBufferSize {
+                expected: Self::SIZE,
                 found: buffer.len(),
             })
         }

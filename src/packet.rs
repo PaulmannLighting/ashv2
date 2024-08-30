@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 
 pub use ack::Ack;
-pub use data::{Data, MAX_PAYLOAD_SIZE, METADATA_SIZE, MIN_PAYLOAD_SIZE};
+pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;
@@ -18,7 +18,7 @@ mod rst;
 mod rst_ack;
 
 // In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
-const MAX_FRAME_SIZE: usize = (METADATA_SIZE + MAX_PAYLOAD_SIZE) * 2 + 1;
+const MAX_FRAME_SIZE: usize = (Data::METADATA_SIZE + Data::MAX_PAYLOAD_SIZE) * 2 + 1;
 
 /// A stack-allocated buffer that can hold an `ASHv2` frame up to its maximum size.
 pub type FrameBuffer = heapless::Vec<u8, MAX_FRAME_SIZE>;
@@ -111,9 +111,9 @@ impl TryFrom<&[u8]> for Packet {
             .first()
             .ok_or(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(None))?
         {
-            rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
-            rst_ack::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
-            error::HEADER => Error::try_from(buffer).map(Self::Error),
+            Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
+            RstAck::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
+            Error::HEADER => Error::try_from(buffer).map(Self::Error),
             header if header & 0x80 == 0x00 => Data::try_from(buffer).map(Self::Data),
             header if header & 0x60 == 0x00 => Ack::try_from(buffer).map(Self::Ack),
             header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),

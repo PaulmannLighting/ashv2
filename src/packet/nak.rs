@@ -4,10 +4,6 @@ use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::CRC;
 
-const ACK_RDY_MASK: u8 = 0x0F;
-const HEADER_PREFIX: u8 = 0xA0;
-const SIZE: usize = 3;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
     header: u8,
@@ -15,6 +11,10 @@ pub struct Nak {
 }
 
 impl Nak {
+    const ACK_RDY_MASK: u8 = 0x0F;
+    const HEADER_PREFIX: u8 = 0xA0;
+    pub const SIZE: usize = 3;
+
     /// Creates a new NAK packet.
     #[must_use]
     pub const fn new(header: u8) -> Self {
@@ -26,13 +26,13 @@ impl Nak {
 
     #[must_use]
     pub const fn from_ack_num(ack_num: u8) -> Self {
-        Self::new(HEADER_PREFIX + (ack_num % 0x08))
+        Self::new(Self::HEADER_PREFIX + (ack_num % 0x08))
     }
 
     /// Determines whether the ready flag is set.
     #[must_use]
     pub const fn ready(&self) -> bool {
-        (self.header & ACK_RDY_MASK) <= 0x08
+        (self.header & Self::ACK_RDY_MASK) <= 0x08
     }
 
     /// Return the acknowledgement number.
@@ -76,14 +76,14 @@ impl TryFrom<&[u8]> for Nak {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == SIZE {
+        if buffer.len() == Self::SIZE {
             Ok(Self {
                 header: buffer[0],
                 crc: u16::from_be_bytes([buffer[1], buffer[2]]),
             })
         } else {
-            Err(Self::Error::InvalidBufferSize {
-                expected: SIZE,
+            Err(Error::InvalidBufferSize {
+                expected: Self::SIZE,
                 found: buffer.len(),
             })
         }

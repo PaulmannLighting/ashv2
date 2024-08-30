@@ -7,9 +7,6 @@ use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::{CRC, VERSION};
 
-pub const HEADER: u8 = 0xC1;
-const SIZE: usize = 5;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RstAck {
     header: u8,
@@ -19,13 +16,16 @@ pub struct RstAck {
 }
 
 impl RstAck {
+    pub const HEADER: u8 = 0xC1;
+    pub const SIZE: usize = 5;
+
     #[must_use]
     pub const fn new(reset_code: u8) -> Self {
         Self {
-            header: HEADER,
+            header: Self::HEADER,
             version: VERSION,
             reset_code,
-            crc: CRC.checksum(&[HEADER, VERSION, reset_code]),
+            crc: CRC.checksum(&[Self::HEADER, VERSION, reset_code]),
         }
     }
 
@@ -40,7 +40,7 @@ impl RstAck {
     /// Verifies that this is indeed `ASHv2`.
     #[must_use]
     pub const fn is_ash_v2(&self) -> bool {
-        self.version == crate::VERSION
+        self.version == VERSION
     }
 
     /// Returns the reset code.
@@ -66,7 +66,7 @@ impl Frame for RstAck {
     }
 
     fn is_header_valid(&self) -> bool {
-        self.header == HEADER
+        self.header == Self::HEADER
     }
 
     fn calculate_crc(&self) -> u16 {
@@ -89,7 +89,7 @@ impl TryFrom<&[u8]> for RstAck {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == SIZE {
+        if buffer.len() == Self::SIZE {
             Ok(Self {
                 header: buffer[0],
                 version: buffer[1],
@@ -97,8 +97,8 @@ impl TryFrom<&[u8]> for RstAck {
                 crc: u16::from_be_bytes([buffer[3], buffer[4]]),
             })
         } else {
-            Err(Self::Error::InvalidBufferSize {
-                expected: SIZE,
+            Err(Error::InvalidBufferSize {
+                expected: Self::SIZE,
                 found: buffer.len(),
             })
         }

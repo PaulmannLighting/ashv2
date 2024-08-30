@@ -6,9 +6,6 @@ use crate::error::frame;
 use crate::frame::Frame;
 use crate::{Code, CRC};
 
-pub const HEADER: u8 = 0xC2;
-const SIZE: usize = 5;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
     header: u8,
@@ -18,13 +15,16 @@ pub struct Error {
 }
 
 impl Error {
+    pub const HEADER: u8 = 0xC2;
+    pub const SIZE: usize = 5;
+
     #[must_use]
     pub const fn new(code: u8) -> Self {
         Self {
-            header: HEADER,
+            header: Self::HEADER,
             version: crate::VERSION,
             code,
-            crc: CRC.checksum(&[HEADER, crate::VERSION, code]),
+            crc: CRC.checksum(&[Self::HEADER, crate::VERSION, code]),
         }
     }
 
@@ -65,7 +65,7 @@ impl Frame for Error {
     }
 
     fn is_header_valid(&self) -> bool {
-        self.header == HEADER
+        self.header == Self::HEADER
     }
 
     fn calculate_crc(&self) -> u16 {
@@ -88,7 +88,7 @@ impl TryFrom<&[u8]> for Error {
     type Error = frame::Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == SIZE {
+        if buffer.len() == Self::SIZE {
             Ok(Self {
                 header: buffer[0],
                 version: buffer[1],
@@ -97,7 +97,7 @@ impl TryFrom<&[u8]> for Error {
             })
         } else {
             Err(Self::Error::InvalidBufferSize {
-                expected: SIZE,
+                expected: Self::SIZE,
                 found: buffer.len(),
             })
         }

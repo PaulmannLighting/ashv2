@@ -4,11 +4,6 @@ use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::CRC;
 
-const ACK_RDY_MASK: u8 = 0b0000_1000;
-const ACK_NUM_MASK: u8 = 0b0000_0111;
-const HEADER_PREFIX: u8 = 0x80;
-const SIZE: usize = 3;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
     header: u8,
@@ -16,6 +11,11 @@ pub struct Ack {
 }
 
 impl Ack {
+    const ACK_RDY_MASK: u8 = 0b0000_1000;
+    const ACK_NUM_MASK: u8 = 0b0000_0111;
+    const HEADER_PREFIX: u8 = 0x80;
+    pub const SIZE: usize = 3;
+
     /// Creates a new ACK packet.
     #[must_use]
     pub const fn new(header: u8) -> Self {
@@ -27,19 +27,19 @@ impl Ack {
 
     #[must_use]
     pub const fn from_ack_num(ack_num: u8) -> Self {
-        Self::new(HEADER_PREFIX + (ack_num % 8))
+        Self::new(Self::HEADER_PREFIX + (ack_num % 8))
     }
 
     /// Determines whether the ready flag is set.
     #[must_use]
     pub const fn ready(&self) -> bool {
-        (self.header & ACK_RDY_MASK) == 0
+        (self.header & Self::ACK_RDY_MASK) == 0
     }
 
     /// Returns the acknowledgement number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        self.header & ACK_NUM_MASK
+        self.header & Self::ACK_NUM_MASK
     }
 }
 
@@ -64,7 +64,7 @@ impl Frame for Ack {
     }
 
     fn is_header_valid(&self) -> bool {
-        (self.header & 0xF0) == HEADER_PREFIX
+        (self.header & 0xF0) == Self::HEADER_PREFIX
     }
     fn bytes(&self) -> impl AsRef<[u8]> {
         let [crc0, crc1] = self.crc.to_be_bytes();
@@ -76,14 +76,14 @@ impl TryFrom<&[u8]> for Ack {
     type Error = Error;
 
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == SIZE {
+        if buffer.len() == Self::SIZE {
             Ok(Self {
                 header: buffer[0],
                 crc: u16::from_be_bytes([buffer[1], buffer[2]]),
             })
         } else {
             Err(Self::Error::InvalidBufferSize {
-                expected: SIZE,
+                expected: Self::SIZE,
                 found: buffer.len(),
             })
         }
