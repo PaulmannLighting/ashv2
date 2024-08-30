@@ -15,7 +15,6 @@ edition = "2021"
 clap = { version = "4.5", optional = true }
 crc = "3.2"
 heapless = "0.8"
-itertools = "0.13"
 log = "0.4"
 serialport = { version = "4.3", default-features = false }
 

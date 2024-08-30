@@ -1,24 +1,18 @@
-use itertools::{IntoChunks, Itertools};
+use std::slice::Chunks;
 
 use crate::packet::Data;
 use crate::Error;
 
-pub trait AshChunks: Iterator<Item = u8> + ExactSizeIterator + Sized
-where
-    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
-{
+pub trait AshChunks {
     /// Return an iterator over chunks that fit into ASH data frames.
     ///
     /// # Errors
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
-    fn ash_chunks(self) -> Result<IntoChunks<Self>, Error>;
+    fn ash_chunks(&self) -> Result<Chunks<u8>, Error>;
 }
 
-impl<T> AshChunks for T
-where
-    T: Iterator<Item = u8> + ExactSizeIterator,
-{
-    fn ash_chunks(self) -> Result<IntoChunks<Self>, Error> {
+impl AshChunks for [u8] {
+    fn ash_chunks(&self) -> Result<Chunks<u8>, Error> {
         if self.len() < Data::MIN_PAYLOAD_SIZE {
             return Err(Error::CannotFindViableChunkSize(self.len()));
         }
@@ -42,8 +36,6 @@ where
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use itertools::Itertools;
-
     use crate::packet::Data;
     use crate::Error;
 
@@ -51,25 +43,22 @@ mod tests {
 
     #[test]
     fn test_too_few_ash_chunks() {
-        let bytes = (1..Data::MIN_PAYLOAD_SIZE)
+        let bytes: Vec<_> = (1..Data::MIN_PAYLOAD_SIZE)
             .map(|num| u8::try_from(num).expect("Number should be a valid u8"))
-            .collect_vec();
-        let chunks = bytes.into_iter().ash_chunks();
+            .collect();
+        let chunks = bytes.as_slice().ash_chunks();
         assert!(chunks.is_err());
     }
 
     #[test]
     fn test_ash_chunks_max_size() {
-        let bytes = (1..=Data::MAX_PAYLOAD_SIZE)
+        let bytes: Vec<_> = (1..=Data::MAX_PAYLOAD_SIZE)
             .map(|num| u8::try_from(num).expect("Number should be a valid u8"))
-            .collect_vec();
-        let chunks: Vec<Vec<_>> = bytes
-            .iter()
-            .copied()
+            .collect();
+        let chunks: Vec<&[u8]> = bytes
+            .as_slice()
             .ash_chunks()
             .expect("Chunks should be valid.")
-            .into_iter()
-            .map(Iterator::collect)
             .collect();
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0].len(), bytes.len());
@@ -77,14 +66,13 @@ mod tests {
 
     #[test]
     fn test_ash_chunks() {
-        let bytes = (u8::MIN..=u8::MAX).collect_vec();
+        let bytes: Vec<_> = (u8::MIN..=u8::MAX).collect();
 
-        for chunk in &bytes
-            .into_iter()
+        for chunk in bytes
+            .as_slice()
             .ash_chunks()
             .expect("Chunks should always be able to be distributed.")
         {
-            let chunk = chunk.collect_vec();
             assert_eq!(
                 chunk.len(),
                 chunk
@@ -140,11 +128,7 @@ mod tests {
         assert_eq!(chunks[2].len(), Data::MIN_PAYLOAD_SIZE);
     }
 
-    fn chunks(bytes: &[u8]) -> Result<Vec<Vec<u8>>, Error> {
-        bytes
-            .iter()
-            .copied()
-            .ash_chunks()
-            .map(|chunks| chunks.into_iter().map(Iterator::collect).collect())
+    fn chunks(bytes: &[u8]) -> Result<Vec<&[u8]>, Error> {
+        bytes.ash_chunks().map(|chunk| chunk.into_iter().collect())
     }
 }

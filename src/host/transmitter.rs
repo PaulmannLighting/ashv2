@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::iter::Copied;
-use std::slice::Iter;
+use std::slice::Chunks;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::mpsc::Receiver;
@@ -9,7 +8,6 @@ use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, SystemTime};
 
-use itertools::Chunks;
 use log::{debug, error, info, trace};
 use serialport::TTYPort;
 
@@ -126,10 +124,8 @@ impl Transmitter {
 
     fn transmit_data(&mut self, payload: &[u8]) -> Result<(), Error> {
         if let Err(error) = payload
-            .iter()
-            .copied()
             .ash_chunks()
-            .and_then(|chunks| self.transmit_chunks(chunks.into_iter()))
+            .and_then(|chunks| self.transmit_chunks(chunks))
         {
             error!("{error}");
             self.abort_current_transaction(error);
@@ -142,7 +138,7 @@ impl Transmitter {
         }
     }
 
-    fn transmit_chunks(&mut self, mut chunks: Chunks<Copied<Iter<u8>>>) -> Result<(), Error> {
+    fn transmit_chunks(&mut self, mut chunks: Chunks<u8>) -> Result<(), Error> {
         let mut transmits;
 
         loop {
@@ -194,14 +190,16 @@ impl Transmitter {
         Ok(retransmits)
     }
 
-    fn push_chunks(&mut self, chunks: &mut Chunks<Copied<Iter<u8>>>) -> Result<usize, Error> {
+    fn push_chunks(&mut self, chunks: &mut Chunks<u8>) -> Result<usize, Error> {
         let mut transmits: usize = 0;
 
         while self.sent.len() < MAX_TIMEOUTS {
             if let Some(chunk) = chunks.next() {
                 transmits += 1;
                 self.buffer.clear();
-                self.buffer.extend(chunk);
+                self.buffer
+                    .extend_from_slice(chunk)
+                    .expect("Buffer should be large enough.");
                 self.send_chunk()
                     .inspect_err(|error| error!("Error during transmission of chunk: {error}"))?;
             } else {
