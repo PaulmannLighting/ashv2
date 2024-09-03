@@ -7,7 +7,7 @@ const COMPLEMENT_BIT: u8 = 1 << 5;
 pub trait Stuff: Iterator<Item = u8> + Sized {
     /// Stuffs a byte stream.
     fn stuff(self) -> Stuffer<Self> {
-        Stuffer::new(self.into_iter())
+        Stuffer::new(self)
     }
 }
 
