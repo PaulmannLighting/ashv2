@@ -176,6 +176,7 @@ impl Listener {
                 }
                 HandleResult::Reject => {
                     debug!("Command responded with REJECT.");
+                    self.handler.write().replace(handler);
                     self.callback.as_ref().map_or_else(|| {
                         error!("Current response handler rejected received data and there is no callback handler registered. Dropping packet.");
                     }, |callback| {
