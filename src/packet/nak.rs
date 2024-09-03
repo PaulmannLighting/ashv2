@@ -62,10 +62,6 @@ impl Frame for Nak {
         self.crc
     }
 
-    fn is_header_valid(&self) -> bool {
-        (self.header & 0xF0) == 0xA0
-    }
-
     fn bytes(&self) -> impl AsRef<[u8]> {
         let [crc0, crc1] = self.crc.to_be_bytes();
         [self.header, crc0, crc1]
@@ -106,12 +102,6 @@ mod tests {
     };
 
     #[test]
-    fn test_is_valid() {
-        assert!(NAK1.is_valid());
-        assert!(NAK2.is_valid());
-    }
-
-    #[test]
     fn test_ready() {
         assert!(NAK1.ready());
         assert!(!NAK2.ready());
@@ -139,12 +129,6 @@ mod tests {
     fn test_crc() {
         assert_eq!(NAK1.crc(), 0x34DC);
         assert_eq!(NAK2.crc(), 0x85B7);
-    }
-
-    #[test]
-    fn test_is_header_valid() {
-        assert!(NAK1.is_header_valid());
-        assert!(NAK2.is_header_valid());
     }
 
     #[test]

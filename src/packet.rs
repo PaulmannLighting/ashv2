@@ -8,7 +8,6 @@ pub use rst::Rst;
 pub use rst_ack::RstAck;
 
 use crate::error::frame;
-use crate::frame::Frame;
 
 mod ack;
 mod data;
@@ -42,63 +41,6 @@ impl Display for Packet {
             Self::Nak(nak) => Display::fmt(nak, f),
             Self::Rst(rst) => Display::fmt(rst, f),
             Self::RstAck(rst_ack) => Display::fmt(rst_ack, f),
-        }
-    }
-}
-
-impl Frame for Packet {
-    fn header(&self) -> u8 {
-        match self {
-            Self::Ack(ack) => ack.header(),
-            Self::Data(data) => data.header(),
-            Self::Error(error) => error.header(),
-            Self::Nak(nak) => nak.header(),
-            Self::Rst(rst) => rst.header(),
-            Self::RstAck(rst_ack) => rst_ack.header(),
-        }
-    }
-
-    fn crc(&self) -> u16 {
-        match self {
-            Self::Ack(ack) => ack.crc(),
-            Self::Data(data) => data.crc(),
-            Self::Error(error) => error.crc(),
-            Self::Nak(nak) => nak.crc(),
-            Self::Rst(rst) => rst.crc(),
-            Self::RstAck(rst_ack) => rst_ack.crc(),
-        }
-    }
-
-    fn is_header_valid(&self) -> bool {
-        match self {
-            Self::Ack(ack) => ack.is_header_valid(),
-            Self::Data(data) => data.is_header_valid(),
-            Self::Error(error) => error.is_header_valid(),
-            Self::Nak(nak) => nak.is_header_valid(),
-            Self::Rst(rst) => rst.is_header_valid(),
-            Self::RstAck(rst_ack) => rst_ack.is_header_valid(),
-        }
-    }
-
-    fn calculate_crc(&self) -> u16 {
-        match self {
-            Self::Ack(ack) => ack.calculate_crc(),
-            Self::Data(data) => data.calculate_crc(),
-            Self::Error(error) => error.calculate_crc(),
-            Self::Nak(nak) => nak.calculate_crc(),
-            Self::Rst(rst) => rst.calculate_crc(),
-            Self::RstAck(rst_ack) => rst_ack.calculate_crc(),
-        }
-    }
-
-    fn bytes(&self) -> impl AsRef<[u8]> {
-        match self {
-            Self::Ack(ack) => Box::<[u8]>::from(ack.bytes().as_ref()),
-            Self::Data(data) => Box::<[u8]>::from(data.bytes().as_ref()),
-            Self::Error(error) => Box::<[u8]>::from(error.bytes().as_ref()),
-            Self::Nak(nak) => Box::<[u8]>::from(nak.bytes().as_ref()),
-            Self::Rst(rst) => Box::<[u8]>::from(rst.bytes().as_ref()),
-            Self::RstAck(rst_ack) => Box::<[u8]>::from(rst_ack.bytes().as_ref()),
         }
     }
 }

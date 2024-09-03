@@ -62,10 +62,6 @@ impl Frame for Error {
         self.crc
     }
 
-    fn is_header_valid(&self) -> bool {
-        self.header == Self::HEADER
-    }
-
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.code])
     }
@@ -117,11 +113,6 @@ mod tests {
     };
 
     #[test]
-    fn test_is_valid() {
-        assert!(ERROR.is_valid());
-    }
-
-    #[test]
     fn test_version() {
         assert_eq!(ERROR.version(), 2);
     }
@@ -144,11 +135,6 @@ mod tests {
     #[test]
     fn test_crc() {
         assert_eq!(ERROR.crc(), 0xA8BD);
-    }
-
-    #[test]
-    fn test_is_header_valid() {
-        assert!(ERROR.is_header_valid());
     }
 
     #[test]

@@ -63,10 +63,6 @@ impl Frame for RstAck {
         self.crc
     }
 
-    fn is_header_valid(&self) -> bool {
-        self.header == Self::HEADER
-    }
-
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.reset_code])
     }
@@ -118,11 +114,6 @@ mod tests {
     };
 
     #[test]
-    fn test_is_valid() {
-        assert!(RST_ACK.is_valid());
-    }
-
-    #[test]
     fn test_version() {
         assert_eq!(RST_ACK.version(), 0x02);
     }
@@ -145,11 +136,6 @@ mod tests {
     #[test]
     fn test_crc() {
         assert_eq!(RST_ACK.crc(), 0x9B7B);
-    }
-
-    #[test]
-    fn test_is_header_valid() {
-        assert!(RST_ACK.is_header_valid());
     }
 
     #[test]

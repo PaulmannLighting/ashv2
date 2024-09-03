@@ -46,10 +46,6 @@ impl Frame for Rst {
         self.crc
     }
 
-    fn is_header_valid(&self) -> bool {
-        self.header == Self::HEADER
-    }
-
     fn bytes(&self) -> impl AsRef<[u8]> {
         let [crc0, crc1] = self.crc.to_be_bytes();
         [self.header, crc0, crc1]
@@ -86,11 +82,6 @@ mod tests {
     };
 
     #[test]
-    fn test_is_valid() {
-        assert!(RST.is_valid());
-    }
-
-    #[test]
     fn test_to_string() {
         assert_eq!(&RST.to_string(), "RST()");
     }
@@ -103,11 +94,6 @@ mod tests {
     #[test]
     fn test_crc() {
         assert_eq!(RST.crc(), 0x38BC);
-    }
-
-    #[test]
-    fn test_is_header_valid() {
-        assert!(RST.is_header_valid());
     }
 
     #[test]
