@@ -40,16 +40,16 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.next.take() {
-            Some(next)
-        } else if let Some(byte) = self.bytes.next() {
-            if RESERVED_BYTES.contains(&byte) {
-                self.next = Some(byte ^ COMPLEMENT_BIT);
-                Some(ESCAPE)
-            } else {
-                Some(byte)
-            }
+            return Some(next);
+        }
+
+        let byte = self.bytes.next()?;
+
+        if RESERVED_BYTES.contains(&byte) {
+            self.next.replace(byte ^ COMPLEMENT_BIT);
+            Some(ESCAPE)
         } else {
-            None
+            Some(byte)
         }
     }
 }
