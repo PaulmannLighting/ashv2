@@ -75,7 +75,7 @@ impl Host {
     /// Returns [`T::Error`](Response::Error) if the transactions fails.
     pub async fn communicate<T>(&self, payload: &[u8]) -> <T as Future>::Output
     where
-        T: Clone + Default + Response + Sync + Send + 'static,
+        T: Clone + Default + Response + 'static,
     {
         let response = T::default();
         self.command
