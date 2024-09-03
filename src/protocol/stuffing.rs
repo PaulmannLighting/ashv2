@@ -60,27 +60,21 @@ pub trait Unstuff {
 
 impl<const SIZE: usize> Unstuff for heapless::Vec<u8, SIZE> {
     fn unstuff(&mut self) {
-        let mut last_escape: usize = 0;
+        let mut offset: usize = 0;
 
-        loop {
-            if let Some(index) = self
-                .iter()
-                .skip(last_escape)
-                .position(|&byte| byte == ESCAPE)
-            {
-                last_escape += index;
+        while let Some(index) = self.iter().skip(offset).position(|&byte| byte == ESCAPE) {
+            offset += index;
 
-                if let Some(byte) = self.get_mut(last_escape + 1) {
-                    if !RESERVED_BYTES.contains(byte) {
-                        *byte ^= COMPLEMENT_BIT;
-                    }
-                }
+            let Some(byte) = self.get_mut(offset + 1) else {
+                break;
+            };
 
-                self.remove(last_escape);
-                last_escape += 1; // Skip unescaped follow byte.
-            } else {
-                return;
+            if !RESERVED_BYTES.contains(byte) {
+                *byte ^= COMPLEMENT_BIT;
             }
+
+            self.remove(offset);
+            offset += 1; // Skip unescaped follow byte.
         }
     }
 }
