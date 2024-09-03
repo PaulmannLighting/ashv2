@@ -4,14 +4,14 @@ const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
 /// Trait to allow stuffing of byte iterators.
-pub trait Stuff: Iterator<Item = u8> + Sized {
+pub trait Stuff: IntoIterator<Item = u8> + Sized {
     /// Stuffs a byte stream.
-    fn stuff(self) -> Stuffer<Self> {
-        Stuffer::new(self)
+    fn stuff(self) -> Stuffer<Self::IntoIter> {
+        Stuffer::new(self.into_iter())
     }
 }
 
-impl<T> Stuff for T where T: Iterator<Item = u8> {}
+impl<T> Stuff for T where T: IntoIterator<Item = u8> {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Stuffer<T>
