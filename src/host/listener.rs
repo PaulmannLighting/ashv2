@@ -161,7 +161,7 @@ impl Listener {
         if let Some(handler) = self.handler.write().take() {
             debug!("Forwarding data to current handler.");
 
-            match handler.handle(Event::DataReceived(Ok(&payload))) {
+            match handler.handle(Event::DataReceived(&payload)) {
                 HandleResult::Completed => {
                     debug!("Command responded with COMPLETED.");
                     handler.wake();

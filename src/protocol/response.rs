@@ -26,7 +26,7 @@ pub enum HandleResult {
 #[derive(Debug)]
 pub enum Event<'data> {
     TransmissionCompleted,
-    DataReceived(Result<&'data [u8], Error>),
+    DataReceived(&'data [u8]),
 }
 
 /// Handle `ASHv2` protocol events.
