@@ -9,14 +9,14 @@ use crate::Error;
 ///
 /// * [`HandleResult::Completed`] indicates that the handler successfully processed the data and does not expect any more data.  
 /// * [`HandleResult::Continue`] indicates that the handler successfully processed the data and is expecting more data.
-/// * [`HandleResult::Failed`] indicates that the handler was unable to process the passed data and cannot continue.
 /// * [`HandleResult::Reject`] indicates that the handler was unable to process the passed data and is expecting more data.
+/// * [`HandleResult::Failed`] indicates that the handler was unable to process the passed data and cannot continue.
 #[derive(Debug)]
 pub enum HandleResult {
     Completed,
     Continue,
-    Failed,
     Reject,
+    Failed,
 }
 
 /// Events sent to a [`Handler`].
