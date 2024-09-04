@@ -69,7 +69,7 @@ impl Host {
         })
     }
 
-    /// Communicate with the NCP, returning [`T::Result`](Response::Result).
+    /// Communicate with the NCP, returning `Result<T::Result, T::Error>`.
     ///
     /// # Errors
     /// Returns [`T::Error`](Response::Error) if the transactions fails.
