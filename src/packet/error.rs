@@ -41,9 +41,8 @@ impl Error {
     }
 
     /// Returns the error code.
-    #[must_use]
-    pub fn code(&self) -> Option<Code> {
-        Code::try_from(self.code).ok()
+    pub fn code(&self) -> Result<Code, u8> {
+        Code::try_from(self.code)
     }
 }
 
@@ -119,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        assert_eq!(ERROR.code(), Some(Code::ExceededMaximumAckTimeoutCount));
+        assert_eq!(ERROR.code(), Ok(Code::ExceededMaximumAckTimeoutCount));
     }
 
     #[test]

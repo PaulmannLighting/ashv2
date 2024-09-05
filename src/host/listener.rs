@@ -206,8 +206,8 @@ impl Listener {
 
         self.connected.store(false, SeqCst);
         error.code().map_or_else(
-            || {
-                error!("NCP sent error without valid code.");
+            |code| {
+                error!("NCP sent error with invalid code: {code}");
             },
             |code| {
                 warn!("NCP sent error condition: {code}");
@@ -232,8 +232,8 @@ impl Listener {
         }
 
         rst_ack.code().map_or_else(
-            || {
-                warn!("NCP acknowledged reset with invalid error code.");
+            |code| {
+                warn!("NCP acknowledged reset with invalid error code: {code}");
             },
             |code| {
                 debug!("NCP acknowledged reset due to: {code}");

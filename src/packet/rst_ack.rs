@@ -42,9 +42,8 @@ impl RstAck {
     }
 
     /// Returns the reset code.
-    #[must_use]
-    pub fn code(&self) -> Option<Code> {
-        Code::try_from(self.reset_code).ok()
+    pub fn code(&self) -> Result<Code, u8> {
+        Code::try_from(self.reset_code)
     }
 }
 
@@ -120,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_code() {
-        assert_eq!(RST_ACK.code(), Some(Code::PowerOn));
+        assert_eq!(RST_ACK.code(), Ok(Code::PowerOn));
     }
 
     #[test]
