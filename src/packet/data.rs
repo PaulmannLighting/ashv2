@@ -238,6 +238,7 @@ mod tests {
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
+        assert!(data.is_crc_valid());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let mut data = Data {
@@ -251,6 +252,7 @@ mod tests {
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
+        assert!(data.is_crc_valid());
     }
 
     #[test]
@@ -295,6 +297,28 @@ mod tests {
             crc: 0x6316,
         };
         assert_eq!(data.crc(), 0x6316);
+    }
+
+    #[test]
+    fn test_is_crc_valid() {
+        // EZSP "version" command: 00 00 00 02
+        let data = Data {
+            header: 0x25,
+            payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
+            crc: 0x1AAD,
+        };
+        assert!(data.is_crc_valid());
+
+        // EZSP "version" response: 00 80 00 02 02 11 30
+        let data = Data {
+            header: 0x53,
+            payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
+                .as_slice()
+                .try_into()
+                .unwrap(),
+            crc: 0x6316,
+        };
+        assert!(data.is_crc_valid());
     }
 
     #[test]

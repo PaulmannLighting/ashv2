@@ -133,6 +133,12 @@ mod tests {
     }
 
     #[test]
+    fn test_is_crc_valid() {
+        assert!(ACK1.is_crc_valid());
+        assert!(ACK2.is_crc_valid());
+    }
+
+    #[test]
     fn test_from_buffer() {
         let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
         assert_eq!(

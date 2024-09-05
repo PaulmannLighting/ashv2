@@ -132,6 +132,12 @@ mod tests {
     }
 
     #[test]
+    fn test_is_crc_valid() {
+        assert!(NAK1.is_crc_valid());
+        assert!(NAK2.is_crc_valid());
+    }
+
+    #[test]
     fn test_from_buffer() {
         let buffer1 = [0xA6, 0x34, 0xDC];
         assert_eq!(

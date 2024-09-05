@@ -138,6 +138,11 @@ mod tests {
     }
 
     #[test]
+    fn test_is_crc_valid() {
+        assert!(RST_ACK.is_crc_valid());
+    }
+
+    #[test]
     fn test_from_buffer() {
         let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B];
         assert_eq!(
