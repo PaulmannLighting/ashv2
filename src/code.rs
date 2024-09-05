@@ -39,7 +39,7 @@ impl From<Code> for u8 {
 }
 
 impl TryFrom<u8> for Code {
-    type Error = ();
+    type Error = u8;
 
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
@@ -54,7 +54,7 @@ impl TryFrom<u8> for Code {
                 Ok(Self::ExceededMaximumAckTimeoutCount)
             }
             byte if byte == Self::ChipSpecific as u8 => Ok(Self::ChipSpecific),
-            _ => Err(()),
+            other => Err(other),
         }
     }
 }
