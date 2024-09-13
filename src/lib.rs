@@ -10,8 +10,8 @@ use crc::{Crc, CRC_16_IBM_3740};
 pub use baud_rate::BaudRate;
 use code::Code;
 pub use error::Error;
+pub use frame_buffer::FrameBuffer;
 pub use host::Host;
-pub use packet::FrameBuffer;
 pub use protocol::{Event, HandleResult, Handler, Response};
 pub use serial_port::open;
 
@@ -21,6 +21,7 @@ mod baud_rate;
 mod code;
 mod error;
 mod frame;
+mod frame_buffer;
 mod host;
 mod packet;
 mod protocol;

@@ -11,10 +11,10 @@ use serialport::TTYPort;
 use listener::Listener;
 use transmitter::Transmitter;
 
-use crate::packet::FrameBuffer;
+use crate::error::Error;
+use crate::frame_buffer::FrameBuffer;
 use crate::protocol::{Command, Response};
 use crate::util::NonPoisonedRwLock;
-use crate::Error;
 
 mod listener;
 mod transmitter;

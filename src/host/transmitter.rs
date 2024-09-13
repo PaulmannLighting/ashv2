@@ -12,11 +12,11 @@ use log::{debug, error, info, trace};
 use serialport::TTYPort;
 
 use crate::ash_write::AshWrite;
-use crate::error::frame;
-use crate::packet::{Data, FrameBuffer, Rst};
+use crate::error::{frame, Error};
+use crate::frame_buffer::FrameBuffer;
+use crate::packet::{Data, Rst};
 use crate::protocol::{AshChunks, Command, Event, Handler};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
-use crate::Error;
 
 const MAX_STARTUP_ATTEMPTS: u8 = 5;
 const MAX_TIMEOUTS: usize = 4;

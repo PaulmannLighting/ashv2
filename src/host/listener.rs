@@ -11,7 +11,8 @@ use serialport::TTYPort;
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
 use crate::frame::Frame;
-use crate::packet::{Ack, Data, Error, FrameBuffer, Nak, Packet, RstAck};
+use crate::frame_buffer::FrameBuffer;
+use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::{Event, HandleResult, Handler, Mask};
 use crate::util::{next_three_bit_number, NonPoisonedRwLock};
 
