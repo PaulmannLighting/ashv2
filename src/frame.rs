@@ -1,6 +1,5 @@
 use std::fmt::{Debug, Display};
 
-use crate::protocol::Stuff;
 use crate::{FrameBuffer, CRC};
 
 pub trait Frame: Debug + Display {
@@ -23,8 +22,8 @@ pub trait Frame: Debug + Display {
     /// Returns the frame as a byte slice.
     fn bytes(&self) -> impl AsRef<[u8]>;
 
-    /// Returns the frame's stuffed bytes in a [`FrameBuffer`].
-    fn stuffed(&self) -> FrameBuffer {
-        self.bytes().as_ref().iter().copied().stuff().collect()
+    /// Returns the frame's bytes in a [`FrameBuffer`].
+    fn buffered(&self) -> FrameBuffer {
+        self.bytes().as_ref().iter().copied().collect()
     }
 }

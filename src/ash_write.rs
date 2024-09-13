@@ -1,15 +1,15 @@
-use std::io::{Result, Write};
+use std::io::{Error, ErrorKind, Result, Write};
 
 use log::{debug, trace};
 
 use crate::frame::Frame;
-use crate::protocol::FLAG;
+use crate::protocol::{Stuff, FLAG};
 
 pub trait AshWrite: Write {
     /// Writes an ASH [`Frame`].
     ///
     /// # Errors
-    /// Returns an [`Error`](std::io::Error) if any I/O error occurs.
+    /// Returns an [`Error`](Error) if any I/O error occurs.
     fn write_frame<F>(&mut self, frame: &F) -> Result<()>
     where
         F: Frame;
@@ -25,8 +25,12 @@ where
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
-        self.write_all(&frame.stuffed())?;
-        self.write_all(&[FLAG])?;
+        let mut buffer = frame.buffered();
+        buffer.stuff();
+        buffer
+            .push(FLAG)
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;
+        self.write_all(&buffer)?;
         self.flush()
     }
 }

@@ -4,52 +4,26 @@ const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
 /// Trait to allow stuffing of byte iterators.
-pub trait Stuff: IntoIterator<Item = u8> + Sized {
+pub trait Stuff {
     /// Stuffs a byte stream.
-    fn stuff(self) -> Stuffer<Self::IntoIter> {
-        Stuffer::new(self.into_iter())
-    }
+    fn stuff(&mut self);
 }
 
-impl<T> Stuff for T where T: IntoIterator<Item = u8> {}
+impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
+    fn stuff(&mut self) {
+        let mut index: usize = 0;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Stuffer<T>
-where
-    T: Iterator<Item = u8>,
-{
-    bytes: T,
-    next: Option<u8>,
-}
+        while index < self.len() {
+            let byte = &mut self[index];
 
-/// Stuff bytes.
-impl<T> Stuffer<T>
-where
-    T: Iterator<Item = u8>,
-{
-    pub const fn new(bytes: T) -> Self {
-        Self { bytes, next: None }
-    }
-}
-
-impl<T> Iterator for Stuffer<T>
-where
-    T: Iterator<Item = u8>,
-{
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.next.take() {
-            return Some(next);
-        }
-
-        let byte = self.bytes.next()?;
-
-        if RESERVED_BYTES.contains(&byte) {
-            self.next.replace(byte ^ COMPLEMENT_BIT);
-            Some(ESCAPE)
-        } else {
-            Some(byte)
+            if RESERVED_BYTES.contains(byte) {
+                *byte ^= COMPLEMENT_BIT;
+                self.insert(index, ESCAPE)
+                    .expect("could not insert escape byte");
+                index += 2;
+            } else {
+                index += 1;
+            }
         }
     }
 }
@@ -81,32 +55,33 @@ impl<const SIZE: usize> Unstuff for heapless::Vec<u8, SIZE> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Stuffer, Unstuff};
+    use super::{Stuff, Unstuff};
 
     #[test]
-    fn test_stuffer() {
-        let original = vec![0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
-        let target = vec![
+    fn test_stuffing() {
+        let mut unstuffed: heapless::Vec<u8, 12> =
+            [0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D].into_iter().collect();
+        let stuffed = [
             0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
         ];
-        let stuffer = Stuffer::new(original.into_iter());
-        let stuffed_bytes: Vec<u8> = stuffer.collect();
-        assert_eq!(stuffed_bytes, target);
+        unstuffed.stuff();
+        assert_eq!(unstuffed.as_slice(), stuffed.as_slice());
     }
 
     #[test]
-    fn test_in_place_unstuff() {
-        let stuffed: [u8; 12] = [
+    fn test_unstuffing() {
+        let mut stuffed: heapless::Vec<u8, 12> = [
             0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
-        ];
-        let mut buffer: heapless::Vec<u8, 12> = heapless::Vec::new();
-        buffer.extend(stuffed);
-        buffer.unstuff();
-        assert_eq!(&buffer, &[0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D]);
+        ]
+        .into_iter()
+        .collect();
+        let unstuffed = [0x7E, 0x11, 0x13, 0x18, 0x1A, 0x7D];
+        stuffed.unstuff();
+        assert_eq!(stuffed.as_slice(), unstuffed.as_slice());
     }
 
     #[test]
-    fn test_unstuff_unchanged() {
+    fn test_unstuffing_unchanged() {
         let payload: heapless::Vec<_, 70> = [
             0xd7, 0x90, 0xd7, 0xa0, 0xd7, 0x99, 0x20, 0xd7, 0x96, 0xd7, 0x95, 0xd7, 0x9b, 0xd7,
             0xa8, 0x20, 0xd7, 0x91, 0xd7, 0x9c, 0xd7, 0x99, 0xd7, 0x9c, 0xd7, 0x95, 0xd7, 0xaa,
@@ -118,6 +93,6 @@ mod tests {
         .collect();
         let mut clone = payload.clone();
         clone.unstuff();
-        assert_eq!(payload, clone);
+        assert_eq!(clone.as_slice(), payload.as_slice());
     }
 }
