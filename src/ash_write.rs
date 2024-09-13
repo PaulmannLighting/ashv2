@@ -30,6 +30,7 @@ where
         buffer
             .push(FLAG)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;
+        trace!("Writing bytes: {buffer:#04X?}");
         self.write_all(&buffer)?;
         self.flush()
     }
