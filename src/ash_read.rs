@@ -62,10 +62,10 @@ pub trait AshRead: Read {
                     error = true;
                 }
                 X_ON => {
-                    debug!("NCP requested to stop transmission.");
+                    debug!("NCP requested to resume transmission.");
                 }
                 X_OFF => {
-                    debug!("NCP requested to resume transmission.");
+                    debug!("NCP requested to stop transmission.");
                 }
                 WAKE => {
                     debug!("NCP tried to wake us up.");
