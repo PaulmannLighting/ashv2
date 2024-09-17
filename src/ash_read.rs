@@ -74,7 +74,7 @@ pub trait AshRead: Read {
                     if buffer.push(byte).is_err() {
                         return Err(std::io::Error::new(
                             ErrorKind::OutOfMemory,
-                            "Buffer overflow.",
+                            "ASHv2 frame buffer overflow",
                         ));
                     }
                 }
