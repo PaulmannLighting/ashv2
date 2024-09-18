@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::{FrameBuffer, CRC};
+use crate::CRC;
 
 pub trait Frame: Debug + Display {
     /// Returns the frame's header.
@@ -21,9 +21,4 @@ pub trait Frame: Debug + Display {
 
     /// Returns the frame as a byte slice.
     fn bytes(&self) -> impl AsRef<[u8]>;
-
-    /// Returns the frame's bytes in a [`FrameBuffer`].
-    fn buffered(&self) -> FrameBuffer {
-        self.bytes().as_ref().iter().copied().collect()
-    }
 }

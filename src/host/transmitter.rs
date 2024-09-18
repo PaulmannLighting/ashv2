@@ -231,7 +231,8 @@ impl Transmitter {
         trace!("{data:#04X?}");
 
         if self.connected.load(SeqCst) {
-            self.serial_port.write_frame(&data)?;
+            self.serial_port
+                .write_frame_buffered(&data, &mut self.buffer)?;
             self.sent
                 .push((SystemTime::now(), data))
                 .expect("Send queue should always accept data.");
@@ -374,7 +375,7 @@ impl Transmitter {
         self.connected.store(false, SeqCst);
         trace!("Sending RST.");
         self.serial_port
-            .write_frame(&Rst::default())
+            .write_frame_buffered(&Rst::default(), &mut self.buffer)
             .unwrap_or_else(|error| error!("Failed to send RST: {error}"));
         self.reset_state();
     }
