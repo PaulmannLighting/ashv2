@@ -35,7 +35,7 @@ where
                     "could not append frame bytes to buffer",
                 )
             })?;
-        buffer.stuff();
+        buffer.stuff()?;
         buffer
             .push(FLAG)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;

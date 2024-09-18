@@ -1,4 +1,5 @@
 use crate::protocol::{CANCEL, ESCAPE, FLAG, SUBSTITUTE, X_OFF, X_ON};
+use std::io::{Error, ErrorKind, Result};
 
 const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
@@ -6,11 +7,11 @@ const COMPLEMENT_BIT: u8 = 1 << 5;
 /// Trait to allow stuffing of byte iterators.
 pub trait Stuff {
     /// Stuffs a byte stream.
-    fn stuff(&mut self);
+    fn stuff(&mut self) -> Result<()>;
 }
 
 impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
-    fn stuff(&mut self) {
+    fn stuff(&mut self) -> Result<()> {
         let mut index: usize = 0;
 
         while index < self.len() {
@@ -18,13 +19,16 @@ impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
 
             if RESERVED_BYTES.contains(byte) {
                 *byte ^= COMPLEMENT_BIT;
-                self.insert(index, ESCAPE)
-                    .expect("could not insert escape byte");
+                self.insert(index, ESCAPE).map_err(|_| {
+                    Error::new(ErrorKind::OutOfMemory, "could not insert escape byte")
+                })?;
                 index += 2;
             } else {
                 index += 1;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -64,7 +68,7 @@ mod tests {
         let stuffed = [
             0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
         ];
-        unstuffed.stuff();
+        unstuffed.stuff().expect("could not stuff bytes");
         assert_eq!(unstuffed.as_slice(), stuffed.as_slice());
     }
 
