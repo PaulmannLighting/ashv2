@@ -9,6 +9,7 @@ categories = ["hardware-support", "network-programming"]
 documentation = "https://www.silabs.com/documents/public/user-guides/ug101-uart-gateway-protocol-reference.pdf"
 version = "0.1.0"
 edition = "2021"
+exclude = [".gitignore"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
