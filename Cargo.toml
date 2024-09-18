@@ -1,6 +1,7 @@
 [package]
 name = "ashv2"
 description = "Implementation of the Asynchronous Serial Host (ASH) protocol by Silicon Labs."
+authors = ["Richard Neumann <neumann@paulmann.de>"]
 license = "MIT"
 repository = "https://github.com/PaulmannLighting/ashv2"
 keywords = ["ASH", "async", "serial", "host"]
