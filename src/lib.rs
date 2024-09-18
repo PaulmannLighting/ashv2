@@ -31,4 +31,5 @@ mod util;
 const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 const VERSION: u8 = 0x02;
 
+/// Result type with [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;

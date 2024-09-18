@@ -16,13 +16,20 @@ mod nak;
 mod rst;
 mod rst_ack;
 
+#[allow(variant_size_differences)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
+    /// ACK frame
     Ack(Ack),
+    /// Data frame
     Data(Data),
+    /// Error frame
     Error(Error),
+    /// NAK frame
     Nak(Nak),
+    /// RST frame
     Rst(Rst),
+    /// RST ACK frame
     RstAck(RstAck),
 }
 

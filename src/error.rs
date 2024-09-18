@@ -6,13 +6,21 @@ pub mod frame;
 /// Possible error states during `ASHv2` transactions.
 #[derive(Clone, Debug)]
 pub enum Error {
+    /// An error occurred while processing a frame.
     Frame(frame::Error),
+    /// An I/O error occurred.
     Io(Arc<std::io::Error>),
+    /// An error occurred while communicating with the serial port.
     SerialConnectionError(serialport::Error),
+    /// Cannot find a viable chunk size for the given amount of bytes.
     CannotFindViableChunkSize(usize),
+    /// Maximum amount of retransmits exceeded.
     MaxRetransmitsExceeded,
+    /// ASH protocol initialization failed.
     InitializationFailed,
+    /// The worker terminated.
     Terminated,
+    /// The transaction was aborted.
     Aborted,
 }
 

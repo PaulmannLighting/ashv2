@@ -138,7 +138,7 @@ impl Transmitter {
         }
     }
 
-    fn transmit_chunks(&mut self, mut chunks: Chunks<u8>) -> Result<(), Error> {
+    fn transmit_chunks(&mut self, mut chunks: Chunks<'_, u8>) -> Result<(), Error> {
         let mut transmits;
 
         loop {
@@ -190,16 +190,19 @@ impl Transmitter {
         Ok(retransmits)
     }
 
-    fn push_chunks(&mut self, chunks: &mut Chunks<u8>) -> Result<usize, Error> {
+    fn push_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> Result<usize, Error> {
         let mut transmits: usize = 0;
 
         while self.sent.len() < MAX_TIMEOUTS {
             if let Some(chunk) = chunks.next() {
                 transmits += 1;
                 self.buffer.clear();
-                self.buffer
-                    .extend_from_slice(chunk)
-                    .expect("Buffer should be large enough.");
+                self.buffer.extend_from_slice(chunk).map_err(|()| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::OutOfMemory,
+                        "Buffer should be large enough.",
+                    )
+                })?;
                 self.send_chunk()
                     .inspect_err(|error| error!("Error during transmission of chunk: {error}"))?;
             } else {
@@ -233,9 +236,12 @@ impl Transmitter {
         if self.connected.load(SeqCst) {
             self.serial_port
                 .write_frame_buffered(&data, &mut self.buffer)?;
-            self.sent
-                .push((SystemTime::now(), data))
-                .expect("Send queue should always accept data.");
+            self.sent.push((SystemTime::now(), data)).map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::OutOfMemory,
+                    "failed to push data to sent queue",
+                )
+            })?;
             Ok(())
         } else {
             error!("Attempted to transmit while not connected.");

@@ -8,11 +8,11 @@ pub trait AshChunks {
     ///
     /// # Errors
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
-    fn ash_chunks(&self) -> Result<Chunks<u8>, Error>;
+    fn ash_chunks(&self) -> Result<Chunks<'_, u8>, Error>;
 }
 
 impl AshChunks for [u8] {
-    fn ash_chunks(&self) -> Result<Chunks<u8>, Error> {
+    fn ash_chunks(&self) -> Result<Chunks<'_, u8>, Error> {
         if self.len() < Data::MIN_PAYLOAD_SIZE {
             return Err(Error::CannotFindViableChunkSize(self.len()));
         }
