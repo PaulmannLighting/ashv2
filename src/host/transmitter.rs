@@ -399,14 +399,16 @@ impl Transmitter {
     }
 
     fn abort_current_transaction(&self, error: Error) {
-        if let Some(handler) = self.handler.write().take() {
+        let handler = self.handler.write().take();
+
+        if let Some(handler) = handler {
             handler.abort(error);
             handler.wake();
         }
     }
 
     fn set_transmission_completed(&self) {
-        if let Some(handler) = self.handler.read().clone() {
+        if let Some(handler) = self.handler.read().as_ref() {
             debug!("Finalizing data command.");
             handler.handle(Event::TransmissionCompleted);
         }

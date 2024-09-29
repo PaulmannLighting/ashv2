@@ -161,8 +161,9 @@ impl Listener {
     fn forward_data(&self, data: &Data) {
         debug!("Forwarding data: {data}");
         let payload: FrameBuffer = data.payload().iter().copied().mask().collect();
+        let handler = self.handler.write().take();
 
-        if let Some(handler) = self.handler.write().take() {
+        if let Some(handler) = handler {
             debug!("Forwarding data to current handler.");
 
             match handler.handle(Event::DataReceived(&payload)) {
@@ -245,12 +246,7 @@ impl Listener {
         );
         self.reset_state();
         self.connected.store(true, SeqCst);
-
-        if let Some(handler) = self.handler.write().take() {
-            trace!("Aborting current command.");
-            handler.abort(crate::Error::Aborted);
-            handler.wake();
-        }
+        self.abort_current_command();
     }
 
     fn reset_state(&mut self) {
@@ -258,6 +254,16 @@ impl Listener {
         self.buffer.clear();
         self.is_rejecting = false;
         self.last_received_frame_number = None;
+    }
+
+    fn abort_current_command(&self) {
+        let handler = self.handler.write().take();
+
+        if let Some(handler) = handler {
+            trace!("Aborting current command.");
+            handler.abort(crate::Error::Aborted);
+            handler.wake();
+        }
     }
 
     fn reject(&mut self) {
