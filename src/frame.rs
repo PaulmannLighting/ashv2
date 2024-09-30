@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display};
 use crate::CRC;
 
 pub trait Frame: Debug + Display {
-    /// Returns the frame's header.
+    /// Returns the frame's raw header bytes.
     fn header(&self) -> u8;
 
     /// Returns the CRC checksum.
