@@ -40,7 +40,7 @@ impl Host {
     /// # Errors
     ///
     /// Returns [`std::io::Error`] if the transactions fails.
-    pub async fn communicate<T>(&self, payload: &[u8]) -> <Response as Future>::Output {
+    pub async fn communicate(&self, payload: &[u8]) -> <Response as Future>::Output {
         let (request, response) = Request::new(payload.into());
         match self.command.send(request) {
             Ok(()) => Response::new(response).await,
