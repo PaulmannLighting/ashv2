@@ -2,43 +2,42 @@ use std::fmt::{Display, Formatter};
 
 use crate::error::frame::Error;
 use crate::frame::Frame;
+use crate::packet::headers;
 use crate::CRC;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
-    header: u8,
+    header: headers::Nak,
     crc: u16,
 }
 
 impl Nak {
-    const ACK_RDY_MASK: u8 = 0x0F;
-    const HEADER_PREFIX: u8 = 0xA0;
     pub const SIZE: usize = 3;
 
     /// Creates a new NAK packet.
     #[must_use]
-    pub const fn new(header: u8) -> Self {
+    pub const fn new(header: headers::Nak) -> Self {
         Self {
             header,
-            crc: CRC.checksum(&[header]),
+            crc: CRC.checksum(&[header.bits()]),
         }
     }
 
     #[must_use]
-    pub const fn from_ack_num(ack_num: u8) -> Self {
-        Self::new(Self::HEADER_PREFIX + (ack_num % 0x08))
+    pub fn from_ack_num(ack_num: u8) -> Self {
+        Self::new(headers::Nak::new(ack_num, false, false))
     }
 
-    /// Determines whether the ready flag is set.
+    /// Determines whether the not-ready flag is set.
     #[must_use]
-    pub const fn ready(&self) -> bool {
-        (self.header & Self::ACK_RDY_MASK) <= 0x08
+    pub const fn not_ready(&self) -> bool {
+        self.header.contains(headers::Nak::NOT_READY)
     }
 
     /// Return the acknowledgement number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        self.header % 0x08
+        self.header.ack_num()
     }
 }
 
@@ -48,14 +47,14 @@ impl Display for Nak {
             f,
             "NAK({}){}",
             self.ack_num(),
-            if self.ready() { '+' } else { '-' }
+            if self.not_ready() { '-' } else { '+' }
         )
     }
 }
 
 impl Frame for Nak {
     fn header(&self) -> u8 {
-        self.header
+        self.header.bits()
     }
 
     fn crc(&self) -> u16 {
@@ -64,7 +63,7 @@ impl Frame for Nak {
 
     fn bytes(&self) -> impl AsRef<[u8]> {
         let [crc0, crc1] = self.crc.to_be_bytes();
-        [self.header, crc0, crc1]
+        [self.header.bits(), crc0, crc1]
     }
 }
 
@@ -74,7 +73,7 @@ impl TryFrom<&[u8]> for Nak {
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == Self::SIZE {
             Ok(Self {
-                header: buffer[0],
+                header: headers::Nak::from_bits_retain(buffer[0]),
                 crc: u16::from_be_bytes([buffer[1], buffer[2]]),
             })
         } else {
@@ -88,23 +87,23 @@ impl TryFrom<&[u8]> for Nak {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame::Frame;
-
     use super::Nak;
+    use crate::frame::Frame;
+    use crate::packet::headers;
 
     const NAK1: Nak = Nak {
-        header: 0xA6,
+        header: headers::Nak::from_bits_retain(0xA6),
         crc: 0x34DC,
     };
     const NAK2: Nak = Nak {
-        header: 0xAD,
+        header: headers::Nak::from_bits_retain(0xAD),
         crc: 0x85B7,
     };
 
     #[test]
     fn test_ready() {
-        assert!(NAK1.ready());
-        assert!(!NAK2.ready());
+        assert!(!NAK1.not_ready());
+        assert!(NAK2.not_ready());
     }
 
     #[test]

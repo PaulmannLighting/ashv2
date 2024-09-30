@@ -2,44 +2,42 @@ use std::fmt::{Display, Formatter};
 
 use crate::error::frame::Error;
 use crate::frame::Frame;
+use crate::packet::headers;
 use crate::CRC;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
-    header: u8,
+    header: headers::Ack,
     crc: u16,
 }
 
 impl Ack {
-    const ACK_RDY_MASK: u8 = 0b0000_1000;
-    const ACK_NUM_MASK: u8 = 0b0000_0111;
-    const HEADER_PREFIX: u8 = 0x80;
     pub const SIZE: usize = 3;
 
     /// Creates a new ACK packet.
     #[must_use]
-    pub const fn new(header: u8) -> Self {
+    pub const fn new(header: headers::Ack) -> Self {
         Self {
             header,
-            crc: CRC.checksum(&[header]),
+            crc: CRC.checksum(&[header.bits()]),
         }
     }
 
     #[must_use]
-    pub const fn from_ack_num(ack_num: u8) -> Self {
-        Self::new(Self::HEADER_PREFIX + (ack_num % 8))
+    pub fn from_ack_num(ack_num: u8) -> Self {
+        Self::new(headers::Ack::new(ack_num, false, false))
     }
 
-    /// Determines whether the ready flag is set.
+    /// Determines whether the not-ready flag is set.
     #[must_use]
-    pub const fn ready(&self) -> bool {
-        (self.header & Self::ACK_RDY_MASK) == 0
+    pub const fn not_ready(&self) -> bool {
+        self.header.contains(headers::Ack::NOT_READY)
     }
 
     /// Returns the acknowledgement number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        self.header & Self::ACK_NUM_MASK
+        self.header.ack_num()
     }
 }
 
@@ -49,14 +47,14 @@ impl Display for Ack {
             f,
             "ACK({}){}",
             self.ack_num(),
-            if self.ready() { '+' } else { '-' }
+            if self.not_ready() { '-' } else { '+' }
         )
     }
 }
 
 impl Frame for Ack {
     fn header(&self) -> u8 {
-        self.header
+        self.header.bits()
     }
 
     fn crc(&self) -> u16 {
@@ -65,7 +63,7 @@ impl Frame for Ack {
 
     fn bytes(&self) -> impl AsRef<[u8]> {
         let [crc0, crc1] = self.crc.to_be_bytes();
-        [self.header, crc0, crc1]
+        [self.header.bits(), crc0, crc1]
     }
 }
 
@@ -75,7 +73,7 @@ impl TryFrom<&[u8]> for Ack {
     fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
         if buffer.len() == Self::SIZE {
             Ok(Self {
-                header: buffer[0],
+                header: headers::Ack::from_bits_retain(buffer[0]),
                 crc: u16::from_be_bytes([buffer[1], buffer[2]]),
             })
         } else {
@@ -89,23 +87,23 @@ impl TryFrom<&[u8]> for Ack {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame::Frame;
-
     use super::Ack;
+    use crate::frame::Frame;
+    use crate::packet::headers;
 
     const ACK1: Ack = Ack {
-        header: 0x81,
+        header: headers::Ack::from_bits_retain(0x81),
         crc: 0x6059,
     };
     const ACK2: Ack = Ack {
-        header: 0x8E,
+        header: headers::Ack::from_bits_retain(0x8E),
         crc: 0x91B6,
     };
 
     #[test]
     fn test_ready() {
-        assert!(ACK1.ready());
-        assert!(!ACK2.ready());
+        assert!(!ACK1.not_ready());
+        assert!(ACK2.not_ready());
     }
 
     #[test]

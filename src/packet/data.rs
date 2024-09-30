@@ -1,9 +1,9 @@
-use std::fmt::{Display, Formatter};
-
 use log::warn;
+use std::fmt::{Display, Formatter};
 
 use crate::error::frame::Error;
 use crate::frame::Frame;
+use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::CRC;
 
@@ -12,16 +12,12 @@ type Buffer = heapless::Vec<u8, { Data::BUFFER_SIZE }>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
-    header: u8,
+    header: headers::Data,
     payload: Payload,
     crc: u16,
 }
 
 impl Data {
-    const ACK_NUM_MASK: u8 = 0b0000_0111;
-    const FRAME_NUM_MASK: u8 = 0b0111_0000;
-    const RETRANSMIT_MASK: u8 = 0b0000_1000;
-    const FRAME_NUM_OFFSET: u8 = 4;
     const HEADER_SIZE: usize = 1;
     const CRC_CHECKSUM_SIZE: usize = 2;
     pub const METADATA_SIZE: usize = Self::HEADER_SIZE + Self::CRC_CHECKSUM_SIZE;
@@ -31,10 +27,10 @@ impl Data {
 
     /// Creates a new data packet.
     #[must_use]
-    pub fn new(header: u8, payload: Payload) -> Self {
+    pub fn new(header: headers::Data, payload: Payload) -> Self {
         Self {
             header,
-            crc: calculate_crc(header, &payload),
+            crc: calculate_crc(header.bits(), &payload),
             payload,
         }
     }
@@ -42,8 +38,7 @@ impl Data {
     #[must_use]
     pub fn create(frame_num: u8, ack_num: u8, payload: Payload) -> Self {
         Self::new(
-            ((frame_num << Self::FRAME_NUM_OFFSET) & Self::FRAME_NUM_MASK)
-                + (ack_num & Self::ACK_NUM_MASK),
+            headers::Data::new(frame_num, false, ack_num),
             payload.mask().collect(),
         )
     }
@@ -51,19 +46,19 @@ impl Data {
     /// Returns the frame number.
     #[must_use]
     pub const fn frame_num(&self) -> u8 {
-        (self.header & Self::FRAME_NUM_MASK) >> Self::FRAME_NUM_OFFSET
+        self.header.frame_num()
     }
 
     /// Returns the acknowledgment number.
     #[must_use]
     pub const fn ack_num(&self) -> u8 {
-        self.header & Self::ACK_NUM_MASK
+        self.header.ack_num()
     }
 
     /// Returns the retransmit flag.
     #[must_use]
     pub const fn is_retransmission(&self) -> bool {
-        (self.header & Self::RETRANSMIT_MASK) != 0
+        self.header.contains(headers::Data::RETRANSMIT)
     }
 
     /// Returns the payload data.
@@ -73,12 +68,8 @@ impl Data {
     }
 
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
-        if is_retransmission {
-            self.header |= Self::RETRANSMIT_MASK;
-        } else {
-            self.header &= 0xFF ^ Self::RETRANSMIT_MASK;
-        }
-
+        self.header
+            .set(headers::Data::RETRANSMIT, is_retransmission);
         self.crc = self.calculate_crc();
     }
 }
@@ -97,7 +88,7 @@ impl Display for Data {
 
 impl Frame for Data {
     fn header(&self) -> u8 {
-        self.header
+        self.header.bits()
     }
 
     fn crc(&self) -> u16 {
@@ -105,13 +96,13 @@ impl Frame for Data {
     }
 
     fn calculate_crc(&self) -> u16 {
-        calculate_crc(self.header, &self.payload)
+        calculate_crc(self.header.bits(), &self.payload)
     }
 
     fn bytes(&self) -> impl AsRef<[u8]> {
         let mut buffer = Buffer::new();
         buffer
-            .push(self.header)
+            .push(self.header.bits())
             .expect("Buffer should have sufficient size for header.");
         buffer
             .extend_from_slice(&self.payload)
@@ -153,7 +144,7 @@ impl TryFrom<&[u8]> for Data {
         }
 
         Ok(Self {
-            header: buffer[0],
+            header: headers::Data::from_bits_retain(buffer[0]),
             payload: payload.try_into().map_err(|()| Error::BufferTooSmall {
                 expected: payload.len(),
                 found: Self::MAX_PAYLOAD_SIZE,
@@ -177,17 +168,17 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
+    use super::Data;
     use crate::frame::Frame;
+    use crate::packet::headers;
     use crate::protocol::Mask;
     use crate::CRC;
-
-    use super::Data;
 
     #[test]
     fn test_frame_num() {
         // EZSP "version" command: 00 00 00 02
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -195,7 +186,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -209,7 +200,7 @@ mod tests {
     fn test_ack_num() {
         // EZSP "version" command: 00 00 00 02
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -217,7 +208,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -231,7 +222,7 @@ mod tests {
     fn test_retransmit() {
         // EZSP "version" command: 00 00 00 02
         let mut data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -242,7 +233,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let mut data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -259,7 +250,7 @@ mod tests {
     fn test_to_string() {
         // EZSP "version" command: 00 00 00 02
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -267,7 +258,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -281,7 +272,7 @@ mod tests {
     fn test_crc() {
         // EZSP "version" command: 00 00 00 02
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -289,7 +280,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -303,7 +294,7 @@ mod tests {
     fn test_is_crc_valid() {
         // EZSP "version" command: 00 00 00 02
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -311,7 +302,7 @@ mod tests {
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -326,7 +317,7 @@ mod tests {
         // EZSP "version" command: 00 00 00 02
         let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
         let data = Data {
-            header: 0x25,
+            header: headers::Data::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
@@ -335,7 +326,7 @@ mod tests {
         // EZSP "version" response: 00 80 00 02 02 11 30
         let buffer: Vec<u8> = vec![0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16];
         let data = Data {
-            header: 0x53,
+            header: headers::Data::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
                 .as_slice()
                 .try_into()
@@ -354,7 +345,7 @@ mod tests {
         crc_target.extend_from_slice(&masked_payload);
         let crc = CRC.checksum(&crc_target);
         let data = Data {
-            header: 0x00,
+            header: headers::Data::from_bits_retain(0x00),
             payload: masked_payload.as_slice().try_into().unwrap(),
             crc,
         };

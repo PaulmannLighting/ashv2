@@ -12,6 +12,7 @@ use crate::error::frame;
 mod ack;
 mod data;
 mod error;
+mod headers;
 mod nak;
 mod rst;
 mod rst_ack;
@@ -70,7 +71,7 @@ impl TryFrom<&[u8]> for Packet {
 mod tests {
     use crate::code::Code;
 
-    use super::Packet;
+    use super::{headers, Packet};
     use super::{Ack, Data, Error, Nak, Rst};
 
     #[test]
@@ -103,7 +104,7 @@ mod tests {
         assert_eq!(
             packet,
             Packet::Data(Data::new(
-                DATA[0],
+                headers::Data::from_bits_retain(DATA[0]),
                 DATA[1..DATA.len() - 3].iter().copied().collect()
             ))
         );
@@ -115,7 +116,10 @@ mod tests {
 
         for ack in ACKS {
             let packet = Packet::try_from(&ack[..ack.len() - 1]).unwrap();
-            assert_eq!(packet, Packet::Ack(Ack::new(ack[0])));
+            assert_eq!(
+                packet,
+                Packet::Ack(Ack::new(headers::Ack::from_bits_retain(ack[0])))
+            );
         }
     }
 
@@ -125,7 +129,10 @@ mod tests {
 
         for nak in NAKS {
             let packet = Packet::try_from(&nak[..nak.len() - 1]).unwrap();
-            assert_eq!(packet, Packet::Nak(Nak::new(nak[0])));
+            assert_eq!(
+                packet,
+                Packet::Nak(Nak::new(headers::Nak::from_bits_retain(nak[0])))
+            );
         }
     }
 }
