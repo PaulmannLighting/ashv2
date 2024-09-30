@@ -14,7 +14,7 @@ use retransmit::Retransmit;
 use serialport::TTYPort;
 use state::State;
 use std::collections::VecDeque;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, Sender};
 
 const ACK_TIMEOUTS: usize = 4;
@@ -30,6 +30,8 @@ pub struct Transceiver {
     chunks_to_send: VecDeque<Chunk>,
     retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
     frame_number: u8,
+    response_buffer: Vec<u8>,
+    reject: bool,
 }
 
 impl Transceiver {
@@ -47,6 +49,8 @@ impl Transceiver {
             chunks_to_send: VecDeque::new(),
             retransmits: heapless::Deque::new(),
             frame_number: 0,
+            response_buffer: Vec::new(),
+            reject: false,
         }
     }
 
@@ -54,6 +58,7 @@ impl Transceiver {
         loop {
             if let Err(error) = self.main() {
                 error!("I/O error: {error}");
+                self.reject = true;
             }
         }
     }
@@ -87,7 +92,45 @@ impl Transceiver {
 /// Send and receive packets.
 impl Transceiver {
     pub fn transceive(&mut self) -> std::io::Result<()> {
-        todo!("Implement transceive")
+        if self.reject {
+            return self.try_clear_reject_condition();
+        }
+
+        // Try to receive ACKs.
+        if self.retransmits.is_full() {
+            while let Some(packet) = self.receive()? {
+                self.handle(packet)?;
+            }
+        }
+
+        // Try to retransmit packages.
+        if self.retransmits.is_full() {
+            while self.retransmit()? {}
+        }
+
+        // The retransmit queue is still full, so we bail out.
+        if self.retransmits.is_full() {
+            warn!("Retransmit queue still full.");
+            return Ok(());
+        }
+
+        // Send chunks.
+        self.send_chunks()?;
+
+        while let Some(packet) = self.receive()? {
+            self.handle(packet)?;
+        }
+
+        if self.chunks_to_send.is_empty() {
+            while let Some(packet) = self.receive()? {
+                self.handle(packet)?;
+            }
+
+            self.channels
+                .response(Ok(self.response_buffer.clone().into_boxed_slice()))?;
+        }
+
+        Ok(())
     }
 }
 
@@ -129,29 +172,60 @@ impl Transceiver {
     }
 }
 
+/// Receive packets.
+impl Transceiver {
+    fn receive(&mut self) -> std::io::Result<Option<Packet>> {
+        match self
+            .serial_port
+            .read_packet_buffered(&mut self.frame_buffer)
+        {
+            Ok(packet) => Ok(Some(packet)),
+            Err(error) => {
+                if error.kind() == ErrorKind::TimedOut {
+                    Ok(None)
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    fn handle(&mut self, packet: Packet) -> std::io::Result<()> {
+        todo!("implement packet processing")
+    }
+}
+
 /// Retransmitting packets.
 impl Transceiver {
     fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
         self.retransmits.push_front(data.into()).map_err(|_| {
             Error::new(
-                std::io::ErrorKind::OutOfMemory,
+                ErrorKind::OutOfMemory,
                 "ASHv2: failed to enqueue retransmit",
             )
         })
     }
 
-    fn retransmit(&mut self) -> std::io::Result<()> {
+    fn retransmit(&mut self) -> std::io::Result<bool> {
         for _ in 0..self.retransmits.len() {
             if let Some(retransmit) = self.retransmits.pop_back() {
                 if retransmit.is_timed_out() {
                     let data = retransmit.into_data();
                     warn!("Retransmitting {:?}", data);
-                    return self.send_data(data);
+                    self.send_data(data)?;
+                    return Ok(true);
                 }
             }
         }
 
-        Ok(())
+        Ok(false)
+    }
+}
+
+/// Error handling
+impl Transceiver {
+    fn try_clear_reject_condition(&mut self) -> std::io::Result<()> {
+        todo!("clear reject condition")
     }
 }
 
