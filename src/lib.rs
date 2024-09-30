@@ -25,6 +25,8 @@ mod frame_buffer;
 mod host;
 mod packet;
 mod protocol;
+mod request;
+mod response;
 mod serial_port;
 mod transceiver;
 mod util;

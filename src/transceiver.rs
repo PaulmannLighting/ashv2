@@ -1,3 +1,4 @@
+mod channels;
 mod retransmit;
 mod rw_frame;
 mod state;
@@ -5,6 +6,8 @@ mod state;
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
 use crate::packet::{Data, Packet, Rst};
+use crate::request::Request;
+use crate::transceiver::channels::Channels;
 use crate::FrameBuffer;
 use log::{debug, error, warn};
 use retransmit::Retransmit;
@@ -12,6 +15,7 @@ use serialport::TTYPort;
 use state::State;
 use std::collections::VecDeque;
 use std::io::Error;
+use std::sync::mpsc::{Receiver, Sender};
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -20,6 +24,7 @@ type Chunk = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
 #[derive(Debug)]
 pub struct Transceiver {
     serial_port: TTYPort,
+    channels: Channels,
     state: State,
     frame_buffer: FrameBuffer,
     chunks_to_send: VecDeque<Chunk>,
@@ -29,9 +34,14 @@ pub struct Transceiver {
 
 impl Transceiver {
     #[must_use]
-    pub const fn new(serial_port: TTYPort) -> Self {
+    pub const fn new(
+        serial_port: TTYPort,
+        requests: Receiver<Request>,
+        callback: Option<Sender<Box<[u8]>>>,
+    ) -> Self {
         Self {
             serial_port,
+            channels: Channels::new(requests, callback),
             state: State::Disconnected,
             frame_buffer: FrameBuffer::new(),
             chunks_to_send: VecDeque::new(),
