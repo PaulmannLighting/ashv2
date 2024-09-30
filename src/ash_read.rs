@@ -2,7 +2,6 @@ use std::io::{ErrorKind, Read};
 
 use log::{debug, trace};
 
-use crate::error::Error;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Packet;
 use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
@@ -15,9 +14,9 @@ pub trait AshRead: Read {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_packet_buffered(&mut self, buffer: &mut FrameBuffer) -> Result<Packet, Error> {
+    fn read_packet_buffered(&mut self, buffer: &mut FrameBuffer) -> std::io::Result<Packet> {
         self.read_frame_buffered(buffer)?;
-        Ok(Packet::try_from(&**buffer)?)
+        Packet::try_from(&**buffer)
     }
 
     /// Reads an ASH frame into a [`FrameBuffer`].

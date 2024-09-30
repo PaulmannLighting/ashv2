@@ -19,7 +19,7 @@ clap = { version = "4.5", optional = true }
 crc = "3.2"
 heapless = "0.8"
 log = "0.4"
-serialport = { version = "4.3", default-features = false }
+serialport = { version = "4.4", default-features = false }
 
 [features]
 clap = ["dep:clap"]

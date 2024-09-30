@@ -279,17 +279,16 @@ impl Listener {
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 
-    fn read_frame(&mut self) -> Result<Option<Packet>, crate::Error> {
+    fn read_frame(&mut self) -> std::io::Result<Option<Packet>> {
         self.serial_port
             .read_packet_buffered(&mut self.buffer)
             .map(Some)
             .or_else(|error| {
-                if let crate::Error::Io(io_error) = &error {
-                    if io_error.kind() == ErrorKind::TimedOut {
-                        return Ok(None);
-                    }
+                if error.kind() == ErrorKind::TimedOut {
+                    Ok(None)
+                } else {
+                    Err(error)
                 }
-                Err(error)
             })
     }
 

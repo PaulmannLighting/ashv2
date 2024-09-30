@@ -1,7 +1,6 @@
-use std::fmt::{Display, Formatter};
-
-use crate::error::frame::Error;
 use crate::frame::Frame;
+use std::fmt::{Display, Formatter};
+use std::io::ErrorKind;
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -53,20 +52,21 @@ impl Frame for Rst {
 }
 
 impl TryFrom<&[u8]> for Rst {
-    type Error = Error;
+    type Error = std::io::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == Self::SIZE {
-            Ok(Self {
-                header: buffer[0],
-                crc: u16::from_be_bytes([buffer[1], buffer[2]]),
-            })
-        } else {
-            Err(Error::InvalidBufferSize {
-                expected: Self::SIZE,
-                found: buffer.len(),
-            })
-        }
+    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+        let [header, crc0, crc1] = buffer else {
+            return Err(if buffer.len() < Self::SIZE {
+                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2 RST: insufficient data")
+            } else {
+                std::io::Error::new(ErrorKind::InvalidData, "ASHv2 RST: too much data")
+            });
+        };
+
+        Ok(Self {
+            header: *header,
+            crc: u16::from_be_bytes([*crc0, *crc1]),
+        })
     }
 }
 

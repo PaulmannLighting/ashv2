@@ -1,11 +1,9 @@
-use log::warn;
-use std::fmt::{Display, Formatter};
-
-use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::CRC;
+use std::fmt::{Display, Formatter};
+use std::io::ErrorKind;
 
 type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
 type Buffer = heapless::Vec<u8, { Data::BUFFER_SIZE }>;
@@ -115,41 +113,29 @@ impl Frame for Data {
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = Error;
+    type Error = std::io::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() < Self::METADATA_SIZE {
-            return Err(Error::BufferTooSmall {
-                expected: Self::METADATA_SIZE,
-                found: buffer.len(),
-            });
-        }
-
-        let payload = &buffer[1..(buffer.len() - 2)];
+    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+        let [header, payload @ .., crc0, crc1] = buffer else {
+            return Err(std::io::Error::new(
+                ErrorKind::UnexpectedEof,
+                "ASHv2 DATA: insufficient data",
+            ));
+        };
 
         if payload.len() < Self::MIN_PAYLOAD_SIZE {
-            warn!(
-                "Payload too small: {} < {}",
-                payload.len(),
-                Self::MIN_PAYLOAD_SIZE
-            );
-        }
-
-        if payload.len() > Self::MAX_PAYLOAD_SIZE {
-            warn!(
-                "Payload too large: {} > {}",
-                payload.len(),
-                Self::MAX_PAYLOAD_SIZE
-            );
+            return Err(std::io::Error::new(
+                ErrorKind::UnexpectedEof,
+                "ASHv2 DATA: insufficient payload",
+            ));
         }
 
         Ok(Self {
-            header: headers::Data::from_bits_retain(buffer[0]),
-            payload: payload.try_into().map_err(|()| Error::BufferTooSmall {
-                expected: payload.len(),
-                found: Self::MAX_PAYLOAD_SIZE,
+            header: headers::Data::from_bits_retain(*header),
+            payload: payload.try_into().map_err(|()| {
+                std::io::Error::new(ErrorKind::OutOfMemory, "ASHv2 DATA: payload too large")
             })?,
-            crc: u16::from_be_bytes([buffer[buffer.len() - 2], buffer[buffer.len() - 1]]),
+            crc: u16::from_be_bytes([*crc0, *crc1]),
         })
     }
 }

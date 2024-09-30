@@ -1,11 +1,11 @@
-use std::fmt::{Debug, Display, Formatter};
-
 pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::Rst;
 pub use rst_ack::RstAck;
+use std::fmt::{Debug, Display, Formatter};
+use std::io::ErrorKind;
 
 use crate::error::frame;
 
@@ -48,20 +48,23 @@ impl Display for Packet {
 }
 
 impl TryFrom<&[u8]> for Packet {
-    type Error = frame::Error;
+    type Error = std::io::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
-        match *buffer
-            .first()
-            .ok_or(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(None))?
-        {
+    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+        match *buffer.first().ok_or(std::io::Error::new(
+            ErrorKind::UnexpectedEof,
+            "ASH: missing packet header",
+        ))? {
             Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
             RstAck::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
             Error::HEADER => Error::try_from(buffer).map(Self::Error),
             header if header & 0x80 == 0x00 => Data::try_from(buffer).map(Self::Data),
             header if header & 0x60 == 0x00 => Ack::try_from(buffer).map(Self::Ack),
             header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),
-            header => Err(<Self as TryFrom<&[u8]>>::Error::InvalidHeader(Some(header))),
+            header => Err(std::io::Error::new(
+                ErrorKind::InvalidData,
+                format!("ASH: unknown packet header {:#04X}", header),
+            )),
         }
     }
 }

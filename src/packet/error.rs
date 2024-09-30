@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
-
 use crate::error::frame;
 use crate::frame::Frame;
 use crate::{Code, CRC};
+use std::fmt::{Display, Formatter};
+use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
@@ -78,22 +78,23 @@ impl From<Code> for Error {
 }
 
 impl TryFrom<&[u8]> for Error {
-    type Error = frame::Error;
+    type Error = std::io::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == Self::SIZE {
-            Ok(Self {
-                header: buffer[0],
-                version: buffer[1],
-                code: buffer[2],
-                crc: u16::from_be_bytes([buffer[3], buffer[4]]),
-            })
-        } else {
-            Err(Self::Error::InvalidBufferSize {
-                expected: Self::SIZE,
-                found: buffer.len(),
-            })
-        }
+    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+        let [header, version, code, crc0, crc1] = buffer else {
+            return Err(if buffer.len() < Self::SIZE {
+                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2 ERROR: insufficient data")
+            } else {
+                std::io::Error::new(ErrorKind::InvalidData, "ASHv2 ERROR: too much data")
+            });
+        };
+
+        Ok(Self {
+            header: *header,
+            version: *version,
+            code: *code,
+            crc: u16::from_be_bytes([*crc0, *crc1]),
+        })
     }
 }
 

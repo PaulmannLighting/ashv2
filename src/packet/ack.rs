@@ -1,9 +1,8 @@
-use std::fmt::{Display, Formatter};
-
-use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::CRC;
+use std::fmt::{Display, Formatter};
+use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
@@ -68,20 +67,21 @@ impl Frame for Ack {
 }
 
 impl TryFrom<&[u8]> for Ack {
-    type Error = Error;
+    type Error = std::io::Error;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
-        if buffer.len() == Self::SIZE {
-            Ok(Self {
-                header: headers::Ack::from_bits_retain(buffer[0]),
-                crc: u16::from_be_bytes([buffer[1], buffer[2]]),
-            })
-        } else {
-            Err(Self::Error::InvalidBufferSize {
-                expected: Self::SIZE,
-                found: buffer.len(),
-            })
-        }
+    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+        let [header, crc0, crc1] = buffer else {
+            return Err(if buffer.len() < Self::SIZE {
+                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2 ACK: insufficient data")
+            } else {
+                std::io::Error::new(ErrorKind::InvalidData, "ASHv2 ACK: too much data")
+            });
+        };
+
+        Ok(Self {
+            header: headers::Ack::from_bits_retain(*header),
+            crc: u16::from_be_bytes([*crc0, *crc1]),
+        })
     }
 }
 
