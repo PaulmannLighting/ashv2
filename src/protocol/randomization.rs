@@ -6,16 +6,18 @@ const DEFAULT_FLAG_BIT: u8 = 0x01;
 
 pub type MaskIterator<T> = Map<Zip<T, MaskGenerator>, fn((u8, u8)) -> u8>;
 
-pub trait Mask: IntoIterator<Item = u8> + Sized {
+pub trait Mask {
     /// Masks a byte stream with pseudo-random numbers.
-    fn mask(self) -> MaskIterator<<Self as IntoIterator>::IntoIter> {
-        self.into_iter()
-            .zip(MaskGenerator::default())
-            .map(|(byte, mask)| byte ^ mask)
-    }
+    fn mask(&mut self);
 }
 
-impl<T> Mask for T where T: IntoIterator<Item = u8> {}
+impl Mask for [u8] {
+    fn mask(&mut self) {
+        self.iter_mut()
+            .zip(MaskGenerator::default())
+            .for_each(|(byte, mask)| *byte ^= mask)
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MaskGenerator {
@@ -70,19 +72,21 @@ mod tests {
 
     #[test]
     fn test_mask_with_version_command() {
-        let bytes = vec![0x00, 0x00, 0x00, 0x02];
-        let masked: Vec<_> = bytes.clone().into_iter().mask().collect();
-        assert_eq!(masked, vec![0x42, 0x21, 0xA8, 0x56]);
-        let unmasked: Vec<_> = masked.into_iter().mask().collect();
-        assert_eq!(unmasked, bytes);
+        let mut bytes = vec![0x00, 0x00, 0x00, 0x02];
+        let original = bytes.clone();
+        bytes.mask();
+        assert_eq!(bytes, vec![0x42, 0x21, 0xA8, 0x56]);
+        bytes.mask();
+        assert_eq!(bytes, original);
     }
 
     #[test]
     fn test_mask_with_version_response() {
-        let bytes = vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30];
-        let masked: Vec<_> = bytes.clone().into_iter().mask().collect();
-        assert_eq!(masked, vec![0x42, 0xA1, 0xA8, 0x56, 0x28, 0x04, 0x82]);
-        let unmasked: Vec<_> = masked.into_iter().mask().collect();
-        assert_eq!(unmasked, bytes);
+        let mut bytes = vec![0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30];
+        let original = bytes.clone();
+        bytes.mask();
+        assert_eq!(bytes, vec![0x42, 0xA1, 0xA8, 0x56, 0x28, 0x04, 0x82]);
+        bytes.mask();
+        assert_eq!(bytes, original);
     }
 }

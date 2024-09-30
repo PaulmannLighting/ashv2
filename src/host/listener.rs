@@ -107,14 +107,11 @@ impl Listener {
 
     fn handle_data(&mut self, data: &Data) {
         debug!("Received frame: {data:#04X?}");
-        trace!(
-            "Unmasked payload: {:#04X?}",
-            data.payload()
-                .iter()
-                .copied()
-                .mask()
-                .collect::<FrameBuffer>()
-        );
+        trace!("Unmasked payload: {:#04X?}", {
+            let mut unmasked = data.payload().iter().copied().collect::<FrameBuffer>();
+            unmasked.mask();
+            unmasked
+        });
 
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
@@ -160,7 +157,8 @@ impl Listener {
 
     fn forward_data(&self, data: &Data) {
         debug!("Forwarding data: {data}");
-        let payload: FrameBuffer = data.payload().iter().copied().mask().collect();
+        let mut payload: FrameBuffer = data.payload().iter().copied().collect();
+        payload.mask();
         let handler = self.handler.write().take();
 
         if let Some(handler) = handler {

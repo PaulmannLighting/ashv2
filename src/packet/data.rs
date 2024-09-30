@@ -34,11 +34,9 @@ impl Data {
     }
 
     #[must_use]
-    pub fn create(frame_num: u8, ack_num: u8, payload: Payload) -> Self {
-        Self::new(
-            headers::Data::new(frame_num, false, ack_num),
-            payload.mask().collect(),
-        )
+    pub fn create(frame_num: u8, mut payload: Payload) -> Self {
+        payload.mask();
+        Self::new(headers::Data::new(frame_num, false, 0), payload)
     }
 
     /// Returns the frame number.
@@ -326,7 +324,8 @@ mod tests {
     fn test_data_frame() {
         let header = 0x00;
         let payload = [0x01, 0x00, 0x00, 0x04];
-        let masked_payload: Vec<_> = payload.into_iter().mask().collect();
+        let mut masked_payload = payload.clone();
+        masked_payload.mask();
         let mut crc_target = vec![header];
         crc_target.extend_from_slice(&masked_payload);
         let crc = CRC.checksum(&crc_target);
@@ -335,7 +334,8 @@ mod tests {
             payload: masked_payload.as_slice().try_into().unwrap(),
             crc,
         };
-        let unmasked_payload: Vec<u8> = data.payload().iter().copied().mask().collect();
+        let mut unmasked_payload: Vec<u8> = data.payload().iter().copied().collect();
+        unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
         let byte_representation: Vec<_> = data.bytes().as_ref().to_vec();
         assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);

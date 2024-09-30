@@ -2,11 +2,10 @@ use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::transceiver::buffered::Buffered;
 use crate::transceiver::Transceiver;
 use std::io::ErrorKind;
 
-pub trait RwFrame: Buffered {
+pub trait RwFrame {
     /// Reads a frame from the serial port.
     fn read_frame(&mut self) -> std::io::Result<Option<Packet>>;
 
