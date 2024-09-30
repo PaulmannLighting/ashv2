@@ -22,17 +22,16 @@ pub struct Host {
 
 impl Host {
     /// Creates and starts the host.
-    ///
-    /// # Errors
-    /// Returns an [`Error`] if the host could not be started.
-    pub fn spawn(serial_port: TTYPort, callback: Option<Sender<Box<[u8]>>>) -> Result<Self, Error> {
+    #[must_use]
+    pub fn new(serial_port: TTYPort, callback: Option<Sender<Box<[u8]>>>) -> Self {
         let (command, requests) = channel();
-        let transceiver = Transceiver::new(serial_port, requests, callback);
 
-        Ok(Self {
+        Self {
             command,
-            transceiver: Some(spawn(move || transceiver.run())),
-        })
+            transceiver: Some(spawn(move || {
+                Transceiver::new(serial_port, requests, callback).run();
+            })),
+        }
     }
 
     /// Communicate with the NCP, returning `Box<[u8]>`.
