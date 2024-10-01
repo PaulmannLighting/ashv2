@@ -1,11 +1,8 @@
 use crate::frame::Frame;
 use crate::packet::Packet;
 use crate::protocol::{Stuff, Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
-use crate::transceiver::transaction::Transaction;
 use crate::transceiver::Transceiver;
-use crate::FrameBuffer;
 use log::{debug, trace};
-use serialport::TTYPort;
 use std::io::{Error, ErrorKind, Read, Write};
 
 impl Transceiver {
@@ -16,9 +13,9 @@ impl Transceiver {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub fn read(&mut self) -> std::io::Result<Packet> {
-        self.read_frame_to_buffer()?;
-        Packet::try_from(self.buffers.frame.as_slice())
+    pub(super) fn read_packet(&mut self) -> std::io::Result<Packet> {
+        self.buffer_frame()?;
+        Packet::try_from(self.frame_buffer.as_slice())
     }
 
     /// Reads an ASH frame into a [`FrameBuffer`].
@@ -28,8 +25,8 @@ impl Transceiver {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
-    fn read_frame_to_buffer(&mut self) -> std::io::Result<()> {
-        self.buffers.frame.clear();
+    fn buffer_frame(&mut self) -> std::io::Result<()> {
+        self.frame_buffer.clear();
         let serial_port = &mut self.serial_port;
         let mut error = false;
 
@@ -38,25 +35,25 @@ impl Transceiver {
                 CANCEL => {
                     debug!("Resetting buffer due to cancel byte.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", self.buffers.frame);
-                    self.buffers.frame.clear();
+                    trace!("Buffer: {:#04X?}", self.frame_buffer);
+                    self.frame_buffer.clear();
                     error = false;
                 }
                 FLAG => {
                     debug!("Received flag byte.");
 
-                    if !error && !self.buffers.frame.is_empty() {
+                    if !error && !self.frame_buffer.is_empty() {
                         debug!("Frame complete.");
-                        trace!("Buffer: {:#04X?}", self.buffers.frame);
-                        self.buffers.frame.unstuff();
-                        trace!("Unstuffed buffer: {:#04X?}", self.buffers.frame);
+                        trace!("Buffer: {:#04X?}", self.frame_buffer);
+                        self.frame_buffer.unstuff();
+                        trace!("Unstuffed buffer: {:#04X?}", self.frame_buffer);
                         return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", self.buffers.frame);
-                    self.buffers.frame.clear();
+                    trace!("Buffer: {:#04X?}", self.frame_buffer);
+                    self.frame_buffer.clear();
                     error = false;
                 }
                 SUBSTITUTE => {
@@ -73,7 +70,7 @@ impl Transceiver {
                     debug!("NCP tried to wake us up.");
                 }
                 byte => {
-                    if self.buffers.frame.push(byte).is_err() {
+                    if self.frame_buffer.push(byte).is_err() {
                         return Err(Error::new(
                             ErrorKind::OutOfMemory,
                             "ASHv2 frame buffer overflow",
@@ -94,26 +91,25 @@ impl Transceiver {
     /// # Errors
     ///
     /// Returns an [`Error`](Error) if any I/O error occurs.
-    pub fn write<T>(&mut self, frame: &T) -> std::io::Result<()>
+    pub(super) fn write_frame<T>(&mut self, frame: &T) -> std::io::Result<()>
     where
         T: Frame,
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
-        self.buffers.frame.clear();
-        frame.buffer(&mut self.buffers.frame).map_err(|()| {
+        self.frame_buffer.clear();
+        frame.buffer(&mut self.frame_buffer).map_err(|()| {
             Error::new(
                 ErrorKind::OutOfMemory,
                 "could not append frame bytes to buffer",
             )
         })?;
-        self.buffers.frame.stuff()?;
-        self.buffers
-            .frame
+        self.frame_buffer.stuff()?;
+        self.frame_buffer
             .push(FLAG)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;
-        trace!("Writing bytes: {:#04X?}", self.buffers.frame);
-        self.serial_port.write_all(&mut self.buffers.frame)?;
+        trace!("Writing bytes: {:#04X?}", self.frame_buffer);
+        self.serial_port.write_all(&self.frame_buffer)?;
         self.serial_port.flush()
     }
 }

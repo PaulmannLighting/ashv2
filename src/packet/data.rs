@@ -19,7 +19,7 @@ pub struct Data {
 impl Data {
     const HEADER_SIZE: usize = 1;
     const CRC_CHECKSUM_SIZE: usize = 2;
-    pub const METADATA_SIZE: usize = Self::HEADER_SIZE + Self::CRC_CHECKSUM_SIZE;
+    const METADATA_SIZE: usize = Self::HEADER_SIZE + Self::CRC_CHECKSUM_SIZE;
     pub const MIN_PAYLOAD_SIZE: usize = 3;
     pub const MAX_PAYLOAD_SIZE: usize = 128;
     pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;

@@ -1,4 +1,5 @@
 use crate::packet::Data;
+use crate::wrapping_u3::WrappingU3;
 use std::time::{Duration, SystemTime, SystemTimeError};
 
 const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
@@ -13,6 +14,11 @@ impl Retransmit {
     #[must_use]
     pub fn sent(&self) -> SystemTime {
         self.sent
+    }
+
+    #[must_use]
+    pub fn frame_num(&self) -> WrappingU3 {
+        self.data.frame_num()
     }
 
     pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {

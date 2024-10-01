@@ -5,13 +5,9 @@ use std::thread::{spawn, JoinHandle};
 use log::error;
 use serialport::TTYPort;
 
-use crate::error::Error;
 use crate::request::Request;
 use crate::response::Response;
 use crate::transceiver::Transceiver;
-
-mod listener;
-mod transmitter;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 #[derive(Debug)]

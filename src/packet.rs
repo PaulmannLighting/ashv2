@@ -7,8 +7,6 @@ pub use rst_ack::RstAck;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::ErrorKind;
 
-use crate::error::frame;
-
 mod ack;
 mod data;
 mod error;
