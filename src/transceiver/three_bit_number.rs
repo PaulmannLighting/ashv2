@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     #[allow(clippy::assign_op_pattern)]
-    fn test_increment() {
+    fn test_add() {
         let mut number = ThreeBitNumber::from_u8_lossy(0);
 
         for n in 1..=u8::MAX {
@@ -84,7 +84,7 @@ mod tests {
     }
 
     #[test]
-    fn test_increment_in_place() {
+    fn test_add_assign() {
         let mut number = ThreeBitNumber::from_u8_lossy(0);
 
         for n in 1..=u8::MAX {
