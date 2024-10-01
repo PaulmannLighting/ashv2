@@ -34,7 +34,7 @@ impl Transceiver {
         while let Some(retransmit) = self
             .retransmits
             .iter()
-            .position(Retransmit::is_timed_out)
+            .position(|retransmit| retransmit.is_timed_out(Self::T_RX_ACK_MAX))
             .map(|index| self.retransmits.remove(index))
         {
             self.send_data(retransmit.into_data())?;

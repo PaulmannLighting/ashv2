@@ -2,8 +2,6 @@ use crate::packet::Data;
 use crate::wrapping_u3::WrappingU3;
 use std::time::{Duration, SystemTime, SystemTimeError};
 
-const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
-
 #[derive(Debug)]
 pub struct Retransmit {
     sent: SystemTime,
@@ -25,9 +23,9 @@ impl Retransmit {
         self.sent.elapsed()
     }
 
-    pub fn is_timed_out(&self) -> bool {
+    pub fn is_timed_out(&self, threshold: Duration) -> bool {
         self.elapsed()
-            .map(|elapsed| elapsed > T_RX_ACK_MAX)
+            .map(|elapsed| elapsed > threshold)
             .unwrap_or(true)
     }
 
