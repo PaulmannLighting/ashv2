@@ -101,7 +101,7 @@ mod tests {
     fn test_new() {
         for n in u8::MIN..=u8::MAX {
             let number = WrappingU3::from_u8_lossy(n);
-            assert_eq!(u8::from(number), n % 8);
+            assert_eq!(number.as_u8(), n % 8);
         }
     }
 
@@ -118,7 +118,7 @@ mod tests {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
                 let number = WrappingU3::from_u8_lossy(n) + WrappingU3::from_u8_lossy(rhs);
-                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+                assert_eq!(number.as_u8(), n.wrapping_add(rhs) % 8);
             }
         }
     }
@@ -128,7 +128,7 @@ mod tests {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
                 let number = WrappingU3::from_u8_lossy(n) + rhs;
-                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+                assert_eq!(number.as_u8(), n.wrapping_add(rhs) % 8);
             }
         }
     }
@@ -139,7 +139,7 @@ mod tests {
             for rhs in 0..=u8::MAX {
                 let mut number = WrappingU3::from_u8_lossy(n);
                 number += WrappingU3::from_u8_lossy(rhs);
-                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+                assert_eq!(number.as_u8(), n.wrapping_add(rhs) % 8);
             }
         }
     }
@@ -150,7 +150,7 @@ mod tests {
             for rhs in 0..=u8::MAX {
                 let mut number = WrappingU3::from_u8_lossy(n);
                 number += rhs;
-                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+                assert_eq!(number.as_u8(), n.wrapping_add(rhs) % 8);
             }
         }
     }
