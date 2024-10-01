@@ -6,9 +6,9 @@ const MASK: u8 = 0b0000_0111;
 /// An optional three bit number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
-pub struct ThreeBitNumber(NonZero<u8>);
+pub struct WrappingU3(NonZero<u8>);
 
-impl ThreeBitNumber {
+impl WrappingU3 {
     /// Creates a new optional three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
@@ -22,7 +22,7 @@ impl ThreeBitNumber {
     }
 }
 
-impl Add<u8> for ThreeBitNumber {
+impl Add<u8> for WrappingU3 {
     type Output = Self;
 
     fn add(self, rhs: u8) -> Self::Output {
@@ -30,14 +30,14 @@ impl Add<u8> for ThreeBitNumber {
     }
 }
 
-impl AddAssign<u8> for ThreeBitNumber {
+impl AddAssign<u8> for WrappingU3 {
     fn add_assign(&mut self, rhs: u8) {
         self.0 = shifted_nonzero_three_bits_lossy(self.as_u8().wrapping_add(rhs));
     }
 }
 
-impl From<ThreeBitNumber> for u8 {
-    fn from(value: ThreeBitNumber) -> Self {
+impl From<WrappingU3> for u8 {
+    fn from(value: WrappingU3) -> Self {
         value.as_u8()
     }
 }
@@ -54,12 +54,12 @@ const fn shifted_nonzero_three_bits_lossy(n: u8) -> NonZero<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::ThreeBitNumber;
+    use super::WrappingU3;
 
     #[test]
     fn test_new() {
         for n in u8::MIN..=u8::MAX {
-            let number = ThreeBitNumber::from_u8_lossy(n);
+            let number = WrappingU3::from_u8_lossy(n);
             assert_eq!(u8::from(number), n % 8);
         }
     }
@@ -67,7 +67,7 @@ mod tests {
     #[test]
     fn test_as_u8() {
         for n in u8::MIN..=u8::MAX {
-            let number = ThreeBitNumber::from_u8_lossy(n);
+            let number = WrappingU3::from_u8_lossy(n);
             assert_eq!(number.as_u8(), n % 8);
         }
     }
@@ -76,7 +76,7 @@ mod tests {
     fn test_add() {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
-                let number = ThreeBitNumber::from_u8_lossy(n) + rhs;
+                let number = WrappingU3::from_u8_lossy(n) + rhs;
                 assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
             }
         }
@@ -86,7 +86,7 @@ mod tests {
     fn test_add_assign() {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
-                let mut number = ThreeBitNumber::from_u8_lossy(n);
+                let mut number = WrappingU3::from_u8_lossy(n);
                 number += rhs;
                 assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
             }

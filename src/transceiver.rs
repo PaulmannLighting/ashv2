@@ -2,7 +2,7 @@ mod channels;
 mod retransmit;
 mod rw_frame;
 mod state;
-mod three_bit_number;
+mod wrapping_u3;
 
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
@@ -18,7 +18,7 @@ use state::State;
 use std::collections::VecDeque;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, Sender};
-use three_bit_number::ThreeBitNumber;
+use wrapping_u3::WrappingU3;
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -32,8 +32,8 @@ pub struct Transceiver {
     frame_buffer: FrameBuffer,
     chunks_to_send: VecDeque<Chunk>,
     retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
-    frame_number: u8,
-    last_received_frame_num: Option<ThreeBitNumber>,
+    frame_number: WrappingU3,
+    last_received_frame_num: Option<WrappingU3>,
     response_buffer: Vec<u8>,
     reject: bool,
 }
@@ -52,7 +52,7 @@ impl Transceiver {
             frame_buffer: FrameBuffer::new(),
             chunks_to_send: VecDeque::new(),
             retransmits: heapless::Deque::new(),
-            frame_number: 0,
+            frame_number: WrappingU3::from_u8_lossy(0),
             last_received_frame_num: None,
             response_buffer: Vec::new(),
             reject: false,
@@ -262,8 +262,8 @@ impl Transceiver {
 
     /// Returns the next frame number.
     fn next_frame_number(&mut self) -> u8 {
-        let frame_number = self.frame_number;
-        self.frame_number = self.frame_number.wrapping_add(1) % 8;
+        let frame_number = self.frame_number.as_u8();
+        self.frame_number += 1;
         frame_number
     }
 }
