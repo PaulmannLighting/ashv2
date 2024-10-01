@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
 
-/// An optional three bit number.
+/// A three bit number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct WrappingU3(NonZero<u8>);
