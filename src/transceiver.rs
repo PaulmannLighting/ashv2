@@ -1,3 +1,4 @@
+mod ack_number;
 mod channels;
 mod retransmit;
 mod rw_frame;
@@ -5,9 +6,11 @@ mod state;
 
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
-use crate::packet::{Data, Packet, Rst};
+use crate::packet::{Ack, Data, Nak, Packet, Rst};
 use crate::request::Request;
+use crate::transceiver::ack_number::AckNumber;
 use crate::transceiver::channels::Channels;
+use crate::util::next_three_bit_number;
 use crate::FrameBuffer;
 use log::{debug, error, warn};
 use retransmit::Retransmit;
@@ -30,6 +33,7 @@ pub struct Transceiver {
     chunks_to_send: VecDeque<Chunk>,
     retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
     frame_number: u8,
+    ack_number: AckNumber,
     response_buffer: Vec<u8>,
     reject: bool,
 }
@@ -159,11 +163,25 @@ impl Transceiver {
 
 /// Sending packets.
 impl Transceiver {
+    fn send_ack(&mut self, frame_num: u8) -> std::io::Result<()> {
+        self.serial_port.write_frame_buffered(
+            &Ack::from_ack_num(next_three_bit_number(frame_num)),
+            &mut self.frame_buffer,
+        )
+    }
+
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.serial_port
             .write_frame_buffered(&data, &mut self.frame_buffer)?;
         self.enqueue_retransmit(data)?;
         Ok(())
+    }
+
+    fn send_nak(&mut self) {
+        debug!("Sending NAK: {}", self.ack_number());
+        self.serial_port
+            .write_frame_buffered(&Nak::from_ack_num(self.ack_number()), &mut self.buffer)
+            .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 
     fn send_rst(&mut self) -> std::io::Result<()> {
