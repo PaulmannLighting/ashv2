@@ -2,7 +2,7 @@ use crate::frame::Frame;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::wrapping_u3::WrappingU3;
-use crate::CRC;
+use crate::{FrameBuffer, CRC};
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -99,18 +99,10 @@ impl Frame for Data {
         calculate_crc(self.header.bits(), &self.payload)
     }
 
-    fn bytes(&self) -> impl AsRef<[u8]> {
-        let mut buffer = Buffer::new();
-        buffer
-            .push(self.header.bits())
-            .expect("Buffer should have sufficient size for header.");
-        buffer
-            .extend_from_slice(&self.payload)
-            .expect("Buffer should have sufficient size for payload.");
-        buffer
-            .extend_from_slice(&self.crc.to_be_bytes())
-            .expect("Buffer should have sufficient size for CRC.");
-        buffer
+    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+        buffer.push(self.header.bits()).map_err(drop)?;
+        buffer.extend_from_slice(&self.payload)?;
+        buffer.extend_from_slice(&self.crc.to_be_bytes())
     }
 }
 
@@ -160,7 +152,7 @@ mod tests {
     use crate::frame::Frame;
     use crate::packet::headers;
     use crate::protocol::Mask;
-    use crate::CRC;
+    use crate::{FrameBuffer, CRC};
 
     #[test]
     fn test_frame_num() {
@@ -341,7 +333,9 @@ mod tests {
         let mut unmasked_payload: Vec<u8> = data.payload().iter().copied().collect();
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
-        let byte_representation: Vec<_> = data.bytes().as_ref().to_vec();
-        assert_eq!(byte_representation, vec![0, 67, 33, 168, 80, 155, 152]);
+        let mut byte_representation = FrameBuffer::new();
+        data.buffer(&mut byte_representation)
+            .expect("Buffer should be large enough.");
+        assert_eq!(&byte_representation, &[0, 67, 33, 168, 80, 155, 152]);
     }
 }

@@ -1,7 +1,6 @@
 use crate::code::Code;
-use crate::error::frame::Error;
 use crate::frame::Frame;
-use crate::{CRC, VERSION};
+use crate::{FrameBuffer, CRC, VERSION};
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -66,9 +65,11 @@ impl Frame for RstAck {
         CRC.checksum(&[self.header, self.version, self.reset_code])
     }
 
-    fn bytes(&self) -> impl AsRef<[u8]> {
-        let [crc0, crc1] = self.crc.to_be_bytes();
-        [self.header, self.version, self.reset_code, crc0, crc1]
+    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+        buffer.push(self.header).map_err(drop)?;
+        buffer.push(self.version).map_err(drop)?;
+        buffer.push(self.reset_code).map_err(drop)?;
+        buffer.extend_from_slice(&self.crc.to_be_bytes())
     }
 }
 

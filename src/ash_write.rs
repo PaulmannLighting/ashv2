@@ -27,14 +27,12 @@ where
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
         buffer.clear();
-        buffer
-            .extend_from_slice(frame.bytes().as_ref())
-            .map_err(|()| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "could not append frame bytes to buffer",
-                )
-            })?;
+        frame.buffer(buffer).map_err(|()| {
+            Error::new(
+                ErrorKind::OutOfMemory,
+                "could not append frame bytes to buffer",
+            )
+        })?;
         buffer.stuff()?;
         buffer
             .push(FLAG)

@@ -1,4 +1,5 @@
 use crate::frame::Frame;
+use crate::FrameBuffer;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -47,9 +48,9 @@ impl Frame for Rst {
         self.crc
     }
 
-    fn bytes(&self) -> impl AsRef<[u8]> {
-        let [crc0, crc1] = self.crc.to_be_bytes();
-        [self.header, crc0, crc1]
+    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+        buffer.push(self.header).map_err(drop)?;
+        buffer.extend_from_slice(&self.crc.to_be_bytes())
     }
 }
 

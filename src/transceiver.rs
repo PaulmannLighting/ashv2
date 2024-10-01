@@ -79,7 +79,7 @@ impl Transceiver {
                 self.state.status = Status::Connected;
 
                 if let Ok(elapsed) = start.elapsed() {
-                    debug!("Connection established after {elapsed:?}")
+                    debug!("Connection established after {elapsed:?}");
                 }
 
                 return Ok(());

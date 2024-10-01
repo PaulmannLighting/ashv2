@@ -1,7 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::wrapping_u3::WrappingU3;
-use crate::CRC;
+use crate::{FrameBuffer, CRC};
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -61,9 +61,9 @@ impl Frame for Ack {
         self.crc
     }
 
-    fn bytes(&self) -> impl AsRef<[u8]> {
-        let [crc0, crc1] = self.crc.to_be_bytes();
-        [self.header.bits(), crc0, crc1]
+    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+        buffer.push(self.header.bits()).map_err(drop)?;
+        buffer.extend_from_slice(&self.crc.to_be_bytes())
     }
 }
 
