@@ -33,7 +33,7 @@ impl Retransmit {
 }
 
 impl From<Data> for Retransmit {
-    fn from(mut data: Data) -> Self {
+    fn from(data: Data) -> Self {
         Self {
             sent: SystemTime::now(),
             data,

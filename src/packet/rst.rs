@@ -2,6 +2,8 @@ use crate::frame::Frame;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
+pub const RST: Rst = Rst::new();
+
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Rst {

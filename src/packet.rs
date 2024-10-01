@@ -2,7 +2,7 @@ pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
-pub use rst::Rst;
+pub use rst::{Rst, RST};
 pub use rst_ack::RstAck;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::ErrorKind;

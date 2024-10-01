@@ -149,7 +149,7 @@ impl Listener {
 
     fn ack_received_data(&mut self, frame_num: WrappingU3) {
         self.serial_port
-            .write_frame_buffered(&Ack::from_ack_num(frame_num + 1), &mut self.buffer)
+            .write_frame_buffered(&Ack::create(frame_num + 1, false), &mut self.buffer)
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
@@ -271,7 +271,7 @@ impl Listener {
     fn send_nak(&mut self) {
         debug!("Sending NAK: {}", self.ack_number());
         self.serial_port
-            .write_frame_buffered(&Nak::from_ack_num(self.ack_number()), &mut self.buffer)
+            .write_frame_buffered(&Nak::create(self.ack_number(), false), &mut self.buffer)
             .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
     }
 

@@ -24,8 +24,8 @@ impl Nak {
     }
 
     #[must_use]
-    pub fn from_ack_num(ack_num: WrappingU3) -> Self {
-        Self::new(headers::Nak::new(ack_num, false, false))
+    pub fn create(ack_num: WrappingU3, n_rdy: bool) -> Self {
+        Self::new(headers::Nak::new(ack_num, n_rdy, false))
     }
 
     /// Determines whether the not-ready flag is set.

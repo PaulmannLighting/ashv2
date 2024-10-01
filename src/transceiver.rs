@@ -1,39 +1,36 @@
+mod buffers;
+mod callback_handler;
 mod channels;
 mod retransmit;
-mod rw_frame;
 mod state;
+mod status;
+mod transaction;
 
 use crate::ash_read::AshRead;
-use crate::ash_write::AshWrite;
-use crate::packet::{Ack, Data, Nak, Packet, Rst};
+use crate::packet::{Data, Packet};
+use crate::protocol::AshChunks;
 use crate::request::Request;
-use crate::wrapping_u3::WrappingU3;
-use crate::FrameBuffer;
+use buffers::Buffers;
+use callback_handler::CallbackHandler;
 use channels::Channels;
-use log::{debug, error, warn};
-use retransmit::Retransmit;
+use log::{debug, error};
 use serialport::TTYPort;
 use state::State;
-use std::collections::VecDeque;
-use std::io::{Error, ErrorKind};
+use status::Status;
 use std::sync::mpsc::{Receiver, Sender};
+use std::time::{Duration, SystemTime};
+use transaction::Transaction;
 
-const ACK_TIMEOUTS: usize = 4;
+const T_REMOTE_NOTRDY: Duration = Duration::from_secs(1);
 
-type Chunk = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
+type PayloadBuffer = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
 
 #[derive(Debug)]
 pub struct Transceiver {
     serial_port: TTYPort,
     channels: Channels,
+    buffers: Buffers,
     state: State,
-    frame_buffer: FrameBuffer,
-    chunks_to_send: VecDeque<Chunk>,
-    retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
-    frame_number: WrappingU3,
-    last_received_frame_num: Option<WrappingU3>,
-    response_buffer: Vec<u8>,
-    reject: bool,
 }
 
 impl Transceiver {
@@ -46,14 +43,8 @@ impl Transceiver {
         Self {
             serial_port,
             channels: Channels::new(requests, callback),
-            state: State::Disconnected,
-            frame_buffer: FrameBuffer::new(),
-            chunks_to_send: VecDeque::new(),
-            retransmits: heapless::Deque::new(),
-            frame_number: WrappingU3::from_u8_lossy(0),
-            last_received_frame_num: None,
-            response_buffer: Vec::new(),
-            reject: false,
+            buffers: Buffers::new(),
+            state: State::new(),
         }
     }
 
@@ -61,206 +52,73 @@ impl Transceiver {
         loop {
             if let Err(error) = self.main() {
                 error!("I/O error: {error}");
-                self.reject = true;
+                self.state.reject = true;
             }
         }
     }
 
     fn main(&mut self) -> std::io::Result<()> {
-        match self.state {
-            State::Disconnected | State::Failed => self.connect(),
-            State::Connected => self.transceive(),
+        match self.state.status {
+            Status::Disconnected | Status::Failed => self.connect(),
+            Status::Connected => self.transceive(),
         }
     }
-}
 
-/// Establishing ASHv2 connection.
-impl Transceiver {
     pub fn connect(&mut self) -> std::io::Result<()> {
+        debug!("Connecting to NCP...");
+        let start = SystemTime::now();
+
         loop {
-            self.send_rst()?;
+            self.reset()?;
 
             if let Packet::RstAck(rst_ack) = self
                 .serial_port
-                .read_packet_buffered(&mut self.frame_buffer)?
+                .read_packet_buffered(&mut self.buffers.frame)?
             {
                 debug!("Received RSTACK: {rst_ack}");
-                self.state = State::Connected;
+                self.state.status = Status::Connected;
+
+                if let Ok(elapsed) = start.elapsed() {
+                    debug!("Connection established after {elapsed:?}")
+                }
+
                 return Ok(());
             }
         }
     }
-}
 
-/// Send and receive packets.
-impl Transceiver {
     pub fn transceive(&mut self) -> std::io::Result<()> {
-        if self.reject {
+        if self.state.reject {
             return self.try_clear_reject_condition();
         }
 
-        // Try to receive ACKs.
-        if self.retransmits.is_full() {
-            while let Some(packet) = self.receive()? {
-                self.handle(packet)?;
-            }
-        }
-
-        // Try to retransmit packages.
-        if self.retransmits.is_full() {
-            while self.retransmit()? {}
-        }
-
-        // The retransmit queue is still full, so we bail out.
-        if self.retransmits.is_full() {
-            warn!("Retransmit queue still full.");
-            return Ok(());
-        }
-
-        // Send chunks.
-        self.send_chunks()?;
-
-        while let Some(packet) = self.receive()? {
-            self.handle(packet)?;
-        }
-
-        if self.chunks_to_send.is_empty() {
-            while let Some(packet) = self.receive()? {
-                self.handle(packet)?;
-            }
-
-            self.channels
-                .response(Ok(self.response_buffer.clone().into_boxed_slice()))?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Sending chunks.
-impl Transceiver {
-    fn send_chunks(&mut self) -> std::io::Result<()> {
-        while !self.retransmits.is_full() {
-            if !self.send_chunk()? {
-                return Ok(());
-            }
-        }
-
-        Ok(())
-    }
-
-    fn send_chunk(&mut self) -> std::io::Result<bool> {
-        if let Some(chunk) = self.chunks_to_send.pop_front() {
-            let frame_number = self.next_frame_number();
-            self.send_data(Data::create(frame_number, chunk))?;
-            Ok(true)
+        if let Some(bytes) = self.channels.receive()? {
+            Transaction::new(
+                &mut self.serial_port,
+                &mut self.channels,
+                &mut self.buffers,
+                &mut self.state,
+                bytes.ash_chunks()?,
+            )
+            .run()?;
         } else {
-            Ok(false)
-        }
-    }
-}
-
-/// Sending packets.
-impl Transceiver {
-    fn send_ack(&mut self, frame_num: WrappingU3) -> std::io::Result<()> {
-        self.serial_port
-            .write_frame_buffered(&Ack::from_ack_num(frame_num + 1), &mut self.frame_buffer)
-    }
-
-    fn send_data(&mut self, data: Data) -> std::io::Result<()> {
-        self.serial_port
-            .write_frame_buffered(&data, &mut self.frame_buffer)?;
-        self.enqueue_retransmit(data)
-            .inspect_err(|error| error!("Could not send DATA: {error}"))
-    }
-
-    fn send_nak(&mut self) -> std::io::Result<()> {
-        debug!("Sending NAK: {}", self.ack_number());
-        self.serial_port
-            .write_frame_buffered(
-                &Nak::from_ack_num(self.ack_number()),
-                &mut self.frame_buffer,
+            CallbackHandler::new(
+                &mut self.serial_port,
+                &mut self.channels,
+                &mut self.buffers,
+                &mut self.state,
             )
-            .inspect_err(|error| error!("Could not send NAK: {error}"))
-    }
-
-    fn send_rst(&mut self) -> std::io::Result<()> {
-        self.serial_port
-            .write_frame_buffered(&Rst::new(), &mut self.frame_buffer)
-            .inspect_err(|error| error!("Could not send RSTACK: {error}"))
-    }
-}
-
-/// Receive packets.
-impl Transceiver {
-    fn receive(&mut self) -> std::io::Result<Option<Packet>> {
-        match self
-            .serial_port
-            .read_packet_buffered(&mut self.frame_buffer)
-        {
-            Ok(packet) => Ok(Some(packet)),
-            Err(error) => {
-                if error.kind() == ErrorKind::TimedOut {
-                    Ok(None)
-                } else {
-                    Err(error)
-                }
-            }
-        }
-    }
-
-    fn handle(&mut self, packet: Packet) -> std::io::Result<()> {
-        todo!("implement packet processing")
-    }
-}
-
-/// Retransmitting packets.
-impl Transceiver {
-    fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
-        self.retransmits.push_front(data.into()).map_err(|_| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "ASHv2: failed to enqueue retransmit",
-            )
-        })
-    }
-
-    fn retransmit(&mut self) -> std::io::Result<bool> {
-        for _ in 0..self.retransmits.len() {
-            if let Some(retransmit) = self.retransmits.pop_back() {
-                if retransmit.is_timed_out() {
-                    let data = retransmit.into_data();
-                    warn!("Retransmitting {:?}", data);
-                    self.send_data(data)?;
-                    return Ok(true);
-                }
-            }
+            .run()?;
         }
 
-        Ok(false)
+        Ok(())
     }
-}
 
-/// Error handling
-impl Transceiver {
+    fn reset(&mut self) -> std::io::Result<()> {
+        todo!("Reset connection")
+    }
+
     fn try_clear_reject_condition(&mut self) -> std::io::Result<()> {
-        todo!("clear reject condition")
-    }
-}
-
-/// Miscellaneous methods.
-impl Transceiver {
-    /// Returns the ACK number to send.
-    fn ack_number(&self) -> WrappingU3 {
-        self.last_received_frame_num
-            .map(|frame_num| frame_num + 1)
-            .unwrap_or_default()
-    }
-
-    /// Returns the next frame number.
-    fn next_frame_number(&mut self) -> WrappingU3 {
-        let frame_number = self.frame_number;
-        self.frame_number += 1;
-        frame_number
+        todo!("Clear reject condition")
     }
 }

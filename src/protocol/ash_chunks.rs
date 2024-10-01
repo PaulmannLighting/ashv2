@@ -1,20 +1,23 @@
+use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 
 use crate::packet::Data;
-use crate::Error;
 
 pub trait AshChunks {
     /// Return an iterator over chunks that fit into ASH data frames.
     ///
     /// # Errors
     /// Returns an [`Error`] if the bytes cannot be distributed across chunks of valid sizes.
-    fn ash_chunks(&self) -> Result<Chunks<'_, u8>, Error>;
+    fn ash_chunks(&self) -> std::io::Result<Chunks<'_, u8>>;
 }
 
 impl AshChunks for [u8] {
-    fn ash_chunks(&self) -> Result<Chunks<'_, u8>, Error> {
+    fn ash_chunks(&self) -> std::io::Result<Chunks<'_, u8>> {
         if self.len() < Data::MIN_PAYLOAD_SIZE {
-            return Err(Error::CannotFindViableChunkSize(self.len()));
+            return Err(Error::new(
+                ErrorKind::UnexpectedEof,
+                "Not enough data to fill a chunk.",
+            ));
         }
 
         if self.len() <= Data::MAX_PAYLOAD_SIZE || self.len() % Data::MAX_PAYLOAD_SIZE == 0 {
@@ -29,7 +32,10 @@ impl AshChunks for [u8] {
             }
         }
 
-        Err(Error::CannotFindViableChunkSize(self.len()))
+        Err(Error::new(
+            ErrorKind::InvalidData,
+            "Could not distribute data across chunks.",
+        ))
     }
 }
 
@@ -37,7 +43,6 @@ impl AshChunks for [u8] {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use crate::packet::Data;
-    use crate::Error;
 
     use super::AshChunks;
 
@@ -128,7 +133,7 @@ mod tests {
         assert_eq!(chunks[2].len(), Data::MIN_PAYLOAD_SIZE);
     }
 
-    fn chunks(bytes: &[u8]) -> Result<Vec<&[u8]>, Error> {
+    fn chunks(bytes: &[u8]) -> std::io::Result<Vec<&[u8]>> {
         bytes.ash_chunks().map(|chunk| chunk.into_iter().collect())
     }
 }

@@ -129,7 +129,7 @@ impl Transmitter {
             .and_then(|chunks| self.transmit_chunks(chunks))
         {
             error!("{error}");
-            self.abort_current_transaction(error);
+            self.abort_current_transaction(error.into());
             info!("Re-initializing connection.");
             self.initialize()
         } else {
@@ -139,18 +139,24 @@ impl Transmitter {
         }
     }
 
-    fn transmit_chunks(&mut self, mut chunks: Chunks<'_, u8>) -> Result<(), Error> {
+    fn transmit_chunks(&mut self, mut chunks: Chunks<'_, u8>) -> std::io::Result<()> {
         let mut transmits;
 
         loop {
             if !self.connected.load(SeqCst) {
                 error!("Connection lost during transaction.");
-                return Err(Error::Aborted);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Connection lost during transaction.",
+                ));
             }
 
             if !self.running.load(SeqCst) {
                 error!("Terminated during active transaction.");
-                return Err(Error::Terminated);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Connection lost during transaction.",
+                ));
             }
 
             self.handle_naks_and_acks();
@@ -164,7 +170,7 @@ impl Transmitter {
         }
     }
 
-    fn retransmit(&mut self) -> Result<usize, Error> {
+    fn retransmit(&mut self) -> std::io::Result<usize> {
         let mut retransmits: usize = 0;
 
         while self.sent.len() < MAX_TIMEOUTS {
@@ -174,7 +180,10 @@ impl Transmitter {
 
                 if *cnt > MAX_TIMEOUTS {
                     error!("Max retransmits exceeded for frame #{}", data.frame_num());
-                    return Err(Error::MaxRetransmitsExceeded);
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "Max retransmits exceeded.",
+                    ));
                 }
 
                 retransmits += 1;
@@ -191,7 +200,7 @@ impl Transmitter {
         Ok(retransmits)
     }
 
-    fn push_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> Result<usize, Error> {
+    fn push_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<usize> {
         let mut transmits: usize = 0;
 
         while self.sent.len() < MAX_TIMEOUTS {
@@ -214,22 +223,22 @@ impl Transmitter {
         Ok(transmits)
     }
 
-    fn send_chunk(&mut self) -> Result<(), Error> {
+    fn send_chunk(&mut self) -> std::io::Result<()> {
         debug!("Sending chunk.");
         trace!("Buffer: {:#04X?}", &*self.buffer);
         let data = Data::create(
             self.next_frame_number(),
             self.buffer.as_slice().try_into().map_err(|()| {
-                Error::Frame(frame::Error::PayloadTooLarge {
-                    max: Data::MAX_PAYLOAD_SIZE,
-                    size: self.buffer.len(),
-                })
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to convert buffer to array.",
+                )
             })?,
         );
         self.send_data(data)
     }
 
-    fn send_data(&mut self, data: Data) -> Result<(), Error> {
+    fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         debug!("Sending data: {data}");
         trace!("{data:#04X?}");
 
@@ -245,7 +254,10 @@ impl Transmitter {
             Ok(())
         } else {
             error!("Attempted to transmit while not connected.");
-            Err(Error::Aborted)
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "Attempted to transmit while not connected.",
+            ))
         }
     }
 
