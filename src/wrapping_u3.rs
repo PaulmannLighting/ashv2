@@ -3,7 +3,7 @@ use std::num::NonZero;
 use std::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
-const NON_ZERO_MASK: u8 = 0b0000_1000;
+const NON_ZERO_BIT: u8 = 0b0000_1000;
 
 /// A three bit number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -17,13 +17,21 @@ impl WrappingU3 {
         #[allow(unsafe_code)]
         // SAFETY: We create a three bit number by applying `MASK` to `n`.
         // Finally, we OR the result with `NON_ZERO_MASK`, which makes the number non-zero.
-        Self(unsafe { NonZero::new_unchecked(n & MASK | NON_ZERO_MASK) })
+        Self(unsafe { NonZero::new_unchecked(n & MASK | NON_ZERO_BIT) })
     }
 
     /// Returns the number as an u8.
     #[must_use]
     pub const fn as_u8(self) -> u8 {
-        self.0.get() ^ NON_ZERO_MASK
+        self.0.get() & MASK
+    }
+}
+
+impl Add for WrappingU3 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::from_u8_lossy(self.as_u8().wrapping_add(rhs.as_u8()))
     }
 }
 
@@ -32,6 +40,12 @@ impl Add<u8> for WrappingU3 {
 
     fn add(self, rhs: u8) -> Self::Output {
         Self::from_u8_lossy(self.as_u8().wrapping_add(rhs))
+    }
+}
+
+impl AddAssign for WrappingU3 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self::from_u8_lossy(self.as_u8().wrapping_add(rhs.as_u8()));
     }
 }
 
@@ -100,7 +114,17 @@ mod tests {
     }
 
     #[test]
-    fn test_add() {
+    fn test_add_self() {
+        for n in 0..=u8::MAX {
+            for rhs in 0..=u8::MAX {
+                let number = WrappingU3::from_u8_lossy(n) + WrappingU3::from_u8_lossy(rhs);
+                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_u8() {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
                 let number = WrappingU3::from_u8_lossy(n) + rhs;
@@ -110,7 +134,18 @@ mod tests {
     }
 
     #[test]
-    fn test_add_assign() {
+    fn test_add_assign_self() {
+        for n in 0..=u8::MAX {
+            for rhs in 0..=u8::MAX {
+                let mut number = WrappingU3::from_u8_lossy(n);
+                number += WrappingU3::from_u8_lossy(rhs);
+                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+            }
+        }
+    }
+
+    #[test]
+    fn test_add_assign_u8() {
         for n in 0..=u8::MAX {
             for rhs in 0..=u8::MAX {
                 let mut number = WrappingU3::from_u8_lossy(n);
