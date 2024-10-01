@@ -50,6 +50,12 @@ impl Display for WrappingU3 {
     }
 }
 
+impl PartialEq<u8> for WrappingU3 {
+    fn eq(&self, other: &u8) -> bool {
+        self.as_u8() == *other
+    }
+}
+
 impl From<WrappingU3> for u8 {
     fn from(value: WrappingU3) -> Self {
         value.as_u8()
