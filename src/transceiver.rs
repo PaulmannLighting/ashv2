@@ -2,6 +2,7 @@ mod channels;
 mod retransmit;
 mod rw_frame;
 mod state;
+mod three_bit_number;
 
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
@@ -17,6 +18,7 @@ use state::State;
 use std::collections::VecDeque;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, Sender};
+use three_bit_number::ThreeBitNumber;
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -31,7 +33,7 @@ pub struct Transceiver {
     chunks_to_send: VecDeque<Chunk>,
     retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
     frame_number: u8,
-    ack_number: u8,
+    last_received_frame_num: Option<ThreeBitNumber>,
     response_buffer: Vec<u8>,
     reject: bool,
 }
@@ -51,7 +53,7 @@ impl Transceiver {
             chunks_to_send: VecDeque::new(),
             retransmits: heapless::Deque::new(),
             frame_number: 0,
-            ack_number: 0,
+            last_received_frame_num: None,
             response_buffer: Vec::new(),
             reject: false,
         }
@@ -172,20 +174,24 @@ impl Transceiver {
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.serial_port
             .write_frame_buffered(&data, &mut self.frame_buffer)?;
-        self.enqueue_retransmit(data)?;
-        Ok(())
+        self.enqueue_retransmit(data)
+            .inspect_err(|error| error!("Could not send DATA: {error}"))
     }
 
-    fn send_nak(&mut self) {
+    fn send_nak(&mut self) -> std::io::Result<()> {
         debug!("Sending NAK: {}", self.ack_number());
         self.serial_port
-            .write_frame_buffered(&Nak::from_ack_num(self.ack_number()), &mut self.buffer)
-            .unwrap_or_else(|error| error!("Could not send NAK: {error}"));
+            .write_frame_buffered(
+                &Nak::from_ack_num(self.ack_number()),
+                &mut self.frame_buffer,
+            )
+            .inspect_err(|error| error!("Could not send NAK: {error}"))
     }
 
     fn send_rst(&mut self) -> std::io::Result<()> {
         self.serial_port
             .write_frame_buffered(&Rst::new(), &mut self.frame_buffer)
+            .inspect_err(|error| error!("Could not send RSTACK: {error}"))
     }
 }
 
@@ -248,6 +254,13 @@ impl Transceiver {
 
 /// Miscellaneous methods.
 impl Transceiver {
+    /// Returns the ACK number to send.
+    fn ack_number(&self) -> u8 {
+        self.last_received_frame_num
+            .map_or(0, |frame_num| (frame_num + 1).as_u8())
+    }
+
+    /// Returns the next frame number.
     fn next_frame_number(&mut self) -> u8 {
         let frame_number = self.frame_number;
         self.frame_number = self.frame_number.wrapping_add(1) % 8;
