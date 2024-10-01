@@ -9,7 +9,7 @@ const MASK: u8 = 0b0000_0111;
 pub struct WrappingU3(NonZero<u8>);
 
 impl WrappingU3 {
-    /// Creates a new optional three bit number.
+    /// Creates a new three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
         Self(shifted_nonzero_three_bits_lossy(n))
