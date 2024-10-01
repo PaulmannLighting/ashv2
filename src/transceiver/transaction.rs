@@ -1,14 +1,15 @@
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
+use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet};
-use crate::protocol::AshChunks;
+use crate::protocol::{AshChunks, Stuff, FLAG};
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::channels::Channels;
 use crate::transceiver::state::State;
 use crate::wrapping_u3::WrappingU3;
-use log::warn;
+use log::{debug, trace, warn};
 use serialport::TTYPort;
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Write};
 use std::slice::Chunks;
 
 /// Transaction processor.

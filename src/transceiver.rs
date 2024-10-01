@@ -1,6 +1,7 @@
 mod buffers;
 mod callback_handler;
 mod channels;
+mod frame_io;
 mod retransmit;
 mod state;
 mod status;
