@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::Packet;
-use crate::protocol::{Stuff, Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::transceiver::Transceiver;
 use log::{debug, trace};
 use std::io::{Error, ErrorKind, Read, Write};

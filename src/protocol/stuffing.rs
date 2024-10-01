@@ -5,12 +5,15 @@ const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
 /// Trait to allow stuffing of byte iterators.
-pub trait Stuff {
+pub trait Stuffing {
     /// Stuffs a byte stream.
     fn stuff(&mut self) -> Result<()>;
+
+    /// Unstuffs a byte stream.
+    fn unstuff(&mut self);
 }
 
-impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
+impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
     fn stuff(&mut self) -> Result<()> {
         let mut index: usize = 0;
 
@@ -30,13 +33,7 @@ impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
 
         Ok(())
     }
-}
 
-pub trait Unstuff {
-    fn unstuff(&mut self);
-}
-
-impl<const SIZE: usize> Unstuff for heapless::Vec<u8, SIZE> {
     fn unstuff(&mut self) {
         let mut offset: usize = 0;
 
@@ -59,7 +56,7 @@ impl<const SIZE: usize> Unstuff for heapless::Vec<u8, SIZE> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Stuff, Unstuff};
+    use super::Stuffing;
 
     #[test]
     fn test_stuffing() {

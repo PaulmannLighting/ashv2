@@ -4,7 +4,7 @@ use log::{debug, trace};
 
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Packet;
-use crate::protocol::{Unstuff, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 
 pub trait AshRead: Read {
     /// Read an ASH [`Packet`].

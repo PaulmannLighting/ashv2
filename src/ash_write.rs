@@ -3,7 +3,7 @@ use std::io::{Error, ErrorKind, Result, Write};
 use log::{debug, trace};
 
 use crate::frame::Frame;
-use crate::protocol::{Stuff, FLAG};
+use crate::protocol::{Stuffing, FLAG};
 use crate::FrameBuffer;
 
 pub trait AshWrite: Write {
