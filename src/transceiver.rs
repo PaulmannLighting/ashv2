@@ -1,5 +1,4 @@
 mod callbacks;
-mod channels;
 mod connect;
 mod constants;
 mod frame_io;
@@ -7,22 +6,20 @@ mod misc;
 mod receive;
 mod reject;
 mod reset;
-mod retransmit;
+mod retransmits;
 mod send;
-mod send_queue;
-mod status;
 mod transaction;
 
+use crate::channels::Channels;
 use crate::packet::Data;
 use crate::protocol::AshChunks;
 use crate::request::Request;
+use crate::retransmit::Retransmit;
+use crate::status::Status;
 use crate::wrapping_u3::WrappingU3;
 use crate::FrameBuffer;
-use channels::Channels;
 use log::error;
-use retransmit::Retransmit;
 use serialport::TTYPort;
-use status::Status;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::SystemTime;
 

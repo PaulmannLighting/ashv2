@@ -4,7 +4,7 @@ use crate::wrapping_u3::WrappingU3;
 impl Transceiver {
     pub(super) fn ack_number(&self) -> WrappingU3 {
         self.last_received_frame_num
-            .map_or(WrappingU3::default(), |ack_number| ack_number + 1)
+            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1)
     }
 
     pub(super) fn n_rdy(&self) -> bool {

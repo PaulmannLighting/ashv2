@@ -53,19 +53,4 @@ impl Transceiver {
     fn disable_callbacks(&mut self) -> std::io::Result<()> {
         self.ack(self.ack_number())
     }
-
-    fn retransmit(&mut self) -> std::io::Result<bool> {
-        for _ in 0..self.retransmits.len() {
-            if let Some(retransmit) = self.retransmits.pop() {
-                if retransmit.is_timed_out() {
-                    let data = retransmit.into_data();
-                    warn!("Retransmitting {:?}", data);
-                    self.send_data(data)?;
-                    return Ok(true);
-                }
-            }
-        }
-
-        Ok(false)
-    }
 }

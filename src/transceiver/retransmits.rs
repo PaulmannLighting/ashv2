@@ -1,4 +1,5 @@
 use super::Transceiver;
+use crate::retransmit::Retransmit;
 use crate::wrapping_u3::WrappingU3;
 use log::trace;
 
@@ -33,7 +34,7 @@ impl Transceiver {
         while let Some(retransmit) = self
             .retransmits
             .iter()
-            .position(|retransmit| retransmit.is_timed_out())
+            .position(Retransmit::is_timed_out)
             .map(|index| self.retransmits.remove(index))
         {
             self.send_data(retransmit.into_data())?;

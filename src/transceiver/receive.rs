@@ -1,8 +1,8 @@
-use super::status::Status;
 use super::Transceiver;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::Mask;
+use crate::status::Status;
 use log::{debug, error, trace, warn};
 use std::io::ErrorKind;
 

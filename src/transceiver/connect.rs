@@ -1,6 +1,7 @@
-use super::{status::Status, Transceiver};
+use super::Transceiver;
 use crate::ash_read::AshRead;
 use crate::packet::Packet;
+use crate::status::Status;
 use log::debug;
 use std::time::SystemTime;
 
