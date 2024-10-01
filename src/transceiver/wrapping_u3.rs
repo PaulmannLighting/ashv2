@@ -2,6 +2,7 @@ use std::num::NonZero;
 use std::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
+const NON_ZERO_MASK: u8 = 0b0000_1000;
 
 /// A three bit number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -18,7 +19,7 @@ impl WrappingU3 {
     /// Returns the number as an u8.
     #[must_use]
     pub const fn as_u8(self) -> u8 {
-        self.0.get() >> 1
+        self.0.get() ^ NON_ZERO_MASK
     }
 }
 
@@ -59,10 +60,9 @@ impl TryFrom<u8> for WrappingU3 {
 const fn shifted_nonzero_three_bits_lossy(n: u8) -> NonZero<u8> {
     #[allow(unsafe_code)]
     // SAFETY: We create a three bit number by applying `MASK` to `n`.
-    // Then we shift that number to the left by one.
-    // Finally, we OR the result with 1, which makes the number non-zero.
+    // Finally, we XOR the result with `NON_ZERO_MASK`, which makes the number non-zero.
     unsafe {
-        NonZero::new_unchecked(((n & MASK) << 1) | 1)
+        NonZero::new_unchecked(n & MASK | NON_ZERO_MASK)
     }
 }
 
