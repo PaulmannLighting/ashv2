@@ -1,4 +1,3 @@
-mod ack_number;
 mod channels;
 mod retransmit;
 mod rw_frame;
@@ -8,7 +7,6 @@ use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
 use crate::packet::{Ack, Data, Nak, Packet, Rst};
 use crate::request::Request;
-use crate::transceiver::ack_number::AckNumber;
 use crate::transceiver::channels::Channels;
 use crate::util::next_three_bit_number;
 use crate::FrameBuffer;
@@ -33,7 +31,7 @@ pub struct Transceiver {
     chunks_to_send: VecDeque<Chunk>,
     retransmits: heapless::Deque<Retransmit, ACK_TIMEOUTS>,
     frame_number: u8,
-    ack_number: AckNumber,
+    ack_number: u8,
     response_buffer: Vec<u8>,
     reject: bool,
 }
@@ -53,6 +51,7 @@ impl Transceiver {
             chunks_to_send: VecDeque::new(),
             retransmits: heapless::Deque::new(),
             frame_number: 0,
+            ack_number: 0,
             response_buffer: Vec::new(),
             reject: false,
         }
