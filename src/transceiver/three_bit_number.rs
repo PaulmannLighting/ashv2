@@ -12,7 +12,7 @@ impl ThreeBitNumber {
     /// Creates a new optional three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
-        Self(three_bit_nonzero_lossy(n))
+        Self(shifted_nonzero_three_bits(n))
     }
 
     /// Returns the number as an u8.
@@ -32,7 +32,7 @@ impl Add<u8> for ThreeBitNumber {
 
 impl AddAssign<u8> for ThreeBitNumber {
     fn add_assign(&mut self, rhs: u8) {
-        self.0 = three_bit_nonzero_lossy(self.as_u8().wrapping_add(rhs));
+        self.0 = shifted_nonzero_three_bits(self.as_u8().wrapping_add(rhs));
     }
 }
 
@@ -42,7 +42,7 @@ impl From<ThreeBitNumber> for u8 {
     }
 }
 
-const fn three_bit_nonzero_lossy(n: u8) -> NonZero<u8> {
+const fn shifted_nonzero_three_bits(n: u8) -> NonZero<u8> {
     #[allow(unsafe_code)]
     // SAFETY: We create a three bit number by applying `MASK`.
     // Then we shift that number to the left by one.
