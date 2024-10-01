@@ -1,7 +1,3 @@
-const DEFAULT_MASK: u8 = 0xB8;
-const DEFAULT_SEED: u8 = 0x42;
-const DEFAULT_FLAG_BIT: u8 = 0x01;
-
 pub trait Mask {
     /// Masks a byte stream with pseudo-random numbers.
     fn mask(&mut self);
@@ -23,6 +19,10 @@ pub struct MaskGenerator {
 }
 
 impl MaskGenerator {
+    pub const DEFAULT_MASK: u8 = 0xB8;
+    pub const DEFAULT_SEED: u8 = 0x42;
+    pub const DEFAULT_FLAG_BIT: u8 = 0x01;
+
     #[must_use]
     pub const fn new(seed: u8, flag_bit: u8, mask: u8) -> Self {
         Self {
@@ -35,7 +35,11 @@ impl MaskGenerator {
 
 impl Default for MaskGenerator {
     fn default() -> Self {
-        Self::new(DEFAULT_SEED, DEFAULT_FLAG_BIT, DEFAULT_MASK)
+        Self::new(
+            Self::DEFAULT_SEED,
+            Self::DEFAULT_FLAG_BIT,
+            Self::DEFAULT_MASK,
+        )
     }
 }
 
