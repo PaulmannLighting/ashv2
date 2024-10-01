@@ -12,7 +12,7 @@ impl ThreeBitNumber {
     /// Creates a new optional three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
-        Self(shifted_nonzero_three_bits(n))
+        Self(shifted_nonzero_three_bits_lossy(n))
     }
 
     /// Returns the number as an u8.
@@ -32,7 +32,7 @@ impl Add<u8> for ThreeBitNumber {
 
 impl AddAssign<u8> for ThreeBitNumber {
     fn add_assign(&mut self, rhs: u8) {
-        self.0 = shifted_nonzero_three_bits(self.as_u8().wrapping_add(rhs));
+        self.0 = shifted_nonzero_three_bits_lossy(self.as_u8().wrapping_add(rhs));
     }
 }
 
@@ -42,9 +42,9 @@ impl From<ThreeBitNumber> for u8 {
     }
 }
 
-const fn shifted_nonzero_three_bits(n: u8) -> NonZero<u8> {
+const fn shifted_nonzero_three_bits_lossy(n: u8) -> NonZero<u8> {
     #[allow(unsafe_code)]
-    // SAFETY: We create a three bit number by applying `MASK`.
+    // SAFETY: We create a three bit number by applying `MASK` to `n`.
     // Then we shift that number to the left by one.
     // Finally, we OR the result with 1, which makes the number non-zero.
     unsafe {
@@ -54,13 +54,13 @@ const fn shifted_nonzero_three_bits(n: u8) -> NonZero<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ThreeBitNumber, MASK};
+    use super::ThreeBitNumber;
 
     #[test]
     fn test_new() {
         for n in u8::MIN..=u8::MAX {
             let number = ThreeBitNumber::from_u8_lossy(n);
-            assert_eq!(u8::from(number), n & MASK);
+            assert_eq!(u8::from(number), n % 8);
         }
     }
 
@@ -68,28 +68,28 @@ mod tests {
     fn test_as_u8() {
         for n in u8::MIN..=u8::MAX {
             let number = ThreeBitNumber::from_u8_lossy(n);
-            assert_eq!(number.as_u8(), n & MASK);
+            assert_eq!(number.as_u8(), n % 8);
         }
     }
 
     #[test]
-    #[allow(clippy::assign_op_pattern)]
     fn test_add() {
-        let mut number = ThreeBitNumber::from_u8_lossy(0);
-
-        for n in 1..=u8::MAX {
-            number = number + 1;
-            assert_eq!(u8::from(number), n & MASK);
+        for n in 0..=u8::MAX {
+            for rhs in 0..=u8::MAX {
+                let number = ThreeBitNumber::from_u8_lossy(n) + rhs;
+                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+            }
         }
     }
 
     #[test]
     fn test_add_assign() {
-        let mut number = ThreeBitNumber::from_u8_lossy(0);
-
-        for n in 1..=u8::MAX {
-            number += 1;
-            assert_eq!(u8::from(number), n & MASK);
+        for n in 0..=u8::MAX {
+            for rhs in 0..=u8::MAX {
+                let mut number = ThreeBitNumber::from_u8_lossy(n);
+                number += rhs;
+                assert_eq!(u8::from(number), n.wrapping_add(rhs) % 8);
+            }
         }
     }
 }
