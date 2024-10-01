@@ -1,10 +1,6 @@
-use std::iter::{Map, Zip};
-
 const DEFAULT_MASK: u8 = 0xB8;
 const DEFAULT_SEED: u8 = 0x42;
 const DEFAULT_FLAG_BIT: u8 = 0x01;
-
-pub type MaskIterator<T> = Map<Zip<T, MaskGenerator>, fn((u8, u8)) -> u8>;
 
 pub trait Mask {
     /// Masks a byte stream with pseudo-random numbers.
@@ -15,7 +11,7 @@ impl Mask for [u8] {
     fn mask(&mut self) {
         self.iter_mut()
             .zip(MaskGenerator::default())
-            .for_each(|(byte, mask)| *byte ^= mask)
+            .for_each(|(byte, mask)| *byte ^= mask);
     }
 }
 
