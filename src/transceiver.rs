@@ -34,15 +34,28 @@ use std::time::SystemTime;
 /// ```
 /// use std::sync::mpsc::channel;
 /// use std::thread::spawn;
+/// use serialport::FlowControl;
+/// use tokio::task::futures;
 /// use ashv2::{open, BaudRate, Host, Transceiver};
+/// use ::futures::executor;
 ///
-/// let serial_port = open("/dev/ttyUSB0", BaudRate::RstCts).unwrap();
-/// let (sender, receiver) = channel();
-/// let transceiver = Transceiver::new(serial_port, receiver, None);
-/// let thread_handle = spawn(move || transceiver.run());
-/// let host = Host::from(sender);
-/// let response = host.communicate(&[0x00, 0x01, 0x02, 0x03]).await.unwrap();
-/// println!("{response:?}");
+/// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
+///     Ok(serial_port) => {let (sender, receiver) = channel();
+///         let transceiver = Transceiver::new(serial_port, receiver, None);
+///         let _thread_handle = spawn(move || transceiver.run());
+///         let host = Host::from(sender);
+///
+///         let version_command = &[0x00, 0x01, 0x02, 0x03];
+///         let future = host.communicate(version_command);
+///
+///         match executor::block_on(future) {
+///             Ok(response) => println!("{response:?}"),
+///             Err(error) => eprintln!("{error}"),
+///         }
+///     },
+///     Err(error) => eprintln!("{error}"),
+/// }
+///
 /// ```
 #[derive(Debug)]
 pub struct Transceiver {
@@ -63,6 +76,16 @@ pub struct Transceiver {
 }
 
 impl Transceiver {
+    /// Create a new transceiver.
+    ///
+    /// # Parameters
+    ///
+    /// - `serial_port`: The serial port to communicate with the NCP.
+    /// - `requests`: The channel to receive requests from the host.
+    /// - `callback`: An optional channel to send callbacks from the NCP to.
+    ///
+    /// If no callback channel is provided, the transceiver will
+    /// silently discard any callbacks actively sent from the NCP.
     #[must_use]
     pub const fn new(
         serial_port: TTYPort,
@@ -87,6 +110,9 @@ impl Transceiver {
         }
     }
 
+    /// Run the transceiver.
+    ///
+    /// This should be called in a separate thread.
     pub fn run(mut self) {
         loop {
             if let Err(error) = self.main() {
@@ -103,7 +129,7 @@ impl Transceiver {
         }
     }
 
-    pub fn communicate(&mut self) -> std::io::Result<()> {
+    fn communicate(&mut self) -> std::io::Result<()> {
         if self.reject {
             return self.try_clear_reject_condition();
         }
