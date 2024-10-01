@@ -14,7 +14,10 @@ impl WrappingU3 {
     /// Creates a new three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
-        Self(nonzero_lossy(n))
+        #[allow(unsafe_code)]
+        // SAFETY: We create a three bit number by applying `MASK` to `n`.
+        // Finally, we XOR the result with `NON_ZERO_MASK`, which makes the number non-zero.
+        Self(unsafe { NonZero::new_unchecked(n & MASK | NON_ZERO_MASK) })
     }
 
     /// Returns the number as an u8.
@@ -34,7 +37,7 @@ impl Add<u8> for WrappingU3 {
 
 impl AddAssign<u8> for WrappingU3 {
     fn add_assign(&mut self, rhs: u8) {
-        self.0 = nonzero_lossy(self.as_u8().wrapping_add(rhs));
+        *self = Self::from_u8_lossy(self.as_u8().wrapping_add(rhs));
     }
 }
 
@@ -73,17 +76,6 @@ impl TryFrom<u8> for WrappingU3 {
         } else {
             Err(value)
         }
-    }
-}
-
-/// Creates a non-zero three bit number stored in four bits
-/// where the fourth bit is `1` making the number non-zero.
-const fn nonzero_lossy(n: u8) -> NonZero<u8> {
-    #[allow(unsafe_code)]
-    // SAFETY: We create a three bit number by applying `MASK` to `n`.
-    // Finally, we XOR the result with `NON_ZERO_MASK`, which makes the number non-zero.
-    unsafe {
-        NonZero::new_unchecked(n & MASK | NON_ZERO_MASK)
     }
 }
 
