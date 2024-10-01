@@ -23,6 +23,27 @@ use serialport::TTYPort;
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::SystemTime;
 
+/// ASHv2 transceiver.
+///
+/// The transceiver is responsible for handling the communication between the host and the NCP.
+/// It is supposed to be run in a separate thread.
+/// A [`Host`](crate::Host) can be used to communicate with the NCP via the transceiver.
+///
+/// # Usage
+///
+/// ```
+/// use std::sync::mpsc::channel;
+/// use std::thread::spawn;
+/// use ashv2::{open, BaudRate, Host, Transceiver};
+///
+/// let serial_port = open("/dev/ttyUSB0", BaudRate::RstCts).unwrap();
+/// let (sender, receiver) = channel();
+/// let transceiver = Transceiver::new(serial_port, receiver, None);
+/// let thread_handle = spawn(move || transceiver.run());
+/// let host = Host::from(sender);
+/// let response = host.communicate(&[0x00, 0x01, 0x02, 0x03]).await.unwrap();
+/// println!("{response:?}");
+/// ```
 #[derive(Debug)]
 pub struct Transceiver {
     serial_port: TTYPort,

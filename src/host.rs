@@ -1,33 +1,20 @@
 use std::future::Future;
-use std::sync::mpsc::{channel, Sender};
-use std::thread::{spawn, JoinHandle};
-
-use log::error;
-use serialport::TTYPort;
+use std::sync::mpsc::Sender;
 
 use crate::request::Request;
 use crate::response::Response;
-use crate::transceiver::Transceiver;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 #[derive(Debug)]
 pub struct Host {
     command: Sender<Request>,
-    transceiver: Option<JoinHandle<()>>,
 }
 
 impl Host {
     /// Creates and starts the host.
     #[must_use]
-    pub fn new(serial_port: TTYPort, callback: Option<Sender<Box<[u8]>>>) -> Self {
-        let (command, requests) = channel();
-
-        Self {
-            command,
-            transceiver: Some(spawn(move || {
-                Transceiver::new(serial_port, requests, callback).run();
-            })),
-        }
+    pub const fn new(command: Sender<Request>) -> Self {
+        Self { command }
     }
 
     /// Communicate with the NCP, returning `Box<[u8]>`.
@@ -44,14 +31,8 @@ impl Host {
     }
 }
 
-impl Drop for Host {
-    fn drop(&mut self) {
-        // TODO: Signal thread to shut down.
-
-        if let Some(thread) = self.transceiver.take() {
-            thread.join().unwrap_or_else(|_| {
-                error!("Failed to join transceiver thread.");
-            });
-        }
+impl From<Sender<Request>> for Host {
+    fn from(command: Sender<Request>) -> Self {
+        Self::new(command)
     }
 }

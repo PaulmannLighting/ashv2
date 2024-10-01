@@ -12,6 +12,7 @@ use code::Code;
 pub use frame_buffer::FrameBuffer;
 pub use host::Host;
 pub use serial_port::open;
+pub use transceiver::Transceiver;
 
 mod ash_read;
 mod ash_write;
