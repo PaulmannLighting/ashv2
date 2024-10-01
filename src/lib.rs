@@ -30,6 +30,7 @@ mod response;
 mod serial_port;
 mod transceiver;
 mod util;
+mod wrapping_u3;
 
 const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 const VERSION: u8 = 0x02;

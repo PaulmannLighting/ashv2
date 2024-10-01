@@ -1,5 +1,6 @@
 use crate::frame::Frame;
 use crate::packet::headers;
+use crate::wrapping_u3::WrappingU3;
 use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
@@ -23,7 +24,7 @@ impl Ack {
     }
 
     #[must_use]
-    pub fn from_ack_num(ack_num: u8) -> Self {
+    pub fn from_ack_num(ack_num: WrappingU3) -> Self {
         Self::new(headers::Ack::new(ack_num, false, false))
     }
 
@@ -35,7 +36,7 @@ impl Ack {
 
     /// Returns the acknowledgement number.
     #[must_use]
-    pub const fn ack_num(&self) -> u8 {
+    pub const fn ack_num(&self) -> WrappingU3 {
         self.header.ack_num()
     }
 }
@@ -90,6 +91,7 @@ mod tests {
     use super::Ack;
     use crate::frame::Frame;
     use crate::packet::headers;
+    use crate::wrapping_u3::WrappingU3;
 
     const ACK1: Ack = Ack {
         header: headers::Ack::from_bits_retain(0x81),
@@ -108,8 +110,8 @@ mod tests {
 
     #[test]
     fn test_ack_num() {
-        assert_eq!(ACK1.ack_num(), 1);
-        assert_eq!(ACK2.ack_num(), 6);
+        assert_eq!(ACK1.ack_num().as_u8(), 1);
+        assert_eq!(ACK2.ack_num().as_u8(), 6);
     }
 
     #[test]
@@ -153,7 +155,12 @@ mod tests {
     #[test]
     fn from_ack_num() {
         for ack_num in u8::MIN..=u8::MAX {
-            assert_eq!(Ack::from_ack_num(ack_num).ack_num(), ack_num % 8);
+            assert_eq!(
+                Ack::from_ack_num(WrappingU3::from_u8_lossy(ack_num))
+                    .ack_num()
+                    .as_u8(),
+                ack_num % 8
+            );
         }
     }
 }

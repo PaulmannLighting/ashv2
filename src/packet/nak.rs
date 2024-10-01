@@ -1,6 +1,6 @@
-use crate::error::frame::Error;
 use crate::frame::Frame;
 use crate::packet::headers;
+use crate::wrapping_u3::WrappingU3;
 use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
@@ -24,7 +24,7 @@ impl Nak {
     }
 
     #[must_use]
-    pub fn from_ack_num(ack_num: u8) -> Self {
+    pub fn from_ack_num(ack_num: WrappingU3) -> Self {
         Self::new(headers::Nak::new(ack_num, false, false))
     }
 
@@ -36,7 +36,7 @@ impl Nak {
 
     /// Return the acknowledgement number.
     #[must_use]
-    pub const fn ack_num(&self) -> u8 {
+    pub const fn ack_num(&self) -> WrappingU3 {
         self.header.ack_num()
     }
 }
@@ -109,8 +109,8 @@ mod tests {
 
     #[test]
     fn test_ack_num() {
-        assert_eq!(NAK1.ack_num(), 6);
-        assert_eq!(NAK2.ack_num(), 5);
+        assert_eq!(NAK1.ack_num().as_u8(), 6);
+        assert_eq!(NAK2.ack_num().as_u8(), 5);
     }
 
     #[test]

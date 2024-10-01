@@ -2,13 +2,12 @@ mod channels;
 mod retransmit;
 mod rw_frame;
 mod state;
-mod wrapping_u3;
 
 use crate::ash_read::AshRead;
 use crate::ash_write::AshWrite;
 use crate::packet::{Ack, Data, Nak, Packet, Rst};
 use crate::request::Request;
-use crate::util::next_three_bit_number;
+use crate::wrapping_u3::WrappingU3;
 use crate::FrameBuffer;
 use channels::Channels;
 use log::{debug, error, warn};
@@ -18,7 +17,6 @@ use state::State;
 use std::collections::VecDeque;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, Sender};
-use wrapping_u3::WrappingU3;
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -164,11 +162,9 @@ impl Transceiver {
 
 /// Sending packets.
 impl Transceiver {
-    fn send_ack(&mut self, frame_num: u8) -> std::io::Result<()> {
-        self.serial_port.write_frame_buffered(
-            &Ack::from_ack_num(next_three_bit_number(frame_num)),
-            &mut self.frame_buffer,
-        )
+    fn send_ack(&mut self, frame_num: WrappingU3) -> std::io::Result<()> {
+        self.serial_port
+            .write_frame_buffered(&Ack::from_ack_num(frame_num + 1), &mut self.frame_buffer)
     }
 
     fn send_data(&mut self, data: Data) -> std::io::Result<()> {
@@ -255,14 +251,15 @@ impl Transceiver {
 /// Miscellaneous methods.
 impl Transceiver {
     /// Returns the ACK number to send.
-    fn ack_number(&self) -> u8 {
+    fn ack_number(&self) -> WrappingU3 {
         self.last_received_frame_num
-            .map_or(0, |frame_num| (frame_num + 1).as_u8())
+            .map(|frame_num| frame_num + 1)
+            .unwrap_or_default()
     }
 
     /// Returns the next frame number.
-    fn next_frame_number(&mut self) -> u8 {
-        let frame_number = self.frame_number.as_u8();
+    fn next_frame_number(&mut self) -> WrappingU3 {
+        let frame_number = self.frame_number;
         self.frame_number += 1;
         frame_number
     }

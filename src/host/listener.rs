@@ -14,7 +14,8 @@ use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::{Event, HandleResult, Handler, Mask};
-use crate::util::{next_three_bit_number, NonPoisonedRwLock};
+use crate::util::NonPoisonedRwLock;
+use crate::wrapping_u3::WrappingU3;
 
 #[derive(Debug)]
 pub struct Listener {
@@ -25,12 +26,12 @@ pub struct Listener {
     handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
     ack_number: Arc<AtomicU8>,
     callback: Option<Sender<FrameBuffer>>,
-    ack_sender: Sender<u8>,
-    nak_sender: Sender<u8>,
+    ack_sender: Sender<WrappingU3>,
+    nak_sender: Sender<WrappingU3>,
     // Local state
     buffer: FrameBuffer,
     is_rejecting: bool,
-    last_received_frame_number: Option<u8>,
+    last_received_frame_number: Option<WrappingU3>,
 }
 
 impl Listener {
@@ -41,7 +42,7 @@ impl Listener {
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
         ack_number: Arc<AtomicU8>,
         callback: Option<Sender<FrameBuffer>>,
-    ) -> (Self, Receiver<u8>, Receiver<u8>) {
+    ) -> (Self, Receiver<WrappingU3>, Receiver<WrappingU3>) {
         let (ack_sender, ack_receiver) = channel();
         let (nak_sender, nak_receiver) = channel();
         let listener = Self {
@@ -120,7 +121,7 @@ impl Listener {
             self.ack_received_data(data.frame_num());
             self.is_rejecting = false;
             self.last_received_frame_number = Some(data.frame_num());
-            self.ack_number.store(self.ack_number(), SeqCst);
+            self.ack_number.store(self.ack_number().as_u8(), SeqCst);
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sender
                 .send(data.ack_num())
@@ -129,7 +130,7 @@ impl Listener {
                 });
             self.forward_data(data);
         } else if data.is_retransmission() {
-            self.ack_number.store(self.ack_number(), SeqCst);
+            self.ack_number.store(self.ack_number().as_u8(), SeqCst);
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sender
                 .send(data.ack_num())
@@ -146,12 +147,9 @@ impl Listener {
         }
     }
 
-    fn ack_received_data(&mut self, frame_num: u8) {
+    fn ack_received_data(&mut self, frame_num: WrappingU3) {
         self.serial_port
-            .write_frame_buffered(
-                &Ack::from_ack_num(next_three_bit_number(frame_num)),
-                &mut self.buffer,
-            )
+            .write_frame_buffered(&Ack::from_ack_num(frame_num + 1), &mut self.buffer)
             .unwrap_or_else(|error| error!("Failed to send ACK: {error}"));
     }
 
@@ -290,8 +288,8 @@ impl Listener {
             })
     }
 
-    fn ack_number(&self) -> u8 {
+    fn ack_number(&self) -> WrappingU3 {
         self.last_received_frame_number
-            .map_or(0, next_three_bit_number)
+            .map_or(WrappingU3::default(), |ack_number| ack_number + 1)
     }
 }

@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::num::NonZero;
 use std::ops::{Add, AddAssign};
 
@@ -34,6 +35,18 @@ impl Add<u8> for WrappingU3 {
 impl AddAssign<u8> for WrappingU3 {
     fn add_assign(&mut self, rhs: u8) {
         self.0 = nonzero_lossy(self.as_u8().wrapping_add(rhs));
+    }
+}
+
+impl Default for WrappingU3 {
+    fn default() -> Self {
+        Self::from_u8_lossy(0)
+    }
+}
+
+impl Display for WrappingU3 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_u8())
     }
 }
 

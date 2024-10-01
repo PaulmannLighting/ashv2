@@ -1,3 +1,4 @@
+use crate::wrapping_u3::WrappingU3;
 use bitflags::bitflags;
 
 const FRAME_NUM_OFFSET: u8 = 4;
@@ -15,21 +16,24 @@ bitflags! {
 }
 
 impl Data {
-    pub fn new(frame_num: u8, retransmit: bool, ack_num: u8) -> Self {
+    /// Creates a new data header.
+    #[must_use]
+    pub fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
         let mut ack = Self::DEFAULT;
-        ack |= Self::FRAME_NUM & Self::from_bits_retain(frame_num << FRAME_NUM_OFFSET);
+        ack |= Self::FRAME_NUM & Self::from_bits_retain(frame_num.as_u8() << FRAME_NUM_OFFSET);
         ack.set(Self::RETRANSMIT, retransmit);
-        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num);
+        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num.as_u8());
         ack
     }
 
     /// Returns the frame number.
-    pub const fn frame_num(self) -> u8 {
-        (self.bits() & Self::FRAME_NUM.bits()) >> FRAME_NUM_OFFSET
+    #[must_use]
+    pub const fn frame_num(self) -> WrappingU3 {
+        WrappingU3::from_u8_lossy((self.bits() & Self::FRAME_NUM.bits()) >> FRAME_NUM_OFFSET)
     }
 
     /// Returns the ACK number.
-    pub const fn ack_num(self) -> u8 {
-        self.bits() & Self::ACK_NUM.bits()
+    pub const fn ack_num(self) -> WrappingU3 {
+        WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
     }
 }

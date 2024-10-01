@@ -1,3 +1,4 @@
+use crate::wrapping_u3::WrappingU3;
 use bitflags::bitflags;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -13,16 +14,19 @@ bitflags! {
 }
 
 impl Nak {
-    pub fn new(ack_num: u8, n_rdy: bool, reserved: bool) -> Self {
+    /// Creates a new NAK header.
+    #[must_use]
+    pub fn new(ack_num: WrappingU3, n_rdy: bool, reserved: bool) -> Self {
         let mut ack = Self::DEFAULT;
-        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num);
+        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num.as_u8());
         ack.set(Self::NOT_READY, n_rdy);
         ack.set(Self::RESERVED, reserved);
         ack
     }
 
     /// Returns the ACK number.
-    pub const fn ack_num(self) -> u8 {
-        self.bits() & Self::ACK_NUM.bits()
+    #[must_use]
+    pub const fn ack_num(self) -> WrappingU3 {
+        WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
     }
 }

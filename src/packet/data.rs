@@ -1,6 +1,7 @@
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::protocol::Mask;
+use crate::wrapping_u3::WrappingU3;
 use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
@@ -34,20 +35,23 @@ impl Data {
     }
 
     #[must_use]
-    pub fn create(frame_num: u8, mut payload: Payload) -> Self {
+    pub fn create(frame_num: WrappingU3, mut payload: Payload) -> Self {
         payload.mask();
-        Self::new(headers::Data::new(frame_num, false, 0), payload)
+        Self::new(
+            headers::Data::new(frame_num, false, WrappingU3::from_u8_lossy(0)),
+            payload,
+        )
     }
 
     /// Returns the frame number.
     #[must_use]
-    pub const fn frame_num(&self) -> u8 {
+    pub const fn frame_num(&self) -> WrappingU3 {
         self.header.frame_num()
     }
 
     /// Returns the acknowledgment number.
     #[must_use]
-    pub const fn ack_num(&self) -> u8 {
+    pub const fn ack_num(&self) -> WrappingU3 {
         self.header.ack_num()
     }
 
@@ -166,7 +170,7 @@ mod tests {
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert_eq!(data.frame_num(), 2);
+        assert_eq!(data.frame_num().as_u8(), 2);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
@@ -177,7 +181,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert_eq!(data.frame_num(), 5);
+        assert_eq!(data.frame_num().as_u8(), 5);
     }
 
     #[test]
@@ -188,7 +192,7 @@ mod tests {
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert_eq!(data.ack_num(), 5);
+        assert_eq!(data.ack_num().as_u8(), 5);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
@@ -199,7 +203,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert_eq!(data.ack_num(), 3);
+        assert_eq!(data.ack_num().as_u8(), 3);
     }
 
     #[test]

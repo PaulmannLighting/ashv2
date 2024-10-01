@@ -16,7 +16,8 @@ use crate::error::{frame, Error};
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::{Data, Rst};
 use crate::protocol::{AshChunks, Command, Event, Handler};
-use crate::util::{next_three_bit_number, NonPoisonedRwLock};
+use crate::util::NonPoisonedRwLock;
+use crate::wrapping_u3::WrappingU3;
 
 const MAX_STARTUP_ATTEMPTS: u8 = 5;
 const MAX_TIMEOUTS: usize = 4;
@@ -35,14 +36,14 @@ pub struct Transmitter {
     command: Receiver<Command>,
     handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
     ack_number: Arc<AtomicU8>,
-    ack_receiver: Receiver<u8>,
-    nak_receiver: Receiver<u8>,
+    ack_receiver: Receiver<WrappingU3>,
+    nak_receiver: Receiver<WrappingU3>,
     // Local state
     buffer: FrameBuffer,
     sent: heapless::Vec<(SystemTime, Data), MAX_TIMEOUTS>,
     retransmit: heapless::Deque<Data, MAX_TIMEOUTS>,
-    retransmits: HashMap<u8, usize>,
-    frame_number: u8,
+    retransmits: HashMap<WrappingU3, usize>,
+    frame_number: WrappingU3,
     t_rx_ack: Duration,
 }
 
@@ -55,8 +56,8 @@ impl Transmitter {
         command: Receiver<Command>,
         handler: Arc<NonPoisonedRwLock<Option<Arc<dyn Handler>>>>,
         ack_number: Arc<AtomicU8>,
-        ack_receiver: Receiver<u8>,
-        nak_receiver: Receiver<u8>,
+        ack_receiver: Receiver<WrappingU3>,
+        nak_receiver: Receiver<WrappingU3>,
     ) -> Self {
         Self {
             serial_port,
@@ -71,7 +72,7 @@ impl Transmitter {
             sent: heapless::Vec::new(),
             retransmit: heapless::Deque::new(),
             retransmits: HashMap::new(),
-            frame_number: 0,
+            frame_number: WrappingU3::default(),
             t_rx_ack: T_RX_ACK_INIT,
         }
     }
@@ -259,13 +260,13 @@ impl Transmitter {
         for ack_num in self
             .nak_receiver
             .try_iter()
-            .collect::<heapless::Vec<u8, MAX_TIMEOUTS>>()
+            .collect::<heapless::Vec<WrappingU3, MAX_TIMEOUTS>>()
         {
             self.handle_nak(ack_num);
         }
     }
 
-    fn handle_nak(&mut self, nak_num: u8) {
+    fn handle_nak(&mut self, nak_num: WrappingU3) {
         if let Some((_, data)) = self
             .sent
             .iter()
@@ -283,18 +284,18 @@ impl Transmitter {
         for ack_num in self
             .ack_receiver
             .try_iter()
-            .collect::<heapless::Vec<u8, MAX_TIMEOUTS>>()
+            .collect::<heapless::Vec<WrappingU3, MAX_TIMEOUTS>>()
         {
             self.handle_ack(ack_num);
         }
     }
 
-    fn handle_ack(&mut self, ack_num: u8) {
+    fn handle_ack(&mut self, ack_num: WrappingU3) {
         trace!("Handling ACK: {ack_num}");
         if let Some((timestamp, data)) = self
             .sent
             .iter()
-            .position(|(_, data)| next_three_bit_number(data.frame_num()) == ack_num)
+            .position(|(_, data)| data.frame_num() + 1 == ack_num)
             .map(|index| self.sent.remove(index))
         {
             trace!("ACKed packet #{}", data.frame_num());
@@ -332,9 +333,9 @@ impl Transmitter {
             .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
     }
 
-    fn next_frame_number(&mut self) -> u8 {
+    fn next_frame_number(&mut self) -> WrappingU3 {
         let frame_number = self.frame_number;
-        self.frame_number = next_three_bit_number(frame_number);
+        self.frame_number += 1;
         frame_number
     }
 
@@ -392,7 +393,7 @@ impl Transmitter {
         self.sent.clear();
         self.retransmits.clear();
         self.retransmit.clear();
-        self.frame_number = 0;
+        self.frame_number = WrappingU3::default();
         self.ack_number.store(0, SeqCst);
         self.t_rx_ack = T_RX_ACK_INIT;
     }
