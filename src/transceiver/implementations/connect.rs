@@ -1,3 +1,5 @@
+//! Establish an `ASHv2` connection with the NCP.
+
 use crate::packet::Packet;
 use crate::status::Status;
 use crate::transceiver::constants::T_RSTACK_MAX;

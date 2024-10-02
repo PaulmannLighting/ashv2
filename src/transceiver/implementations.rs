@@ -1,8 +1,8 @@
 mod callbacks;
 mod connect;
 mod frame_io;
-mod receive;
+mod packet_handling;
 mod reject;
 mod reset;
-mod retransmits;
+mod sent_data;
 mod transaction;

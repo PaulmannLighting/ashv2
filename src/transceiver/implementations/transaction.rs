@@ -1,3 +1,10 @@
+//! Transaction management for incoming commands.
+//!
+//! This module handles incoming commands within transactions.
+//!
+//! Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
+//! Otherwise, the transactions waits for the NCP to acknowledge the sent data.
+//!
 use crate::packet::Data;
 use crate::Transceiver;
 use log::{debug, warn};
@@ -9,6 +16,7 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
+    /// Start a transaction of incoming data.
     pub(in crate::transceiver) fn transaction(
         &mut self,
         mut chunks: Chunks<'_, u8>,
@@ -49,6 +57,8 @@ where
     }
 
     /// Sends chunks as long as the retransmit queue is not full.
+    ///
+    /// Returns `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
         while !self.buffers.sent_data.is_full() {
             if let Some(chunk) = chunks.next() {
@@ -78,6 +88,7 @@ where
         self.send_data(data)
     }
 
+    /// Clear any callbacks received before the transaction.
     fn clear_callbacks(&mut self) -> std::io::Result<()> {
         // Disable callbacks by sending an ACK with `nRDY` set.
         self.ack()?;
@@ -98,6 +109,7 @@ where
         Ok(())
     }
 
+    /// Send the response to the host.
     fn send_response(&mut self) -> std::io::Result<()> {
         self.channels
             .respond(Ok(self.buffers.response.clone().into()))?;

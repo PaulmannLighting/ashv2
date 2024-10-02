@@ -68,7 +68,7 @@ where
     /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.write_frame(&data)?;
-        self.enqueue_retransmit(data)
+        self.enqueue_sent_data(data)
     }
 
     /// Send a raw `ACK` frame.

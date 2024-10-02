@@ -1,3 +1,4 @@
+//! Reset and error handling implementation.
 use crate::status::Status;
 use crate::transceiver::Transceiver;
 use log::{error, warn};

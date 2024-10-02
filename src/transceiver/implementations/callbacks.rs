@@ -1,3 +1,5 @@
+//! Handle callbacks actively sent by the NCP outside of transactions.
+
 use crate::Transceiver;
 use serialport::SerialPort;
 

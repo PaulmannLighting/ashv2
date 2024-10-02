@@ -1,3 +1,6 @@
+//! Packet handling implementation for the transceiver.
+//!
+//! This module contains methods to handle incoming packets sent by the NCP.
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::status::Status;
@@ -10,6 +13,11 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
+    /// Handle an incoming packet.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the packet handling failed.
     pub(in crate::transceiver) fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Handling: {packet}");
         trace!("{packet:#04X?}");
@@ -18,9 +26,9 @@ where
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
                 Packet::Data(data) => self.handle_data(data)?,
-                Packet::Error(ref error) => Self::handle_error(error)?,
+                Packet::Error(ref error) => return Err(Self::handle_error(error)),
                 Packet::Nak(ref nak) => self.handle_nak(nak)?,
-                Packet::RstAck(ref rst_ack) => Self::handle_rst_ack(rst_ack)?,
+                Packet::RstAck(ref rst_ack) => return Err(Self::handle_rst_ack(rst_ack)),
                 Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
         } else {
@@ -30,6 +38,7 @@ where
         Ok(())
     }
 
+    /// Handle an incoming `ACK` packet.
     fn handle_ack(&mut self, ack: &Ack) {
         if !ack.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
@@ -38,6 +47,7 @@ where
         self.ack_sent_packets(ack.ack_num());
     }
 
+    /// Handle an incoming `DATA` packet.
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
@@ -49,6 +59,7 @@ where
             self.ack_sent_packets(data.ack_num());
             self.buffers.extend_response(data.into_payload());
         } else if data.is_retransmission() {
+            warn!("Received retransmission of frame: {data}");
             self.ack_sent_packets(data.ack_num());
             self.buffers.extend_response(data.into_payload());
         } else {
@@ -59,7 +70,8 @@ where
         Ok(())
     }
 
-    fn handle_error(error: &Error) -> std::io::Result<()> {
+    /// Handle an incoming `ERROR` packet.
+    fn handle_error(error: &Error) -> std::io::Error {
         if !error.is_ash_v2() {
             error!("{error} is not ASHv2: {:#04X}", error.version());
         }
@@ -73,12 +85,10 @@ where
             },
         );
 
-        Err(std::io::Error::new(
-            ErrorKind::ConnectionReset,
-            "NCP entered ERROR state.",
-        ))
+        std::io::Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
     }
 
+    /// Handle an incoming `NAK` packet.
     fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
@@ -87,7 +97,8 @@ where
         self.nak_sent_packets(nak.ack_num())
     }
 
-    fn handle_rst_ack(rst_ack: &RstAck) -> std::io::Result<()> {
+    /// Handle an incoming `RSTACK` packet.
+    fn handle_rst_ack(rst_ack: &RstAck) -> std::io::Error {
         error!("Received unexpected RSTACK: {rst_ack}");
 
         if !rst_ack.is_ash_v2() {
@@ -103,9 +114,9 @@ where
             },
         );
 
-        Err(std::io::Error::new(
+        std::io::Error::new(
             ErrorKind::ConnectionReset,
             "NCP received unexpected RSTACK.",
-        ))
+        )
     }
 }
