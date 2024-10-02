@@ -1,6 +1,6 @@
 //! Test `ASHv2` connection.
 
-use ashv2::{open, BaudRate, CommunicateSync, Transceiver};
+use ashv2::{open, BaudRate, SyncAsh, Transceiver};
 use log::{error, info};
 use serialport::FlowControl;
 use std::sync::atomic::AtomicBool;

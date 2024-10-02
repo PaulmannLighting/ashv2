@@ -8,7 +8,7 @@ use std::future::Future;
 use std::sync::mpsc::Sender;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
-pub trait CommunicateAsync {
+pub trait AsyncAsh {
     /// Communicate with the NCP, returning `Box<[u8]>`.
     ///
     /// # Errors
@@ -20,7 +20,7 @@ pub trait CommunicateAsync {
     ) -> impl Future<Output = std::io::Result<Box<[u8]>>> + Send;
 }
 
-impl CommunicateAsync for Sender<Request> {
+impl AsyncAsh for Sender<Request> {
     async fn communicate(&self, payload: &[u8]) -> <AsyncRequest as Future>::Output {
         AsyncRequest::new(self.clone(), payload).await
     }

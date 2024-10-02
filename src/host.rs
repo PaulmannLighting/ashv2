@@ -1,5 +1,5 @@
-mod communicate_async;
-mod communicate_sync;
+mod async_ash;
+mod sync_ash;
 
-pub use communicate_async::CommunicateAsync;
-pub use communicate_sync::CommunicateSync;
+pub use async_ash::AsyncAsh;
+pub use sync_ash::SyncAsh;

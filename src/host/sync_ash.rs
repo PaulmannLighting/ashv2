@@ -5,7 +5,7 @@ use std::io::ErrorKind;
 use std::sync::mpsc::Sender;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
-pub trait CommunicateSync {
+pub trait SyncAsh {
     /// Communicate with the NCP, returning `Box<[u8]>`.
     ///
     /// # Errors
@@ -14,7 +14,7 @@ pub trait CommunicateSync {
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>>;
 }
 
-impl CommunicateSync for Sender<Request> {
+impl SyncAsh for Sender<Request> {
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>> {
         let (request, response) = Request::new(payload.into());
         self.send(request).map_err(|_| {

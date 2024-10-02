@@ -31,7 +31,7 @@ use std::sync::Arc;
 /// use std::sync::mpsc::channel;
 /// use std::thread::spawn;
 /// use serialport::FlowControl;
-/// use ashv2::{open, BaudRate, CommunicateSync, Transceiver};
+/// use ashv2::{open, BaudRate, SyncAsh, Transceiver};
 ///
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
 ///     Ok(serial_port) => {let (host, receiver) = channel();
