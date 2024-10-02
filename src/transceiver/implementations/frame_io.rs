@@ -17,7 +17,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an error if the serial port read operation failed.
+    /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn receive(&mut self) -> std::io::Result<Option<Packet>> {
         match self.read_packet() {
             Ok(packet) => Ok(Some(packet)),
@@ -31,27 +31,44 @@ where
         }
     }
 
-    /// Send an ACK frame with the given ACK number.
+    /// Send an `ACK` frame with the given ACK number.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn ack(&mut self) -> std::io::Result<()> {
         self.send_ack(&Ack::new(self.state.ack_number(), self.state.n_rdy()))
     }
 
-    /// Send a NAK frame with the current ACK number.
+    /// Send a `NAK` frame with the current ACK number.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn nak(&mut self) -> std::io::Result<()> {
         self.send_nak(&Nak::new(self.state.ack_number(), self.state.n_rdy()))
     }
 
     /// Send a RST frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn rst(&mut self) -> std::io::Result<()> {
         self.write_frame(&RST)
     }
 
-    /// Send a data frame.
+    /// Send a `DATA` frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.write_frame(&data)?;
         self.enqueue_retransmit(data)
     }
 
+    /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
         if ack.not_ready() {
             self.state
@@ -63,6 +80,7 @@ where
         self.write_frame(ack)
     }
 
+    /// Send a raw `NAK` frame.
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         if nak.not_ready() {
             self.state
@@ -76,20 +94,15 @@ where
 
     /// Read an ASH [`Packet`].
     ///
-    /// # Arguments
-    /// * `buffer` The buffer used for input buffering.
-    ///
     /// # Errors
+    ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     fn read_packet(&mut self) -> std::io::Result<Packet> {
         self.buffer_frame()?;
         Packet::try_from(self.buffers.frame.as_slice())
     }
 
-    /// Reads an ASH frame into a [`FrameBuffer`].
-    ///
-    /// # Arguments
-    /// * `buffer` The buffer used for input buffering.
+    /// Reads an ASH frame into the transceiver's frame buffer.
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
@@ -158,7 +171,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an [`Error`](Error) if any I/O error occurs.
+    /// Returns an [Error] if the serial port write operation failed.
     fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
         F: Frame,
