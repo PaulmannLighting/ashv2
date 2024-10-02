@@ -25,11 +25,12 @@ impl Buffers {
     /// Extends the response buffer with the given data.
     pub fn extend_response(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
         payload.mask();
+        trace!("Extending response buffer with: {:#04X?}", payload);
         self.response.extend_from_slice(&payload);
+        trace!("Response buffer is now: {:#04X?}", self.response);
     }
 
     pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
-        trace!("Handling ACK: {ack_num}");
         while let Some(retransmit) = self
             .retransmits
             .iter()
@@ -37,12 +38,12 @@ impl Buffers {
             .map(|index| self.retransmits.remove(index))
         {
             if let Ok(duration) = retransmit.elapsed() {
-                debug!(
+                trace!(
                     "ACKed packet #{} after {duration:?}",
                     retransmit.into_data().frame_num()
                 );
             } else {
-                debug!("ACKed packet #{}", retransmit.into_data().frame_num());
+                trace!("ACKed packet #{}", retransmit.into_data().frame_num());
             }
         }
     }

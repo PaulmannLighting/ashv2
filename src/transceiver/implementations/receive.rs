@@ -1,6 +1,5 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
-use crate::protocol::Mask;
 use crate::status::Status;
 use crate::Transceiver;
 use log::{debug, error, trace, warn};
@@ -12,7 +11,7 @@ where
     T: SerialPort,
 {
     pub(in crate::transceiver) fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
-        debug!("Received: {packet}");
+        debug!("Handling: {packet}");
         trace!("{packet:#04X?}");
 
         if self.state.status == Status::Connected {
@@ -48,13 +47,6 @@ where
     }
 
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
-        debug!("Received frame: {data:#04X?}");
-        trace!("Unmasked payload: {:#04X?}", {
-            let mut unmasked = data.payload().to_vec();
-            unmasked.mask();
-            unmasked
-        });
-
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
             self.enter_reject()?;
@@ -76,10 +68,8 @@ where
     }
 
     fn handle_error(&mut self, error: &Error) {
-        trace!("Received ERROR: {error:#04X?}");
-
         if !error.is_ash_v2() {
-            error!("{error} is not ASHv2: {}", error.version());
+            error!("{error} is not ASHv2: {:#04X}", error.version());
         }
 
         self.state.status = Status::Failed;
@@ -94,8 +84,6 @@ where
     }
 
     fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
-        warn!("Received NAK: {nak:#04X?}");
-
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
         }
