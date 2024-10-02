@@ -2,7 +2,6 @@ use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::Mask;
 use crate::status::Status;
-use crate::transceiver;
 use crate::Transceiver;
 use log::{debug, error, trace, warn};
 use std::io::ErrorKind;
@@ -76,7 +75,7 @@ impl Transceiver {
             warn!("Received data frame with invalid CRC.");
             self.enter_reject()?;
         } else if data.frame_num() == self.state.ack_number() {
-            self.state.reject = false;
+            self.leave_reject();
             self.state.last_received_frame_num.replace(data.frame_num());
             self.ack()?;
             self.buffers.ack_sent_packets(data.ack_num());
@@ -86,10 +85,7 @@ impl Transceiver {
             self.buffers.response.extend_from_slice(data.payload());
         } else {
             debug!("Received out-of-sequence data frame: {data}");
-
-            if !self.state.reject {
-                self.enter_reject()?;
-            }
+            self.enter_reject()?;
         }
 
         Ok(())
