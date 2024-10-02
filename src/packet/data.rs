@@ -25,8 +25,8 @@ impl Data {
 
     /// Creates a new data packet.
     #[must_use]
-    pub fn new(frame_num: WrappingU3, mut payload: Payload) -> Self {
-        let header = headers::Data::new(frame_num, false, WrappingU3::from_u8_lossy(0));
+    pub fn new(frame_num: WrappingU3, mut payload: Payload, ack_num: WrappingU3) -> Self {
+        let header = headers::Data::new(frame_num, false, ack_num);
         payload.mask();
 
         Self {
