@@ -30,7 +30,6 @@ mod retransmit;
 mod serial_port;
 mod status;
 mod transceiver;
-mod util;
 mod wrapping_u3;
 
 const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
