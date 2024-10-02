@@ -1,13 +1,13 @@
 use crate::request::Request;
 use log::{error, warn};
 use std::io::ErrorKind;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender, SyncSender, TryRecvError};
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
-    response: Option<Sender<std::io::Result<Box<[u8]>>>>,
+    response: Option<SyncSender<std::io::Result<Box<[u8]>>>>,
     callback: Option<Sender<Box<[u8]>>>,
 }
 
