@@ -25,8 +25,7 @@ impl SentData {
     }
 
     #[must_use]
-    pub fn into_data(mut self) -> Data {
-        self.data.set_is_retransmission(true);
+    pub fn into_data(self) -> Data {
         self.data
     }
 }

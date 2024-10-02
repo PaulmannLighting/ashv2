@@ -63,7 +63,7 @@ where
             .map(|index| self.buffers.sent_data.remove(index))
         {
             debug!("Retransmitting NAK'ed packet #{}", sent_data.frame_num());
-            self.send_data(sent_data.into_data())?;
+            self.retransmit(sent_data.into_data())?;
         }
 
         Ok(())
@@ -79,7 +79,7 @@ where
             .map(|index| self.buffers.sent_data.remove(index))
         {
             debug!("Retransmitting timed-out packet #{}", sent_data.frame_num());
-            self.send_data(sent_data.into_data())?;
+            self.retransmit(sent_data.into_data())?;
         }
 
         self.update_t_rx_ack(None);

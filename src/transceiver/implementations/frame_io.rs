@@ -71,6 +71,18 @@ where
         self.enqueue_sent_data(data)
     }
 
+    /// Retransmit a `DATA` frame.
+    ///
+    /// Set the `is_retransmission` flag in the `DATA` frame and send it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [Error] if the serial port read operation failed.
+    pub(in crate::transceiver) fn retransmit(&mut self, mut data: Data) -> std::io::Result<()> {
+        data.set_is_retransmission(true);
+        self.send_data(data)
+    }
+
     /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
         if ack.not_ready() {
