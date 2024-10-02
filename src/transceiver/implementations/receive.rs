@@ -53,14 +53,14 @@ where
         }
     }
 
-    pub(in crate::transceiver) fn handle_packet(&mut self, packet: &Packet) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
 
         if self.state.status == Status::Connected {
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
-                Packet::Data(ref data) => self.handle_data(data)?,
+                Packet::Data(data) => self.handle_data(data)?,
                 Packet::Error(ref error) => {
                     self.handle_error(error);
                     return Err(std::io::Error::new(
@@ -89,7 +89,7 @@ where
         self.ack_sent_packets(ack.ack_num());
     }
 
-    fn handle_data(&mut self, data: &Data) -> std::io::Result<()> {
+    fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
         debug!("Received frame: {data:#04X?}");
         trace!("Unmasked payload: {:#04X?}", {
             let mut unmasked = data.payload().to_vec();
@@ -105,10 +105,10 @@ where
             self.state.last_received_frame_num.replace(data.frame_num());
             self.ack()?;
             self.ack_sent_packets(data.ack_num());
-            self.buffers.response.extend_from_slice(data.payload());
+            self.buffers.extend_response(data.into_payload());
         } else if data.is_retransmission() {
             self.ack_sent_packets(data.ack_num());
-            self.buffers.response.extend_from_slice(data.payload());
+            self.buffers.extend_response(data.into_payload());
         } else {
             debug!("Received out-of-sequence data frame: {data}");
             self.enter_reject()?;

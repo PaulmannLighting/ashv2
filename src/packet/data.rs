@@ -65,6 +65,10 @@ impl Data {
             .set(headers::Data::RETRANSMIT, is_retransmission);
         self.crc = self.calculate_crc();
     }
+
+    pub fn into_payload(self) -> Payload {
+        self.payload
+    }
 }
 
 impl Display for Data {

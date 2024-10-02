@@ -9,7 +9,7 @@ where
         self.buffers.response.clear();
 
         while let Some(callback) = self.receive()? {
-            self.handle_packet(&callback)?;
+            self.handle_packet(callback)?;
         }
 
         if !self.buffers.response.is_empty() {

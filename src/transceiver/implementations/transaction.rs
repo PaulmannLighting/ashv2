@@ -23,13 +23,13 @@ where
         while self.send_chunks(&mut chunks)? {
             // Handle responses to sent chunks.
             while let Some(packet) = self.receive_with_timeout(timeout)? {
-                self.handle_packet(&packet)?;
+                self.handle_packet(packet)?;
             }
         }
 
         // Handle any remaining responses.
         while let Some(packet) = self.receive_with_timeout(timeout)? {
-            self.handle_packet(&packet)?;
+            self.handle_packet(packet)?;
         }
 
         // Wait for retransmits to finish.
@@ -37,7 +37,7 @@ where
             self.retransmit_timed_out_data()?;
 
             while let Some(packet) = self.receive_with_timeout(timeout)? {
-                self.handle_packet(&packet)?;
+                self.handle_packet(packet)?;
             }
         }
 
@@ -80,7 +80,7 @@ where
         self.ack()?;
 
         while let Some(packet) = self.receive()? {
-            self.handle_packet(&packet)?;
+            self.handle_packet(packet)?;
         }
 
         // Any data we received can not be a response to our transaction.
