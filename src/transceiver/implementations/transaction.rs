@@ -1,7 +1,5 @@
-use crate::ash_write::AshWrite;
 use crate::packet::Data;
 use crate::transceiver::Transceiver;
-use log::warn;
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 

@@ -1,6 +1,5 @@
 use crate::status::Status;
 use crate::wrapping_u3::WrappingU3;
-use crate::Transceiver;
 use std::time::SystemTime;
 
 /// The state of the transceiver.
