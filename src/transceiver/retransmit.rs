@@ -10,11 +10,6 @@ pub struct Retransmit {
 
 impl Retransmit {
     #[must_use]
-    pub const fn sent(&self) -> SystemTime {
-        self.sent
-    }
-
-    #[must_use]
     pub const fn frame_num(&self) -> WrappingU3 {
         self.data.frame_num()
     }

@@ -19,7 +19,7 @@ impl Response {
         }
     }
 
-    pub fn failed() -> Self {
+    pub const fn failed() -> Self {
         Self {
             receiver: None,
             waker: None,

@@ -12,7 +12,7 @@ use crate::transceiver::state::State;
 use serialport::TTYPort;
 use std::sync::mpsc::{Receiver, Sender};
 
-/// ASHv2 transceiver.
+/// `ASHv2` transceiver.
 ///
 /// The transceiver is responsible for handling the communication between the host and the NCP.
 /// It is supposed to be run in a separate thread.
@@ -99,7 +99,7 @@ impl Transceiver {
 
     fn communicate(&mut self) -> std::io::Result<()> {
         if self.state.reject {
-            return Ok(self.try_clear_reject_condition()?);
+            return self.try_clear_reject_condition();
         }
 
         if let Some(bytes) = self.channels.receive()? {

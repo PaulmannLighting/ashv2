@@ -2,7 +2,9 @@ use std::future::Future;
 use std::sync::mpsc::Sender;
 
 use crate::request::Request;
-use crate::response::Response;
+use response::Response;
+
+mod response;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 #[derive(Debug)]

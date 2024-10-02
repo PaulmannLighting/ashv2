@@ -1,7 +1,7 @@
 use crate::request::Request;
 use log::{error, warn};
 use std::io::ErrorKind;
-use std::sync::mpsc::{Receiver, SendError, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
@@ -37,17 +37,20 @@ impl Channels {
     }
 
     pub fn respond(&mut self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
-        if let Some(response) = self.response.take() {
-            response
-                .send(payload)
-                .inspect_err(|error| error!("ASHv2 failed to send response: {error}"))
-                .map_err(|_| {
-                    std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
-                })
-        } else {
-            error!("No response channel set. Discarding response.");
-            Ok(())
-        }
+        self.response.take().map_or_else(
+            || {
+                error!("No response channel set. Discarding response.");
+                Ok(())
+            },
+            |response| {
+                response
+                    .send(payload)
+                    .inspect_err(|error| error!("ASHv2 failed to send response: {error}"))
+                    .map_err(|_| {
+                        std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
+                    })
+            },
+        )
     }
 
     pub fn callback(&self, payload: Box<[u8]>) -> std::io::Result<()> {
