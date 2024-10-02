@@ -18,19 +18,11 @@ where
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
                 Packet::Data(data) => self.handle_data(data)?,
-                Packet::Error(ref error) => {
-                    self.handle_error(error);
-                    return Err(std::io::Error::new(
-                        ErrorKind::ConnectionReset,
-                        "NCP entered ERROR state.",
-                    ));
-                }
+                Packet::Error(ref error) => Self::handle_error(error)?,
                 Packet::Nak(ref nak) => self.handle_nak(nak)?,
-                Packet::RstAck(ref rst_ack) => self.handle_rst_ack(rst_ack)?,
+                Packet::RstAck(ref rst_ack) => Self::handle_rst_ack(rst_ack)?,
                 Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
-        } else if let Packet::RstAck(ref rst_ack) = packet {
-            self.handle_rst_ack(rst_ack)?;
         } else {
             warn!("Not connected. Dropping frame: {packet}");
         }
@@ -67,20 +59,24 @@ where
         Ok(())
     }
 
-    fn handle_error(&mut self, error: &Error) {
+    fn handle_error(error: &Error) -> std::io::Result<()> {
         if !error.is_ash_v2() {
             error!("{error} is not ASHv2: {:#04X}", error.version());
         }
 
-        self.state.status = Status::Failed;
         error.code().map_or_else(
             |code| {
-                error!("NCP sent error with invalid code: {code}");
+                error!("NCP sent ERROR with invalid code: {code}");
             },
             |code| {
-                warn!("NCP sent error condition: {code}");
+                warn!("NCP sent ERROR condition: {code}");
             },
         );
+
+        Err(std::io::Error::new(
+            ErrorKind::ConnectionReset,
+            "NCP entered ERROR state.",
+        ))
     }
 
     fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
@@ -91,28 +87,25 @@ where
         self.nak_sent_packets(nak.ack_num())
     }
 
-    fn handle_rst_ack(&mut self, rst_ack: &RstAck) -> std::io::Result<()> {
+    fn handle_rst_ack(rst_ack: &RstAck) -> std::io::Result<()> {
+        error!("Received unexpected RSTACK: {rst_ack}");
+
         if !rst_ack.is_ash_v2() {
-            error!("{rst_ack} is not ASHv2: {}", rst_ack.version());
+            error!("{rst_ack} is not ASHv2: {:#04X}", rst_ack.version());
         }
 
         rst_ack.code().map_or_else(
             |code| {
-                warn!("NCP acknowledged reset with invalid error code: {code}");
+                error!("NCP sent RSTACK with unknown code: {code}");
             },
             |code| {
-                debug!("NCP acknowledged reset due to: {code}");
+                warn!("NCP sent RSTACK condition: {code}");
             },
         );
 
-        self.leave_reject();
-        self.abort_current_command()
-    }
-
-    fn abort_current_command(&mut self) -> std::io::Result<()> {
-        self.channels.respond(Err(std::io::Error::new(
+        Err(std::io::Error::new(
             ErrorKind::ConnectionReset,
-            "NCP reset",
-        )))
+            "NCP received unexpected RSTACK.",
+        ))
     }
 }
