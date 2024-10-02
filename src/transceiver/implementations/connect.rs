@@ -10,6 +10,7 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
+    /// Establish an `ASHv2` connection with the NCP.
     pub(in crate::transceiver) fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
         let start = SystemTime::now();
@@ -20,14 +21,17 @@ where
             attempts += 1;
             self.rst()?;
 
+            // Wait to receive `RSTACK` from the NCP.
             let packet = loop {
                 if let Some(packet) = self.receive()? {
                     break packet;
                 } else if let Ok(elapsed) = start.elapsed() {
+                    // Retry sending `RST` if no `RSTACK` was received in time.
                     if elapsed > T_RSTACK_MAX {
                         continue 'attempts;
                     }
                 } else {
+                    // If the system time jumps, retry sending `RST`.
                     error!("System time jumped.");
                     continue 'attempts;
                 }
