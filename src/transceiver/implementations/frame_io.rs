@@ -59,6 +59,7 @@ where
                 .replace(SystemTime::now());
         }
 
+        debug!("Sending ACK: {ack}");
         self.write_frame(ack)
     }
 
@@ -69,6 +70,7 @@ where
                 .replace(SystemTime::now());
         }
 
+        debug!("Sending NAK: {nak}");
         self.write_frame(nak)
     }
 
