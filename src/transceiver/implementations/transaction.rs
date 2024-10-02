@@ -26,6 +26,15 @@ impl Transceiver {
             self.handle_packet(&packet)?;
         }
 
+        // Wait for retransmits to finish.
+        while !self.buffers.retransmits.is_empty() {
+            self.retransmit_timed_out_data()?;
+
+            while let Some(packet) = self.receive()? {
+                self.handle_packet(&packet)?;
+            }
+        }
+
         self.channels
             .respond(Ok(self.buffers.response.clone().into()))?;
         self.state.within_transaction = false;
