@@ -1,11 +1,9 @@
 use crate::packet::Data;
-use crate::transceiver::constants::T_REMOTE_NOTRDY;
 use crate::Transceiver;
 use log::{debug, warn};
 use serialport::SerialPort;
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
-use std::time::Duration;
 
 impl<T> Transceiver<T>
 where
@@ -17,20 +15,19 @@ where
     ) -> std::io::Result<()> {
         debug!("Starting transaction.");
         self.state.within_transaction = true;
-        let timeout = T_REMOTE_NOTRDY / 2;
 
         // Make sure that we do not receive any callbacks during the transaction.
-        self.clear_callbacks(timeout)?;
+        self.clear_callbacks()?;
 
         while self.send_chunks(&mut chunks)? {
             // Handle responses to sent chunks.
-            while let Some(packet) = self.receive_with_timeout(timeout)? {
+            while let Some(packet) = self.receive()? {
                 self.handle_packet(packet)?;
             }
         }
 
         // Handle any remaining responses.
-        while let Some(packet) = self.receive_with_timeout(timeout)? {
+        while let Some(packet) = self.receive()? {
             self.handle_packet(packet)?;
         }
 
@@ -38,7 +35,7 @@ where
         while !self.buffers.retransmits.is_empty() {
             self.retransmit_timed_out_data()?;
 
-            while let Some(packet) = self.receive_with_timeout(timeout)? {
+            while let Some(packet) = self.receive()? {
                 self.handle_packet(packet)?;
             }
         }
@@ -81,11 +78,11 @@ where
         self.send_data(data)
     }
 
-    fn clear_callbacks(&mut self, timeout: Duration) -> std::io::Result<()> {
+    fn clear_callbacks(&mut self) -> std::io::Result<()> {
         // Disable callbacks by sending an ACK with `nRDY` set.
         self.ack()?;
 
-        while let Some(packet) = self.receive_with_timeout(timeout)? {
+        while let Some(packet) = self.receive()? {
             self.handle_packet(packet)?;
         }
 

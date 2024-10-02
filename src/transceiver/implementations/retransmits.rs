@@ -5,7 +5,7 @@ use crate::Transceiver;
 use log::{debug, trace};
 use serialport::SerialPort;
 use std::io::{Error, ErrorKind};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 impl<T> Transceiver<T>
 where

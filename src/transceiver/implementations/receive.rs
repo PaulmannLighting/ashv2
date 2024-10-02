@@ -6,33 +6,11 @@ use crate::Transceiver;
 use log::{debug, error, trace, warn};
 use serialport::SerialPort;
 use std::io::ErrorKind;
-use std::time::{Duration, SystemTime};
 
 impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    pub(in crate::transceiver) fn receive_with_timeout(
-        &mut self,
-        timeout: Duration,
-    ) -> std::io::Result<Option<Packet>> {
-        let start = SystemTime::now();
-        loop {
-            if let Some(packet) = self.receive()? {
-                return Ok(Some(packet));
-            }
-
-            if let Ok(elapsed) = start.elapsed() {
-                if elapsed >= timeout {
-                    return Ok(None);
-                }
-            } else {
-                warn!("System time jumped.");
-                return Ok(None);
-            }
-        }
-    }
-
     pub(in crate::transceiver) fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
