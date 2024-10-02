@@ -83,5 +83,6 @@ where
                 |duration| self.state.t_rx_ack * 7 / 8 + duration / 2,
             )
             .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
+        trace!("Updated T_RX_ACK to {:?}", self.state.t_rx_ack);
     }
 }
