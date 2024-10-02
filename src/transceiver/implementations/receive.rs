@@ -136,11 +136,12 @@ where
     }
 
     fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+        warn!("Received NAK: {nak:#04X?}");
+
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
         }
 
-        debug!("Forwarding NAK to transmitter.");
         self.nak_sent_packets(nak.ack_num())
     }
 
