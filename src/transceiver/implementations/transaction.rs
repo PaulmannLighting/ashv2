@@ -6,7 +6,10 @@ use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 
 impl Transceiver {
-    pub(super) fn transaction(&mut self, mut chunks: Chunks<'_, u8>) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn transaction(
+        &mut self,
+        mut chunks: Chunks<'_, u8>,
+    ) -> std::io::Result<()> {
         self.within_transaction = true;
 
         // Make sure that we do not receive any callbacks during the transaction.

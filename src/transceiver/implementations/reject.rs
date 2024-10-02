@@ -1,8 +1,8 @@
-use super::Transceiver;
+use crate::Transceiver;
 use log::trace;
 
 impl Transceiver {
-    pub(super) fn reject(&mut self) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn reject(&mut self) -> std::io::Result<()> {
         trace!("Entering rejection state.");
         self.reject = true;
         self.nak()

@@ -1,12 +1,12 @@
-use super::Transceiver;
 use crate::ash_read::AshRead;
 use crate::packet::Packet;
 use crate::status::Status;
+use crate::Transceiver;
 use log::debug;
 use std::time::SystemTime;
 
 impl Transceiver {
-    pub(super) fn connect(&mut self) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
         let start = SystemTime::now();
 

@@ -13,7 +13,7 @@ impl Transceiver {
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub(super) fn read_packet(&mut self) -> std::io::Result<Packet> {
+    pub(in crate::transceiver) fn read_packet(&mut self) -> std::io::Result<Packet> {
         self.buffer_frame()?;
         Packet::try_from(self.frame_buffer.as_slice())
     }
@@ -91,7 +91,7 @@ impl Transceiver {
     /// # Errors
     ///
     /// Returns an [`Error`](Error) if any I/O error occurs.
-    pub(super) fn write_frame<T>(&mut self, frame: &T) -> std::io::Result<()>
+    pub(in crate::transceiver) fn write_frame<T>(&mut self, frame: &T) -> std::io::Result<()>
     where
         T: Frame,
     {

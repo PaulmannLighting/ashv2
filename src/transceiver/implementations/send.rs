@@ -6,15 +6,15 @@ use std::io::{Error, ErrorKind};
 use std::time::SystemTime;
 
 impl Transceiver {
-    pub(super) fn ack(&mut self, ack_number: WrappingU3) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn ack(&mut self, ack_number: WrappingU3) -> std::io::Result<()> {
         self.send_ack(&Ack::create(ack_number, self.n_rdy()))
     }
 
-    pub(super) fn nak(&mut self) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn nak(&mut self) -> std::io::Result<()> {
         self.send_nak(&Nak::create(self.ack_number(), self.n_rdy()))
     }
 
-    pub(super) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.serial_port
             .write_frame_buffered(&data, &mut self.frame_buffer)?;
         self.enqueue_retransmit(data)

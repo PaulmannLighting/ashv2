@@ -1,8 +1,8 @@
-use super::Transceiver;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::Mask;
 use crate::status::Status;
+use crate::Transceiver;
 use log::{debug, error, trace, warn};
 use std::io::ErrorKind;
 
@@ -14,7 +14,7 @@ impl Transceiver {
     /// # Errors
     ///
     /// Returns an error if the serial port read operation failed.
-    pub(super) fn receive(&mut self) -> std::io::Result<Option<Packet>> {
+    pub(in crate::transceiver) fn receive(&mut self) -> std::io::Result<Option<Packet>> {
         match self.read_packet() {
             Ok(packet) => Ok(Some(packet)),
             Err(error) => {
@@ -27,7 +27,7 @@ impl Transceiver {
         }
     }
 
-    pub(super) fn handle_packet(&mut self, packet: &Packet) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn handle_packet(&mut self, packet: &Packet) -> std::io::Result<()> {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
 
