@@ -1,4 +1,5 @@
 use crate::packet::Data;
+use crate::transceiver::constants::T_REMOTE_NOTRDY;
 use crate::Transceiver;
 use log::warn;
 use serialport::SerialPort;
@@ -14,19 +15,20 @@ where
         mut chunks: Chunks<'_, u8>,
     ) -> std::io::Result<()> {
         self.state.within_transaction = true;
+        let timeout = T_REMOTE_NOTRDY / 2;
 
         // Make sure that we do not receive any callbacks during the transaction.
         self.clear_callbacks()?;
 
         while self.send_chunks(&mut chunks)? {
             // Handle responses to sent chunks.
-            while let Some(packet) = self.receive()? {
+            while let Some(packet) = self.receive_with_timeout(timeout)? {
                 self.handle_packet(&packet)?;
             }
         }
 
         // Handle any remaining responses.
-        while let Some(packet) = self.receive()? {
+        while let Some(packet) = self.receive_with_timeout(timeout)? {
             self.handle_packet(&packet)?;
         }
 
@@ -34,7 +36,7 @@ where
         while !self.buffers.retransmits.is_empty() {
             self.retransmit_timed_out_data()?;
 
-            while let Some(packet) = self.receive()? {
+            while let Some(packet) = self.receive_with_timeout(timeout)? {
                 self.handle_packet(&packet)?;
             }
         }
