@@ -29,13 +29,10 @@ where
             .map(|index| self.buffers.sent_data.remove(index))
         {
             if let Ok(duration) = sent_data.elapsed() {
-                trace!(
-                    "ACKed packet #{} after {duration:?}",
-                    sent_data.into_data().frame_num()
-                );
+                trace!("ACKed packet {} after {duration:?}", sent_data.into_data());
                 self.update_t_rx_ack(Some(duration));
             } else {
-                trace!("ACKed packet #{}", sent_data.into_data().frame_num());
+                trace!("ACKed packet {}", sent_data.into_data());
             }
         }
     }
