@@ -6,18 +6,22 @@ use std::io::{Error, ErrorKind};
 use std::time::SystemTime;
 
 impl Transceiver {
+    /// Send an ACK frame with the given ACK number.
     pub(in crate::transceiver) fn ack(&mut self, ack_number: WrappingU3) -> std::io::Result<()> {
         self.send_ack(&Ack::create(ack_number, self.n_rdy()))
     }
 
+    /// Send a NAK frame with the current ACK number.
     pub(in crate::transceiver) fn nak(&mut self) -> std::io::Result<()> {
         self.send_nak(&Nak::create(self.ack_number(), self.n_rdy()))
     }
 
+    /// Send a RST frame.
     pub(in crate::transceiver) fn rst(&mut self) -> std::io::Result<()> {
         self.write_frame(&RST)
     }
 
+    /// Send a data frame.
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.serial_port
             .write_frame_buffered(&data, &mut self.buffers.frame)?;
