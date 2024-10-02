@@ -8,7 +8,7 @@ use std::time::SystemTime;
 pub struct State {
     pub(super) status: Status,
     pub(super) last_n_rdy_transmission: Option<SystemTime>,
-    pub(super) frame_number: WrappingU3,
+    frame_number: WrappingU3,
     pub(super) last_received_frame_num: Option<WrappingU3>,
     pub(super) reject: bool,
     pub(super) within_transaction: bool,
