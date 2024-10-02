@@ -7,12 +7,14 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    pub(in crate::transceiver) fn reset(&mut self, status: Status) {
+    /// Reset buffers and state.
+    pub(in crate::transceiver) fn reset(&mut self) {
         self.buffers.clear();
-        self.state.reset(status);
+        self.state.reset(Status::Failed);
     }
 
-    pub(in crate::transceiver) fn handle_reset(&mut self, error: std::io::Error) {
+    /// Handle I/O errors.
+    pub(in crate::transceiver) fn handle_io_error(&mut self, error: std::io::Error) {
         error!("I/O error: {error}");
 
         if self.state.within_transaction {
@@ -20,6 +22,6 @@ where
             self.channels.respond(Err(error)).unwrap_or_else(drop);
         }
 
-        self.reset(Status::Failed);
+        self.reset();
     }
 }

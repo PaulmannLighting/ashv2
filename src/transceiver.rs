@@ -103,7 +103,7 @@ where
     pub fn run(mut self, running: Arc<AtomicBool>) {
         while running.load(Relaxed) {
             if let Err(error) = self.main() {
-                self.handle_reset(error);
+                self.handle_io_error(error);
             }
         }
     }
