@@ -1,7 +1,7 @@
-use crate::{transceiver, Transceiver};
+use crate::Transceiver;
 
 impl Transceiver {
-    pub(in crate::transceiver) fn handle_callbacks(&mut self) -> transceiver::Result<()> {
+    pub(in crate::transceiver) fn handle_callbacks(&mut self) -> std::io::Result<()> {
         self.buffers.response.clear();
 
         while let Some(callback) = self.receive()? {

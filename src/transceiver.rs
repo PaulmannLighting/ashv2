@@ -1,5 +1,4 @@
 mod buffers;
-mod error;
 mod implementations;
 mod retransmit;
 mod state;
@@ -10,8 +9,6 @@ use crate::request::Request;
 use crate::status::Status;
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::state::State;
-pub use error::{Error, Result};
-use log::{error, warn};
 use serialport::TTYPort;
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -88,28 +85,19 @@ impl Transceiver {
     pub fn run(mut self) {
         loop {
             if let Err(error) = self.main() {
-                match error {
-                    Error::Io(error) => {
-                        error!("I/O error: {error}");
-                        self.reset(Status::Failed);
-                    }
-                    Error::EnteredFailedState => {
-                        warn!("Entered failed state.");
-                        self.reset(Status::Failed);
-                    }
-                }
+                self.handle_reset(error);
             }
         }
     }
 
-    fn main(&mut self) -> Result<()> {
+    fn main(&mut self) -> std::io::Result<()> {
         match self.state.status {
             Status::Disconnected | Status::Failed => Ok(self.connect()?),
             Status::Connected => self.communicate(),
         }
     }
 
-    fn communicate(&mut self) -> Result<()> {
+    fn communicate(&mut self) -> std::io::Result<()> {
         if self.state.reject {
             return Ok(self.try_clear_reject_condition()?);
         }

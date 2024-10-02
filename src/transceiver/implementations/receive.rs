@@ -28,10 +28,7 @@ impl Transceiver {
         }
     }
 
-    pub(in crate::transceiver) fn handle_packet(
-        &mut self,
-        packet: &Packet,
-    ) -> transceiver::Result<()> {
+    pub(in crate::transceiver) fn handle_packet(&mut self, packet: &Packet) -> std::io::Result<()> {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
 
@@ -41,7 +38,10 @@ impl Transceiver {
                 Packet::Data(ref data) => self.handle_data(data)?,
                 Packet::Error(ref error) => {
                     self.handle_error(error);
-                    return Err(transceiver::Error::EnteredFailedState);
+                    return Err(std::io::Error::new(
+                        ErrorKind::ConnectionReset,
+                        "NCP entered ERROR state.",
+                    ));
                 }
                 Packet::Nak(ref nak) => self.handle_nak(nak)?,
                 Packet::RstAck(ref rst_ack) => self.handle_rst_ack(rst_ack)?,
