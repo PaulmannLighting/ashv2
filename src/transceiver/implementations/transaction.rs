@@ -1,4 +1,5 @@
 use crate::packet::Data;
+use crate::transceiver;
 use crate::transceiver::Transceiver;
 use log::warn;
 use std::io::{Error, ErrorKind};
@@ -8,7 +9,7 @@ impl Transceiver {
     pub(in crate::transceiver) fn transaction(
         &mut self,
         mut chunks: Chunks<'_, u8>,
-    ) -> std::io::Result<()> {
+    ) -> transceiver::Result<()> {
         self.state.within_transaction = true;
 
         // Make sure that we do not receive any callbacks during the transaction.
@@ -69,7 +70,7 @@ impl Transceiver {
         self.write_frame(&data)
     }
 
-    fn clear_callbacks(&mut self) -> std::io::Result<()> {
+    fn clear_callbacks(&mut self) -> transceiver::Result<()> {
         // Disable callbacks by sending an ACK with `nRDY` set.
         self.ack()?;
 

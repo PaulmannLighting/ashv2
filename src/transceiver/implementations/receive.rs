@@ -2,6 +2,7 @@ use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
 use crate::protocol::Mask;
 use crate::status::Status;
+use crate::transceiver;
 use crate::Transceiver;
 use log::{debug, error, trace, warn};
 use std::io::ErrorKind;
@@ -27,7 +28,10 @@ impl Transceiver {
         }
     }
 
-    pub(in crate::transceiver) fn handle_packet(&mut self, packet: &Packet) -> std::io::Result<()> {
+    pub(in crate::transceiver) fn handle_packet(
+        &mut self,
+        packet: &Packet,
+    ) -> transceiver::Result<()> {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
 
@@ -35,7 +39,10 @@ impl Transceiver {
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
                 Packet::Data(ref data) => self.handle_data(data)?,
-                Packet::Error(ref error) => self.handle_error(error),
+                Packet::Error(ref error) => {
+                    self.handle_error(error);
+                    return Err(transceiver::Error::EnteredFailedState);
+                }
                 Packet::Nak(ref nak) => self.handle_nak(nak)?,
                 Packet::RstAck(ref rst_ack) => self.handle_rst_ack(rst_ack)?,
                 Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
