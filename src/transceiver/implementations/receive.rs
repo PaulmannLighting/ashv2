@@ -66,7 +66,7 @@ where
             warn!("Received ACK with invalid CRC.");
         }
 
-        self.ack_sent_packets(ack.ack_num());
+        self.buffers.ack_sent_packets(ack.ack_num());
     }
 
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
@@ -84,10 +84,10 @@ where
             self.leave_reject();
             self.state.last_received_frame_num.replace(data.frame_num());
             self.ack()?;
-            self.ack_sent_packets(data.ack_num());
+            self.buffers.ack_sent_packets(data.ack_num());
             self.buffers.extend_response(data.into_payload());
         } else if data.is_retransmission() {
-            self.ack_sent_packets(data.ack_num());
+            self.buffers.ack_sent_packets(data.ack_num());
             self.buffers.extend_response(data.into_payload());
         } else {
             debug!("Received out-of-sequence data frame: {data}");

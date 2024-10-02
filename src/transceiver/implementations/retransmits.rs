@@ -23,26 +23,6 @@ where
             })
     }
 
-    pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
-        trace!("Handling ACK: {ack_num}");
-        while let Some(retransmit) = self
-            .buffers
-            .retransmits
-            .iter()
-            .position(|retransmit| retransmit.frame_num() + 1 == ack_num)
-            .map(|index| self.buffers.retransmits.remove(index))
-        {
-            if let Ok(duration) = retransmit.elapsed() {
-                debug!(
-                    "ACKed packet #{} after {duration:?}",
-                    retransmit.into_data().frame_num()
-                );
-            } else {
-                debug!("ACKed packet #{}", retransmit.into_data().frame_num());
-            }
-        }
-    }
-
     pub(in crate::transceiver) fn nak_sent_packets(
         &mut self,
         nak_num: WrappingU3,
