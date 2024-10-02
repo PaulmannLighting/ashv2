@@ -1,19 +1,18 @@
-#[cfg(windows)]
-use serialport::COMPort as SerialPort;
-use serialport::FlowControl;
-#[cfg(unix)]
-use serialport::TTYPort as SerialPort;
+use serialport::{FlowControl, SerialPort};
 
 use crate::BaudRate;
 
 /// Opens a serial port depending on the local operating system.
 ///
 /// # Errors
-/// For errors please refer to [`SerialPort::open()`] and [`serialport::new()`]
+/// For errors please refer to [`SerialPortBuilder::open_native()`](serialport::SerialPortBuilder::open())
+/// and [`serialport::new()`].
 pub fn open<'a>(
     path: impl Into<std::borrow::Cow<'a, str>>,
     baud_rate: BaudRate,
     flow_control: FlowControl,
-) -> serialport::Result<SerialPort> {
-    SerialPort::open(&serialport::new(path, baud_rate.into()).flow_control(flow_control))
+) -> serialport::Result<impl SerialPort> {
+    serialport::new(path, baud_rate.into())
+        .flow_control(flow_control)
+        .open_native()
 }
