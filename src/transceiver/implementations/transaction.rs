@@ -56,6 +56,6 @@ impl Transceiver {
     }
 
     fn disable_callbacks(&mut self) -> std::io::Result<()> {
-        self.ack(self.ack_number())
+        self.ack(self.state.ack_number())
     }
 }
