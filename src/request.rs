@@ -10,7 +10,7 @@ pub struct Request {
 
 impl Request {
     #[must_use]
-    pub fn new(payload: Box<[u8]>) -> (Self, Receiver<Result<Box<[u8]>>>) {
+    pub(crate) fn new(payload: Box<[u8]>) -> (Self, Receiver<Result<Box<[u8]>>>) {
         let (response, rx) = channel();
         (Self { payload, response }, rx)
     }
