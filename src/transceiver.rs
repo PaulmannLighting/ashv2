@@ -86,7 +86,7 @@ impl Transceiver {
         loop {
             if let Err(error) = self.main() {
                 error!("I/O error: {error}");
-                self.reset();
+                self.reset(Status::Failed);
             }
         }
     }
