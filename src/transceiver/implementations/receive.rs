@@ -31,7 +31,7 @@ impl Transceiver {
         debug!("Received: {packet}");
         trace!("{packet:#04X?}");
 
-        if self.status == Status::Connected {
+        if self.state.status == Status::Connected {
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
                 Packet::Data(ref data) => self.handle_data(data)?,
@@ -70,19 +70,19 @@ impl Transceiver {
             self.reject()?;
         } else if data.frame_num() == self.ack_number() {
             self.ack(data.frame_num())?;
-            self.reject = false;
-            self.last_received_frame_num.replace(data.frame_num());
+            self.state.reject = false;
+            self.state.last_received_frame_num.replace(data.frame_num());
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sent_packets(data.ack_num());
-            self.response_buffer.extend_from_slice(data.payload());
+            self.buffers.response.extend_from_slice(data.payload());
         } else if data.is_retransmission() {
             debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.ack_sent_packets(data.ack_num());
-            self.response_buffer.extend_from_slice(data.payload());
+            self.buffers.response.extend_from_slice(data.payload());
         } else {
             debug!("Received out-of-sequence data frame: {data}");
 
-            if !self.reject {
+            if !self.state.reject {
                 self.reject()?;
             }
         }
@@ -97,7 +97,7 @@ impl Transceiver {
             error!("{error} is not ASHv2: {}", error.version());
         }
 
-        self.status = Status::Failed;
+        self.state.status = Status::Failed;
         error.code().map_or_else(
             |code| {
                 error!("NCP sent error with invalid code: {code}");
@@ -131,7 +131,7 @@ impl Transceiver {
             },
         );
         self.reset_state();
-        self.status = Status::Connected;
+        self.state.status = Status::Connected;
         self.abort_current_command();
     }
 

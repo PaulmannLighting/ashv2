@@ -1,4 +1,6 @@
+mod buffers;
 mod implementations;
+mod state;
 
 use crate::channels::Channels;
 use crate::packet::Data;
@@ -6,6 +8,8 @@ use crate::protocol::AshChunks;
 use crate::request::Request;
 use crate::retransmit::Retransmit;
 use crate::status::Status;
+use crate::transceiver::buffers::Buffers;
+use crate::transceiver::state::State;
 use crate::wrapping_u3::WrappingU3;
 use crate::FrameBuffer;
 use log::error;
@@ -51,18 +55,8 @@ use std::time::SystemTime;
 pub struct Transceiver {
     serial_port: TTYPort,
     channels: Channels,
-    // Buffers.
-    frame_buffer: FrameBuffer,
-    payload_buffer: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>,
-    retransmits: heapless::Vec<Retransmit, { Self::ACK_TIMEOUTS }>,
-    response_buffer: Vec<u8>,
-    // State.
-    status: Status,
-    last_n_rdy_transmission: Option<SystemTime>,
-    frame_number: WrappingU3,
-    last_received_frame_num: Option<WrappingU3>,
-    reject: bool,
-    within_transaction: bool,
+    buffers: Buffers,
+    state: State,
 }
 
 impl Transceiver {
@@ -77,7 +71,7 @@ impl Transceiver {
     /// If no callback channel is provided, the transceiver will
     /// silently discard any callbacks actively sent from the NCP.
     #[must_use]
-    pub const fn new(
+    pub fn new(
         serial_port: TTYPort,
         requests: Receiver<Request>,
         callback: Option<Sender<Box<[u8]>>>,
@@ -85,18 +79,8 @@ impl Transceiver {
         Self {
             serial_port,
             channels: Channels::new(requests, callback),
-            // Buffers.
-            frame_buffer: heapless::Vec::new(),
-            payload_buffer: heapless::Vec::new(),
-            retransmits: heapless::Vec::new(),
-            response_buffer: Vec::new(),
-            // State.
-            status: Status::Disconnected,
-            last_n_rdy_transmission: None,
-            frame_number: WrappingU3::from_u8_lossy(0),
-            last_received_frame_num: None,
-            reject: false,
-            within_transaction: false,
+            buffers: Buffers::default(),
+            state: State::default(),
         }
     }
 
@@ -107,20 +91,20 @@ impl Transceiver {
         loop {
             if let Err(error) = self.main() {
                 error!("I/O error: {error}");
-                self.reject = true;
+                self.reset();
             }
         }
     }
 
     fn main(&mut self) -> std::io::Result<()> {
-        match self.status {
+        match self.state.status {
             Status::Disconnected | Status::Failed => self.connect(),
             Status::Connected => self.communicate(),
         }
     }
 
     fn communicate(&mut self) -> std::io::Result<()> {
-        if self.reject {
+        if self.state.reject {
             return self.try_clear_reject_condition();
         }
 

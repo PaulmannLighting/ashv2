@@ -1,4 +1,3 @@
-use crate::ash_read::AshRead;
 use crate::packet::Packet;
 use crate::status::Status;
 use crate::Transceiver;
@@ -13,12 +12,9 @@ impl Transceiver {
         loop {
             self.reset()?;
 
-            if let Packet::RstAck(rst_ack) = self
-                .serial_port
-                .read_packet_buffered(&mut self.frame_buffer)?
-            {
+            if let Packet::RstAck(rst_ack) = self.read_packet()? {
                 debug!("Received RSTACK: {rst_ack}");
-                self.status = Status::Connected;
+                self.state.status = Status::Connected;
 
                 if let Ok(elapsed) = start.elapsed() {
                     debug!("Connection established after {elapsed:?}");

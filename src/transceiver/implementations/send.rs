@@ -16,13 +16,15 @@ impl Transceiver {
 
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
         self.serial_port
-            .write_frame_buffered(&data, &mut self.frame_buffer)?;
+            .write_frame_buffered(&data, &mut self.buffers.frame)?;
         self.enqueue_retransmit(data)
     }
 
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
         if ack.not_ready() {
-            self.last_n_rdy_transmission.replace(SystemTime::now());
+            self.state
+                .last_n_rdy_transmission
+                .replace(SystemTime::now());
         }
 
         self.write_frame(ack)
@@ -30,18 +32,23 @@ impl Transceiver {
 
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         if nak.not_ready() {
-            self.last_n_rdy_transmission.replace(SystemTime::now());
+            self.state
+                .last_n_rdy_transmission
+                .replace(SystemTime::now());
         }
 
         self.write_frame(nak)
     }
 
     fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
-        self.retransmits.insert(0, data.into()).map_err(|_| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "ASHv2: failed to enqueue retransmit",
-            )
-        })
+        self.buffers
+            .retransmits
+            .insert(0, data.into())
+            .map_err(|_| {
+                Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ASHv2: failed to enqueue retransmit",
+                )
+            })
     }
 }
