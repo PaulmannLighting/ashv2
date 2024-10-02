@@ -41,7 +41,7 @@ impl Transceiver {
                 Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
         } else if let Packet::RstAck(ref rst_ack) = packet {
-            self.handle_rst_ack(rst_ack);
+            self.handle_rst_ack(rst_ack)?;
         } else {
             warn!("Not connected. Dropping frame: {packet}");
         }
