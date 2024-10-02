@@ -12,6 +12,7 @@ pub struct Channels {
 }
 
 impl Channels {
+    /// Create a new set of communication channels.
     pub const fn new(requests: Receiver<Request>, callback: Option<SyncSender<Box<[u8]>>>) -> Self {
         Self {
             requests,
@@ -20,6 +21,7 @@ impl Channels {
         }
     }
 
+    /// Receive a request from the host.
     pub fn receive(&mut self) -> std::io::Result<Option<Box<[u8]>>> {
         match self.requests.try_recv() {
             Ok(request) => {
@@ -36,6 +38,7 @@ impl Channels {
         }
     }
 
+    /// Respond to the host.
     pub fn respond(&mut self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
         let Some(response) = self.response.take() else {
             error!("No response channel set. Discarding response.");
@@ -58,6 +61,7 @@ impl Channels {
         }
     }
 
+    /// Send a callback via the callback channel.
     pub fn callback(&mut self, payload: Box<[u8]>) -> std::io::Result<()> {
         let Some(callback) = self.callback.as_ref() else {
             warn!("No callback set. Discarding response.");
@@ -83,7 +87,8 @@ impl Channels {
         }
     }
 
+    /// Reset the response channel.
     pub fn reset(&mut self) {
-        self.response = None;
+        self.response.take();
     }
 }
