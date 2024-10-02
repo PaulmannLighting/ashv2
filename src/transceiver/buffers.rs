@@ -1,15 +1,15 @@
+use super::constants::TX_K;
 use super::sent_data::SentData;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Data;
 use crate::protocol::Mask;
-use crate::transceiver::constants::ACK_TIMEOUTS;
 use log::trace;
 
 /// Buffers used by the transceiver.
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
-    pub(super) sent_data: heapless::Vec<SentData, ACK_TIMEOUTS>,
+    pub(super) sent_data: heapless::Vec<SentData, TX_K>,
     pub(super) response: Vec<u8>,
 }
 
