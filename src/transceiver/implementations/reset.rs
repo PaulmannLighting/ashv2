@@ -9,6 +9,7 @@ where
 {
     /// Reset buffers and state.
     pub(in crate::transceiver) fn reset(&mut self) {
+        self.channels.reset();
         self.buffers.clear();
         self.state.reset(Status::Failed);
     }

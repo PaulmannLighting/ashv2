@@ -69,4 +69,8 @@ impl Channels {
             },
         )
     }
+
+    pub fn reset(&mut self) {
+        self.response = None;
+    }
 }
