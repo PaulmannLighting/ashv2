@@ -8,8 +8,6 @@
 use crc::{Crc, CRC_16_IBM_3740};
 
 pub use baud_rate::BaudRate;
-use code::Code;
-pub use frame_buffer::FrameBuffer;
 pub use host::{AsyncAsh, SyncAsh};
 pub use serial_port::open;
 pub use transceiver::Transceiver;

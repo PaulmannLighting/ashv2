@@ -1,7 +1,8 @@
 use crate::frame::Frame;
+use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::wrapping_u3::WrappingU3;
-use crate::{FrameBuffer, CRC};
+use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 

@@ -1,8 +1,9 @@
 use crate::frame::Frame;
+use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::wrapping_u3::WrappingU3;
-use crate::{FrameBuffer, CRC};
+use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -54,18 +55,14 @@ impl Data {
         self.header.contains(headers::Data::RETRANSMIT)
     }
 
-    /// Returns the payload data.
-    #[must_use]
-    pub fn payload(&self) -> &[u8] {
-        &self.payload
-    }
-
+    /// Sets the retransmit flag.
     pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
         self.header
             .set(headers::Data::RETRANSMIT, is_retransmission);
         self.crc = self.calculate_crc();
     }
 
+    /// Consumes the `Data` packet and returns its payload.
     pub fn into_payload(self) -> Payload {
         self.payload
     }
@@ -147,9 +144,10 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 mod tests {
     use super::Data;
     use crate::frame::Frame;
+    use crate::frame_buffer::FrameBuffer;
     use crate::packet::headers;
     use crate::protocol::Mask;
-    use crate::{FrameBuffer, CRC};
+    use crate::CRC;
 
     #[test]
     fn test_frame_num() {
@@ -327,7 +325,7 @@ mod tests {
             payload: masked_payload.as_slice().try_into().unwrap(),
             crc,
         };
-        let mut unmasked_payload: Vec<u8> = data.payload().to_vec();
+        let mut unmasked_payload: Vec<u8> = data.clone().into_payload().to_vec();
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
         let mut byte_representation = FrameBuffer::new();

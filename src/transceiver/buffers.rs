@@ -1,10 +1,10 @@
 use super::retransmit::Retransmit;
+use crate::frame_buffer::FrameBuffer;
 use crate::packet::Data;
 use crate::protocol::Mask;
 use crate::transceiver::constants::ACK_TIMEOUTS;
 use crate::wrapping_u3::WrappingU3;
-use crate::FrameBuffer;
-use log::{debug, trace};
+use log::trace;
 
 /// Buffers used by the transceiver.
 #[derive(Debug, Default)]

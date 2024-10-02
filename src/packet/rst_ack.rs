@@ -1,6 +1,7 @@
 use crate::code::Code;
 use crate::frame::Frame;
-use crate::{FrameBuffer, CRC, VERSION};
+use crate::frame_buffer::FrameBuffer;
+use crate::{CRC, VERSION};
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -86,8 +87,8 @@ impl TryFrom<&[u8]> for RstAck {
 
 #[cfg(test)]
 mod tests {
+    use crate::code::Code;
     use crate::frame::Frame;
-    use crate::Code;
 
     use super::RstAck;
 

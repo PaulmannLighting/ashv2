@@ -1,5 +1,7 @@
+use crate::code::Code;
 use crate::frame::Frame;
-use crate::{Code, FrameBuffer, CRC};
+use crate::frame_buffer::FrameBuffer;
+use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -85,8 +87,8 @@ impl TryFrom<&[u8]> for Error {
 
 #[cfg(test)]
 mod tests {
+    use crate::code::Code;
     use crate::frame::Frame;
-    use crate::Code;
 
     use super::Error;
 

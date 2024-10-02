@@ -1,5 +1,5 @@
 use crate::frame::Frame;
-use crate::FrameBuffer;
+use crate::frame_buffer::FrameBuffer;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
