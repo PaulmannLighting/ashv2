@@ -33,7 +33,7 @@ where
 
     /// Send an ACK frame with the given ACK number.
     pub(in crate::transceiver) fn ack(&mut self) -> std::io::Result<()> {
-        self.send_ack(&Ack::new(self.state.ack_number(), self.state.n_rdy()))
+        self.send_ack(&Ack::new(self.state.ack_number(), false))
     }
 
     /// Send a NAK frame with the current ACK number.
