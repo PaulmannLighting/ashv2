@@ -49,17 +49,14 @@ impl Transceiver {
 
     /// Sends a chunk of data.
     fn send_chunk(&mut self, chunk: &[u8]) -> std::io::Result<()> {
-        self.buffers.payload.clear();
-        self.buffers
-            .payload
-            .extend_from_slice(chunk)
-            .map_err(|()| {
+        let payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }> =
+            chunk.try_into().map_err(|()| {
                 Error::new(
                     ErrorKind::OutOfMemory,
                     "ASHv2: could not append chunk to frame buffer",
                 )
             })?;
-        let data = Data::create(self.state.next_frame_number(), self.buffers.payload.clone());
+        let data = Data::create(self.state.next_frame_number(), payload);
         self.write_frame(&data)
     }
 

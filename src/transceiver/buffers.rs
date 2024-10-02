@@ -1,5 +1,4 @@
 use super::retransmit::Retransmit;
-use crate::packet::Data;
 use crate::wrapping_u3::WrappingU3;
 use crate::{FrameBuffer, Transceiver};
 use log::trace;
@@ -8,7 +7,6 @@ use log::trace;
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
-    pub(super) payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>,
     pub(super) retransmits: heapless::Vec<Retransmit, { Transceiver::ACK_TIMEOUTS }>,
     pub(super) response: Vec<u8>,
 }
@@ -17,7 +15,6 @@ impl Buffers {
     /// Resets the transceiver buffers.
     pub(super) fn clear(&mut self) {
         self.frame.clear();
-        self.payload.clear();
         self.retransmits.clear();
         self.response.clear();
     }
