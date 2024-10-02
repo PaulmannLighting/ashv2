@@ -7,7 +7,6 @@ use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
 type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
-type Buffer = heapless::Vec<u8, { Data::BUFFER_SIZE }>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
