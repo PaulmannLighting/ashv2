@@ -1,4 +1,4 @@
-use crate::host::sender_ext::SenderExt;
+use super::sender_ext::SenderExt;
 use crate::request::Request;
 use std::future::Future;
 use std::io::{Error, ErrorKind, Result};
