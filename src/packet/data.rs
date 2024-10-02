@@ -317,7 +317,7 @@ mod tests {
     fn test_data_frame() {
         let header = 0x00;
         let payload = [0x01, 0x00, 0x00, 0x04];
-        let mut masked_payload = payload.clone();
+        let mut masked_payload = payload;
         masked_payload.mask();
         let mut crc_target = vec![header];
         crc_target.extend_from_slice(&masked_payload);
@@ -327,7 +327,7 @@ mod tests {
             payload: masked_payload.as_slice().try_into().unwrap(),
             crc,
         };
-        let mut unmasked_payload: Vec<u8> = data.payload().iter().copied().collect();
+        let mut unmasked_payload: Vec<u8> = data.payload().to_vec();
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
         let mut byte_representation = FrameBuffer::new();
