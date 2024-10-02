@@ -36,7 +36,7 @@ where
             .position(|retransmit| retransmit.frame_num() == nak_num)
             .map(|index| self.buffers.retransmits.remove(index))
         {
-            debug!("Retransmitting NACK'ed packet #{}", retransmit.frame_num());
+            debug!("Retransmitting NAK'ed packet #{}", retransmit.frame_num());
             self.send_data(retransmit.into_data())?;
         }
 
