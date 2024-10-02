@@ -36,7 +36,8 @@ use std::sync::Arc;
 /// use ashv2::{open, BaudRate, SyncAsh, Transceiver};
 ///
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
-///     Ok(serial_port) => {let (host, receiver) = channel();
+///     Ok(serial_port) => {
+///         let (host, receiver) = channel();
 ///         let transceiver = Transceiver::new(serial_port, receiver, None);
 ///         let running = Arc::new(AtomicBool::new(true));
 ///         let running_transceiver = running.clone();
