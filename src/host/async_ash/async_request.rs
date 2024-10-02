@@ -1,8 +1,8 @@
+use crate::host::sender_ext::SenderExt;
 use crate::request::Request;
 use std::future::Future;
 use std::io::{Error, ErrorKind, Result};
 use std::pin::Pin;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use std::thread::spawn;
@@ -14,7 +14,10 @@ pub struct AsyncRequest {
 
 impl AsyncRequest {
     #[must_use]
-    pub fn new(sender: Sender<Request>, payload: &[u8]) -> Self {
+    pub fn new<T>(sender: T, payload: &[u8]) -> Self
+    where
+        T: SenderExt<Request> + Send + 'static,
+    {
         let shared_state = Arc::new(Mutex::new(SharedState {
             output: None,
             waker: None,
