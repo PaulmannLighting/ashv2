@@ -1,4 +1,3 @@
-use crate::ash_write::AshWrite;
 use crate::packet::{Ack, Data, Nak, RST};
 use crate::transceiver::Transceiver;
 use crate::wrapping_u3::WrappingU3;
@@ -23,8 +22,7 @@ impl Transceiver {
 
     /// Send a data frame.
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
-        self.serial_port
-            .write_frame_buffered(&data, &mut self.buffers.frame)?;
+        self.write_frame(&data)?;
         self.enqueue_retransmit(data)
     }
 
