@@ -7,7 +7,7 @@ use async_request::AsyncRequest;
 use std::future::Future;
 use std::sync::mpsc::Sender;
 
-/// A host controller to communicate with an NCP via the `ASHv2` protocol.
+/// A trait to asynchronously communicate with an NCP via the `ASHv2` protocol.
 pub trait AsyncAsh {
     /// Communicate with the NCP, returning `Box<[u8]>`.
     ///

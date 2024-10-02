@@ -4,7 +4,7 @@ use crate::request::Request;
 use std::io::ErrorKind;
 use std::sync::mpsc::Sender;
 
-/// A host controller to communicate with an NCP via the `ASHv2` protocol.
+/// A trait to synchronously (blocking) communicate with an NCP via the `ASHv2` protocol.
 pub trait SyncAsh {
     /// Communicate with the NCP, returning `Box<[u8]>`.
     ///
