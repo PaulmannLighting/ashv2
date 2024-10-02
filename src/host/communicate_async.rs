@@ -1,11 +1,11 @@
 //! Asynchronous host controller for the `ASHv2` protocol.
 
-mod response;
+mod async_request;
 
-use crate::host::Host;
 use crate::request::Request;
-use response::Response;
+use async_request::AsyncRequest;
 use std::future::Future;
+use std::sync::mpsc::Sender;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 pub trait CommunicateAsync {
@@ -20,12 +20,8 @@ pub trait CommunicateAsync {
     ) -> impl Future<Output = std::io::Result<Box<[u8]>>> + Send;
 }
 
-impl CommunicateAsync for Host {
-    async fn communicate(&self, payload: &[u8]) -> <Response as Future>::Output {
-        let (request, response) = Request::new(payload.into());
-        match self.command.send(request) {
-            Ok(()) => Response::new(response).await,
-            Err(_) => Response::failed().await,
-        }
+impl CommunicateAsync for Sender<Request> {
+    async fn communicate(&self, payload: &[u8]) -> <AsyncRequest as Future>::Output {
+        AsyncRequest::new(self.clone(), payload).await
     }
 }

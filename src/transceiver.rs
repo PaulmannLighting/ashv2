@@ -31,15 +31,14 @@ use std::sync::Arc;
 /// use std::sync::mpsc::channel;
 /// use std::thread::spawn;
 /// use serialport::FlowControl;
-/// use ashv2::{open, BaudRate, CommunicateSync, Host, Transceiver};
+/// use ashv2::{open, BaudRate, CommunicateSync, Transceiver};
 ///
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
-///     Ok(serial_port) => {let (sender, receiver) = channel();
+///     Ok(serial_port) => {let (host, receiver) = channel();
 ///         let transceiver = Transceiver::new(serial_port, receiver, None);
 ///         let running = Arc::new(AtomicBool::new(true));
 ///         let running_transceiver = running.clone();
 ///         let _thread_handle = spawn(move || transceiver.run(running_transceiver));
-///         let host = Host::from(sender);
 ///
 ///         let version_command = &[0x00, 0x01, 0x02, 0x03];
 ///

@@ -1,8 +1,8 @@
 //! Synchronous host controller for the `ASHv2` protocol.
 
 use crate::request::Request;
-use crate::Host;
 use std::io::ErrorKind;
+use std::sync::mpsc::Sender;
 
 /// A host controller to communicate with an NCP via the `ASHv2` protocol.
 pub trait CommunicateSync {
@@ -14,10 +14,10 @@ pub trait CommunicateSync {
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>>;
 }
 
-impl CommunicateSync for Host {
+impl CommunicateSync for Sender<Request> {
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>> {
         let (request, response) = Request::new(payload.into());
-        self.command.send(request).map_err(|_| {
+        self.send(request).map_err(|_| {
             std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send request.")
         })?;
         response.recv().map_err(|_| {
