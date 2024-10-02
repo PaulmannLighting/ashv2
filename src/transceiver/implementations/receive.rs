@@ -12,26 +12,6 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Receives a packet from the serial port.
-    ///
-    /// Returns `Ok(None)` if no packet was received within the timeout.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the serial port read operation failed.
-    pub(in crate::transceiver) fn receive(&mut self) -> std::io::Result<Option<Packet>> {
-        match self.read_packet() {
-            Ok(packet) => Ok(Some(packet)),
-            Err(error) => {
-                if error.kind() == ErrorKind::TimedOut {
-                    Ok(None)
-                } else {
-                    Err(error)
-                }
-            }
-        }
-    }
-
     pub(in crate::transceiver) fn receive_with_timeout(
         &mut self,
         timeout: Duration,

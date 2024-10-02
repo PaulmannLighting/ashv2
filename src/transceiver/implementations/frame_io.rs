@@ -1,15 +1,77 @@
 use crate::frame::Frame;
-use crate::packet::Packet;
+use crate::packet::{Ack, Data, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::transceiver::Transceiver;
 use log::{debug, trace};
 use serialport::SerialPort;
 use std::io::{Error, ErrorKind, Read};
+use std::time::SystemTime;
 
 impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
+    /// Receives a packet from the serial port.
+    ///
+    /// Returns `Ok(None)` if no packet was received within the timeout.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the serial port read operation failed.
+    pub(in crate::transceiver) fn receive(&mut self) -> std::io::Result<Option<Packet>> {
+        match self.read_packet() {
+            Ok(packet) => Ok(Some(packet)),
+            Err(error) => {
+                if error.kind() == ErrorKind::TimedOut {
+                    Ok(None)
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+
+    /// Send an ACK frame with the given ACK number.
+    pub(in crate::transceiver) fn ack(&mut self) -> std::io::Result<()> {
+        self.send_ack(&Ack::new(self.state.ack_number(), self.state.n_rdy()))
+    }
+
+    /// Send a NAK frame with the current ACK number.
+    pub(in crate::transceiver) fn nak(&mut self) -> std::io::Result<()> {
+        self.send_nak(&Nak::new(self.state.ack_number(), self.state.n_rdy()))
+    }
+
+    /// Send a RST frame.
+    pub(in crate::transceiver) fn rst(&mut self) -> std::io::Result<()> {
+        self.write_frame(&RST)
+    }
+
+    /// Send a data frame.
+    pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
+        self.write_frame(&data)?;
+        self.enqueue_retransmit(data)
+    }
+
+    fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
+        if ack.not_ready() {
+            self.state
+                .last_n_rdy_transmission
+                .replace(SystemTime::now());
+        }
+
+        self.write_frame(ack)
+    }
+
+    fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+        if nak.not_ready() {
+            self.state
+                .last_n_rdy_transmission
+                .replace(SystemTime::now());
+        }
+
+        self.write_frame(nak)
+    }
+
     /// Read an ASH [`Packet`].
     ///
     /// # Arguments
@@ -17,7 +79,7 @@ where
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub(in crate::transceiver) fn read_packet(&mut self) -> std::io::Result<Packet> {
+    fn read_packet(&mut self) -> std::io::Result<Packet> {
         self.buffer_frame()?;
         Packet::try_from(self.buffers.frame.as_slice())
     }
@@ -95,7 +157,7 @@ where
     /// # Errors
     ///
     /// Returns an [`Error`](Error) if any I/O error occurs.
-    pub(in crate::transceiver) fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
+    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
         F: Frame,
     {
@@ -118,5 +180,16 @@ where
         trace!("Writing bytes: {buffer:#04X?}");
         self.serial_port.write_all(buffer)?;
         self.serial_port.flush()
+    }
+    fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
+        self.buffers
+            .retransmits
+            .insert(0, data.into())
+            .map_err(|_| {
+                Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ASHv2: failed to enqueue retransmit",
+                )
+            })
     }
 }

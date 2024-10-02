@@ -5,5 +5,4 @@ mod receive;
 mod reject;
 mod reset;
 mod retransmits;
-mod send;
 mod transaction;
