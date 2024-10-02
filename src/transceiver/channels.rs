@@ -1,18 +1,18 @@
 use crate::request::Request;
 use log::{error, warn};
-use std::io::ErrorKind;
-use std::sync::mpsc::{Receiver, Sender, SyncSender, TryRecvError};
+use std::io::{Error, ErrorKind};
+use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
     response: Option<SyncSender<std::io::Result<Box<[u8]>>>>,
-    callback: Option<Sender<Box<[u8]>>>,
+    callback: Option<SyncSender<Box<[u8]>>>,
 }
 
 impl Channels {
-    pub const fn new(requests: Receiver<Request>, callback: Option<Sender<Box<[u8]>>>) -> Self {
+    pub const fn new(requests: Receiver<Request>, callback: Option<SyncSender<Box<[u8]>>>) -> Self {
         Self {
             requests,
             response: None,
@@ -28,7 +28,7 @@ impl Channels {
             }
             Err(error) => match error {
                 TryRecvError::Empty => Ok(None),
-                TryRecvError::Disconnected => Err(std::io::Error::new(
+                TryRecvError::Disconnected => Err(Error::new(
                     ErrorKind::BrokenPipe,
                     "ASHv2 receiver channel disconnected",
                 )),
@@ -37,37 +37,50 @@ impl Channels {
     }
 
     pub fn respond(&mut self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
-        self.response.take().map_or_else(
-            || {
-                error!("No response channel set. Discarding response.");
-                Ok(())
-            },
-            |response| {
-                response
-                    .send(payload)
-                    .inspect_err(|error| error!("ASHv2 failed to send response: {error}"))
-                    .map_err(|_| {
-                        std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
-                    })
-            },
-        )
+        let Some(response) = self.response.take() else {
+            error!("No response channel set. Discarding response.");
+            return Ok(());
+        };
+
+        if let Err(error) = response.try_send(payload) {
+            match error {
+                TrySendError::Disconnected(_) => Err(Error::new(
+                    ErrorKind::BrokenPipe,
+                    "Response channel has disconnected.",
+                )),
+                TrySendError::Full(_) => Err(Error::new(
+                    ErrorKind::OutOfMemory,
+                    "Response channel's buffer is full.",
+                )),
+            }
+        } else {
+            Ok(())
+        }
     }
 
-    pub fn callback(&self, payload: Box<[u8]>) -> std::io::Result<()> {
-        self.callback.as_ref().map_or_else(
-            || {
-                warn!("No callback set. Discarding response.");
-                Ok(())
-            },
-            |callback| {
-                callback
-                    .send(payload)
-                    .inspect_err(|error| error!("ASHv2 failed to send callback: {error}"))
-                    .map_err(|_| {
-                        std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send callback")
-                    })
-            },
-        )
+    pub fn callback(&mut self, payload: Box<[u8]>) -> std::io::Result<()> {
+        let Some(callback) = self.callback.as_ref() else {
+            warn!("No callback set. Discarding response.");
+            return Ok(());
+        };
+
+        if let Err(error) = callback.try_send(payload) {
+            match error {
+                TrySendError::Disconnected(_) => {
+                    self.callback.take();
+                    Err(Error::new(
+                        ErrorKind::BrokenPipe,
+                        "Callback channel has disconnected. Closing callback channel forever.",
+                    ))
+                }
+                TrySendError::Full(_) => Err(Error::new(
+                    ErrorKind::OutOfMemory,
+                    "Callback channel's buffer is full.",
+                )),
+            }
+        } else {
+            Ok(())
+        }
     }
 
     pub fn reset(&mut self) {
