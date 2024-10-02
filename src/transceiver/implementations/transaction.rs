@@ -26,6 +26,11 @@ impl Transceiver {
             self.handle_packet(&packet)?;
         }
 
+        self.channels
+            .respond(Ok(self.buffers.response.clone().into()))?;
+        self.state.within_transaction = false;
+        // Send ACK without `nRDY` set, to re-enable callbacks.
+        self.ack()?;
         Ok(())
     }
 
@@ -59,6 +64,7 @@ impl Transceiver {
     }
 
     fn clear_callbacks(&mut self) -> std::io::Result<()> {
+        // Disable callbacks by sending an ACK with `nRDY` set.
         self.ack()?;
 
         while let Some(packet) = self.receive()? {
