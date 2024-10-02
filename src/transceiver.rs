@@ -35,26 +35,28 @@ use std::sync::Arc;
 /// use serialport::FlowControl;
 /// use ashv2::{open, BaudRate, SyncAsh, Transceiver};
 ///
-/// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
-///     Ok(serial_port) => {
-///         let (host, receiver) = channel();
-///         let transceiver = Transceiver::new(serial_port, receiver, None);
-///         let running = Arc::new(AtomicBool::new(true));
-///         let running_transceiver = running.clone();
-///         let _thread_handle = spawn(move || transceiver.run(running_transceiver));
+/// let serial_port = match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
+///     Ok(serial_port) => serial_port,
+///     Err(error) => {
+///         eprintln!("{error}");
+///         return;
+///     }
+/// };
 ///
-///         let version_command = &[0x00, 0x01, 0x02, 0x03];
+/// let (host, receiver) = channel();
+/// let transceiver = Transceiver::new(serial_port, receiver, None);
+/// let running = Arc::new(AtomicBool::new(true));
+/// let running_transceiver = running.clone();
+/// let _thread_handle = spawn(move || transceiver.run(running_transceiver));
 ///
-///         match host.communicate(version_command) {
-///             Ok(response) => println!("{response:?}"),
-///             Err(error) => eprintln!("{error}"),
-///         }
+/// let version_command = &[0x00, 0x01, 0x02, 0x03];
 ///
-///         running.store(false, Relaxed);
-///     },
+/// match host.communicate(version_command) {
+///     Ok(response) => println!("{response:?}"),
 ///     Err(error) => eprintln!("{error}"),
 /// }
 ///
+/// running.store(false, Relaxed);
 /// ```
 #[derive(Debug)]
 pub struct Transceiver<T>
