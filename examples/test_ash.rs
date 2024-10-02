@@ -1,6 +1,6 @@
-//! Test ASHv2 connection.
+//! Test `ASHv2` connection.
 
-use ashv2::{open, BaudRate, Host, Transceiver};
+use ashv2::{open, BaudRate, CommunicateSync, Host, Transceiver};
 use log::{error, info};
 use serialport::FlowControl;
 use std::sync::atomic::AtomicBool;
@@ -12,8 +12,7 @@ use std::thread::spawn;
 const SERIAL_PORT: &str = "/dev/ttymcx0";
 const VERSION_COMMAND: [u8; 4] = [0x00, 0x00, 0x00, 0x02];
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let port = open(SERIAL_PORT, BaudRate::RstCts, FlowControl::Software)
         .expect("failed to open TTY port");
     let (sender, receiver) = channel();
@@ -23,7 +22,7 @@ async fn main() {
     let _thread_handle = spawn(|| transceiver.run(running_transceiver));
     let host = Host::new(sender);
 
-    match host.communicate(&VERSION_COMMAND).await {
+    match host.communicate(&VERSION_COMMAND) {
         Ok(bytes) => info!("Got response: {bytes:?}"),
         Err(error) => error!("Got error: {error:?}"),
     }

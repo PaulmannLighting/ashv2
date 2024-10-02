@@ -32,8 +32,7 @@ use std::sync::Arc;
 /// use std::thread::spawn;
 /// use serialport::FlowControl;
 /// use tokio::task::futures;
-/// use ashv2::{open, BaudRate, Host, Transceiver};
-/// use ::futures::executor;
+/// use ashv2::{open, BaudRate, CommunicateSync, Host, Transceiver};
 ///
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
 ///     Ok(serial_port) => {let (sender, receiver) = channel();
@@ -44,9 +43,8 @@ use std::sync::Arc;
 ///         let host = Host::from(sender);
 ///
 ///         let version_command = &[0x00, 0x01, 0x02, 0x03];
-///         let future = host.communicate(version_command);
 ///
-///         match executor::block_on(future) {
+///         match host.communicate(version_command) {
 ///             Ok(response) => println!("{response:?}"),
 ///             Err(error) => eprintln!("{error}"),
 ///         }
