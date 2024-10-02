@@ -1,7 +1,7 @@
 mod buffers;
 mod constants;
 mod implementations;
-mod retransmit;
+mod sent_data;
 mod state;
 
 use crate::channels::Channels;

@@ -3,12 +3,12 @@ use crate::wrapping_u3::WrappingU3;
 use std::time::{Duration, SystemTime, SystemTimeError};
 
 #[derive(Debug)]
-pub struct Retransmit {
+pub struct SentData {
     sent: SystemTime,
     data: Data,
 }
 
-impl Retransmit {
+impl SentData {
     #[must_use]
     pub const fn frame_num(&self) -> WrappingU3 {
         self.data.frame_num()
@@ -31,7 +31,7 @@ impl Retransmit {
     }
 }
 
-impl From<Data> for Retransmit {
+impl From<Data> for SentData {
     fn from(data: Data) -> Self {
         Self {
             sent: SystemTime::now(),

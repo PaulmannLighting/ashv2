@@ -1,4 +1,4 @@
-use super::retransmit::Retransmit;
+use super::sent_data::SentData;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Data;
 use crate::protocol::Mask;
@@ -9,7 +9,7 @@ use log::trace;
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
-    pub(super) retransmits: heapless::Vec<Retransmit, ACK_TIMEOUTS>,
+    pub(super) sent_data: heapless::Vec<SentData, ACK_TIMEOUTS>,
     pub(super) response: Vec<u8>,
 }
 
@@ -17,7 +17,7 @@ impl Buffers {
     /// Resets the transceiver buffers.
     pub(super) fn clear(&mut self) {
         self.frame.clear();
-        self.retransmits.clear();
+        self.sent_data.clear();
         self.response.clear();
     }
 

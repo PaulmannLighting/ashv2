@@ -32,7 +32,7 @@ where
         }
 
         // Wait for retransmits to finish.
-        while !self.buffers.retransmits.is_empty() {
+        while !self.buffers.sent_data.is_empty() {
             self.retransmit_timed_out_data()?;
 
             while let Some(packet) = self.receive()? {
@@ -50,7 +50,7 @@ where
 
     /// Sends chunks as long as the retransmit queue is not full.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
-        while !self.buffers.retransmits.is_full() {
+        while !self.buffers.sent_data.is_full() {
             if let Some(chunk) = chunks.next() {
                 self.send_chunk(chunk)?;
             } else {

@@ -12,33 +12,30 @@ where
     T: SerialPort,
 {
     pub(in crate::transceiver) fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
-        self.buffers
-            .retransmits
-            .insert(0, data.into())
-            .map_err(|_| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: failed to enqueue retransmit",
-                )
-            })
+        self.buffers.sent_data.insert(0, data.into()).map_err(|_| {
+            Error::new(
+                ErrorKind::OutOfMemory,
+                "ASHv2: failed to enqueue retransmit",
+            )
+        })
     }
 
     pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
-        while let Some(retransmit) = self
+        while let Some(sent_data) = self
             .buffers
-            .retransmits
+            .sent_data
             .iter()
-            .position(|retransmit| retransmit.frame_num() + 1 == ack_num)
-            .map(|index| self.buffers.retransmits.remove(index))
+            .position(|sent_data| sent_data.frame_num() + 1 == ack_num)
+            .map(|index| self.buffers.sent_data.remove(index))
         {
-            if let Ok(duration) = retransmit.elapsed() {
+            if let Ok(duration) = sent_data.elapsed() {
                 trace!(
                     "ACKed packet #{} after {duration:?}",
-                    retransmit.into_data().frame_num()
+                    sent_data.into_data().frame_num()
                 );
                 self.update_t_rx_ack(Some(duration));
             } else {
-                trace!("ACKed packet #{}", retransmit.into_data().frame_num());
+                trace!("ACKed packet #{}", sent_data.into_data().frame_num());
             }
         }
     }
@@ -49,33 +46,30 @@ where
     ) -> std::io::Result<()> {
         trace!("Handling NAK: {nak_num}");
 
-        if let Some(retransmit) = self
+        if let Some(sent_data) = self
             .buffers
-            .retransmits
+            .sent_data
             .iter()
-            .position(|retransmit| retransmit.frame_num() == nak_num)
-            .map(|index| self.buffers.retransmits.remove(index))
+            .position(|sent_data| sent_data.frame_num() == nak_num)
+            .map(|index| self.buffers.sent_data.remove(index))
         {
-            debug!("Retransmitting NAK'ed packet #{}", retransmit.frame_num());
-            self.send_data(retransmit.into_data())?;
+            debug!("Retransmitting NAK'ed packet #{}", sent_data.frame_num());
+            self.send_data(sent_data.into_data())?;
         }
 
         Ok(())
     }
 
     pub(in crate::transceiver) fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
-        while let Some(retransmit) = self
+        while let Some(sent_data) = self
             .buffers
-            .retransmits
+            .sent_data
             .iter()
-            .position(|retransmit| retransmit.is_timed_out(self.state.t_rx_ack))
-            .map(|index| self.buffers.retransmits.remove(index))
+            .position(|sent_data| sent_data.is_timed_out(self.state.t_rx_ack))
+            .map(|index| self.buffers.sent_data.remove(index))
         {
-            debug!(
-                "Retransmitting timed-out packet #{}",
-                retransmit.frame_num()
-            );
-            self.send_data(retransmit.into_data())?;
+            debug!("Retransmitting timed-out packet #{}", sent_data.frame_num());
+            self.send_data(sent_data.into_data())?;
         }
 
         self.update_t_rx_ack(None);
