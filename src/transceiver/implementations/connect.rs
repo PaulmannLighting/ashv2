@@ -10,7 +10,7 @@ impl Transceiver {
         let start = SystemTime::now();
 
         loop {
-            self.reset()?;
+            self.rst()?;
 
             if let Packet::RstAck(rst_ack) = self.read_packet()? {
                 debug!("Received RSTACK: {rst_ack}");

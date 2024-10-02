@@ -1,5 +1,5 @@
 use crate::ash_write::AshWrite;
-use crate::packet::{Ack, Data, Nak};
+use crate::packet::{Ack, Data, Nak, RST};
 use crate::transceiver::Transceiver;
 use crate::wrapping_u3::WrappingU3;
 use std::io::{Error, ErrorKind};
@@ -12,6 +12,10 @@ impl Transceiver {
 
     pub(in crate::transceiver) fn nak(&mut self) -> std::io::Result<()> {
         self.send_nak(&Nak::create(self.ack_number(), self.n_rdy()))
+    }
+
+    pub(in crate::transceiver) fn rst(&mut self) -> std::io::Result<()> {
+        self.write_frame(&RST)
     }
 
     pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
