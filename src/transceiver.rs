@@ -3,19 +3,14 @@ mod implementations;
 mod state;
 
 use crate::channels::Channels;
-use crate::packet::Data;
 use crate::protocol::AshChunks;
 use crate::request::Request;
-use crate::retransmit::Retransmit;
 use crate::status::Status;
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::state::State;
-use crate::wrapping_u3::WrappingU3;
-use crate::FrameBuffer;
 use log::error;
 use serialport::TTYPort;
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::SystemTime;
 
 /// ASHv2 transceiver.
 ///
