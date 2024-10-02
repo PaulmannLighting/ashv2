@@ -2,7 +2,7 @@
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum BaudRate {
-    /// Baud rate for hardware flow control using RTS/CTS.
+    /// Baud rate for hardware flow control using RST/CTS.
     RstCts = 115_200,
     /// Baud rate for software flow control using XON/XOFF.
     XOnXOff = 57_600,
