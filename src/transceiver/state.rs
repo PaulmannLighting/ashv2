@@ -30,7 +30,7 @@ impl State {
     }
 
     /// Returns whether the transceiver is not ready to receive callbacks.
-    pub(in crate::transceiver) fn n_rdy(&self) -> bool {
+    pub(in crate::transceiver) const fn n_rdy(&self) -> bool {
         self.within_transaction
     }
 
