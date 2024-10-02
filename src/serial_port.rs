@@ -1,4 +1,5 @@
 use serialport::{FlowControl, SerialPort};
+use std::borrow::Cow;
 
 use crate::BaudRate;
 
@@ -8,7 +9,7 @@ use crate::BaudRate;
 /// For errors please refer to [`SerialPortBuilder::open_native()`](serialport::SerialPortBuilder::open())
 /// and [`serialport::new()`].
 pub fn open<'a>(
-    path: impl Into<std::borrow::Cow<'a, str>>,
+    path: impl Into<Cow<'a, str>>,
     baud_rate: BaudRate,
     flow_control: FlowControl,
 ) -> serialport::Result<impl SerialPort> {
