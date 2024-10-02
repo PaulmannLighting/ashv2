@@ -14,11 +14,7 @@ impl Transceiver {
         // Make sure that we do not receive any callbacks during the transaction.
         self.clear_callbacks()?;
 
-        loop {
-            if !self.send_chunks(&mut chunks)? {
-                break;
-            }
-
+        while self.send_chunks(&mut chunks)? {
             // Handle responses to sent chunks.
             while let Some(packet) = self.receive()? {
                 self.handle_packet(&packet)?;
