@@ -1,5 +1,6 @@
 use crate::status::Status;
 use crate::wrapping_u3::WrappingU3;
+use crate::Transceiver;
 use std::time::SystemTime;
 
 /// The state of the transceiver.
@@ -19,6 +20,19 @@ impl State {
         let frame_number = self.frame_number;
         self.frame_number += 1;
         frame_number
+    }
+
+    /// Returns the ACK number.
+    ///
+    /// This is equal to the last received frame number plus one.
+    pub(in crate::transceiver) fn ack_number(&self) -> WrappingU3 {
+        self.last_received_frame_num
+            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1)
+    }
+
+    /// Returns whether the transceiver is not ready to receive callbacks.
+    pub(in crate::transceiver) fn n_rdy(&self) -> bool {
+        self.within_transaction
     }
 
     /// Resets the transceiver state.
