@@ -32,10 +32,7 @@ impl AsyncRequest {
                         ErrorKind::BrokenPipe,
                         "ASHv2 failed to send request.",
                     )));
-                return;
-            }
-
-            if let Ok(payload) = response.recv() {
+            } else if let Ok(payload) = response.recv() {
                 thread_shared_state
                     .lock()
                     .expect("Mutex is poisoned.")
