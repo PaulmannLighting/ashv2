@@ -15,16 +15,6 @@ impl Error {
     pub const HEADER: u8 = 0xC2;
     pub const SIZE: usize = 5;
 
-    #[must_use]
-    pub const fn new(code: u8) -> Self {
-        Self {
-            header: Self::HEADER,
-            version: crate::VERSION,
-            code,
-            crc: CRC.checksum(&[Self::HEADER, crate::VERSION, code]),
-        }
-    }
-
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
@@ -69,12 +59,6 @@ impl Frame for Error {
         buffer.push(self.version).map_err(drop)?;
         buffer.push(self.code).map_err(drop)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
-    }
-}
-
-impl From<Code> for Error {
-    fn from(code: Code) -> Self {
-        Self::new(code.into())
     }
 }
 

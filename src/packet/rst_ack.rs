@@ -16,16 +16,6 @@ impl RstAck {
     pub const HEADER: u8 = 0xC1;
     pub const SIZE: usize = 5;
 
-    #[must_use]
-    pub const fn new(reset_code: u8) -> Self {
-        Self {
-            header: Self::HEADER,
-            version: VERSION,
-            reset_code,
-            crc: CRC.checksum(&[Self::HEADER, VERSION, reset_code]),
-        }
-    }
-
     /// Returns the protocol version.
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
@@ -70,12 +60,6 @@ impl Frame for RstAck {
         buffer.push(self.version).map_err(drop)?;
         buffer.push(self.reset_code).map_err(drop)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
-    }
-}
-
-impl From<Code> for RstAck {
-    fn from(code: Code) -> Self {
-        Self::new(code.into())
     }
 }
 

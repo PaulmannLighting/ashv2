@@ -16,16 +16,13 @@ impl Ack {
 
     /// Creates a new ACK packet.
     #[must_use]
-    pub const fn new(header: headers::Ack) -> Self {
+    pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+        let header = headers::Ack::new(ack_num, n_rdy, false);
+
         Self {
             header,
             crc: CRC.checksum(&[header.bits()]),
         }
-    }
-
-    #[must_use]
-    pub fn create(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        Self::new(headers::Ack::new(ack_num, n_rdy, false))
     }
 
     /// Determines whether the not-ready flag is set.
@@ -156,7 +153,7 @@ mod tests {
     fn from_ack_num() {
         for ack_num in u8::MIN..=u8::MAX {
             assert_eq!(
-                Ack::create(WrappingU3::from_u8_lossy(ack_num), false)
+                Ack::new(WrappingU3::from_u8_lossy(ack_num), false)
                     .ack_num()
                     .as_u8(),
                 ack_num % 8

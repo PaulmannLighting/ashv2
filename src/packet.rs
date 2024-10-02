@@ -69,30 +69,46 @@ impl TryFrom<&[u8]> for Packet {
 #[allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod tests {
+    use super::{Packet, Rst};
     use crate::code::Code;
-
-    use super::{headers, Packet};
-    use super::{Ack, Data, Error, Nak, Rst};
+    use crate::frame::Frame;
 
     #[test]
     fn test_rst_try_from_bytes_slice() {
         const RST: [u8; 4] = [0xC0, 0x38, 0xBC, 0x7E];
         let packet = Packet::try_from(&RST[..RST.len() - 1]).unwrap();
-        assert_eq!(packet, Packet::Rst(Rst::default()));
+        assert_eq!(packet, Packet::Rst(Rst::new()));
     }
 
     #[test]
     fn test_rstack_try_from_bytes_slice() {
         const RST_ACK: [u8; 6] = [0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
-        let packet = Packet::try_from(&RST_ACK[..RST_ACK.len() - 1]).unwrap();
-        assert_eq!(packet, Packet::RstAck(Code::PowerOn.into()));
+
+        match Packet::try_from(&RST_ACK[..RST_ACK.len() - 1]).unwrap() {
+            Packet::RstAck(rst_ack) => {
+                assert!(rst_ack.is_ash_v2());
+                assert_eq!(rst_ack.version(), 2);
+                assert_eq!(rst_ack.code(), Ok(Code::PowerOn));
+                assert_eq!(rst_ack.header(), 0xC1);
+                assert_eq!(rst_ack.crc(), 0x9B7B);
+            }
+            packet => panic!("Expected RstAck, got {packet:?}"),
+        }
     }
 
     #[test]
     fn test_error_try_from_bytes_slice() {
         const ERROR: [u8; 6] = [0xC2, 0x02, 0x52, 0x98, 0xDE, 0x7E];
-        let packet = Packet::try_from(&ERROR[..ERROR.len() - 1]).unwrap();
-        assert_eq!(packet, Packet::Error(Error::new(ERROR[2])));
+
+        match Packet::try_from(&ERROR[..ERROR.len() - 1]).unwrap() {
+            Packet::Error(error) => {
+                assert_eq!(error.header(), 0xC2);
+                assert_eq!(error.version(), 2);
+                assert_eq!(error.code(), Err(0x52));
+                assert_eq!(error.crc(), 0x98DE);
+            }
+            packet => panic!("Expected Error, got {packet:?}"),
+        }
     }
 
     #[test]
@@ -100,39 +116,73 @@ mod tests {
         const DATA: [u8; 11] = [
             0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16, 0x7E,
         ];
-        let packet = Packet::try_from(&DATA[..DATA.len() - 1]).unwrap();
-        assert_eq!(
-            packet,
-            Packet::Data(Data::new(
-                headers::Data::from_bits_retain(DATA[0]),
-                DATA[1..DATA.len() - 3].iter().copied().collect()
-            ))
-        );
+
+        match Packet::try_from(&DATA[..DATA.len() - 1]).unwrap() {
+            Packet::Data(data) => {
+                assert_eq!(data.header(), 0x53);
+                assert_eq!(data.payload(), &DATA[1..DATA.len() - 3]);
+                assert_eq!(data.crc(), 0x6316);
+                assert!(data.is_crc_valid());
+            }
+            packet => panic!("Expected Data, got {packet:?}"),
+        }
     }
 
     #[test]
     fn test_ack_try_from_bytes_slice() {
-        const ACKS: [[u8; 4]; 2] = [[0x81, 0x60, 0x59, 0x7E], [0x8E, 0x91, 0xB6, 0x7E]];
+        let ack = [0x81, 0x60, 0x59, 0x7E];
 
-        for ack in ACKS {
-            let packet = Packet::try_from(&ack[..ack.len() - 1]).unwrap();
-            assert_eq!(
-                packet,
-                Packet::Ack(Ack::new(headers::Ack::from_bits_retain(ack[0])))
-            );
+        match Packet::try_from(&ack[..ack.len() - 1]).unwrap() {
+            Packet::Ack(ack) => {
+                assert!(!ack.not_ready());
+                assert_eq!(ack.ack_num(), 1);
+                assert_eq!(ack.header(), 0x81);
+                assert_eq!(ack.crc(), 0x6059);
+                assert!(ack.is_crc_valid());
+            }
+            packet => panic!("Expected Ack, got {packet:?}"),
+        }
+
+        let ack = [0x8E, 0x91, 0xB6, 0x7E];
+
+        match Packet::try_from(&ack[..ack.len() - 1]).unwrap() {
+            Packet::Ack(ack) => {
+                assert!(ack.not_ready());
+                assert_eq!(ack.ack_num(), 0x06);
+                assert_eq!(ack.header(), 0x8E);
+                assert_eq!(ack.crc(), 0x91B6);
+                assert!(ack.is_crc_valid());
+            }
+            packet => panic!("Expected Ack, got {packet:?}"),
         }
     }
 
     #[test]
     fn test_nak_try_from_bytes_slice() {
-        const NAKS: [[u8; 4]; 2] = [[0xA6, 0x34, 0xDC, 0x7E], [0xAD, 0x85, 0xB7, 0x7E]];
+        let nak = [0xA6, 0x34, 0xDC, 0x7E];
 
-        for nak in NAKS {
-            let packet = Packet::try_from(&nak[..nak.len() - 1]).unwrap();
-            assert_eq!(
-                packet,
-                Packet::Nak(Nak::new(headers::Nak::from_bits_retain(nak[0])))
-            );
+        match Packet::try_from(&nak[..nak.len() - 1]).unwrap() {
+            Packet::Nak(nak) => {
+                assert!(!nak.not_ready());
+                assert_eq!(nak.ack_num(), 0x06);
+                assert_eq!(nak.header(), 0xA6);
+                assert_eq!(nak.crc(), 0x34DC);
+                assert!(nak.is_crc_valid());
+            }
+            packet => panic!("Expected Nak, got {packet:?}"),
+        }
+
+        let nak = [0xAD, 0x85, 0xB7, 0x7E];
+
+        match Packet::try_from(&nak[..nak.len() - 1]).unwrap() {
+            Packet::Nak(nak) => {
+                assert!(nak.not_ready());
+                assert_eq!(nak.ack_num(), 0x05);
+                assert_eq!(nak.header(), 0xAD);
+                assert_eq!(nak.crc(), 0x85B7);
+                assert!(nak.is_crc_valid());
+            }
+            packet => panic!("Expected Nak, got {packet:?}"),
         }
     }
 }

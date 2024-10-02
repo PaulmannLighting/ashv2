@@ -16,16 +16,13 @@ impl Nak {
 
     /// Creates a new NAK packet.
     #[must_use]
-    pub const fn new(header: headers::Nak) -> Self {
+    pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+        let header = headers::Nak::new(ack_num, n_rdy, false);
+
         Self {
             header,
             crc: CRC.checksum(&[header.bits()]),
         }
-    }
-
-    #[must_use]
-    pub fn create(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        Self::new(headers::Nak::new(ack_num, n_rdy, false))
     }
 
     /// Determines whether the not-ready flag is set.

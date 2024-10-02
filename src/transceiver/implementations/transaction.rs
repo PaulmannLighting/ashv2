@@ -69,7 +69,7 @@ where
                     "ASHv2: could not append chunk to frame buffer",
                 )
             })?;
-        let data = Data::create(self.state.next_frame_number(), payload);
+        let data = Data::new(self.state.next_frame_number(), payload);
         self.write_frame(&data)
     }
 

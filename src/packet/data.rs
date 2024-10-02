@@ -25,21 +25,15 @@ impl Data {
 
     /// Creates a new data packet.
     #[must_use]
-    pub fn new(header: headers::Data, payload: Payload) -> Self {
+    pub fn new(frame_num: WrappingU3, mut payload: Payload) -> Self {
+        let header = headers::Data::new(frame_num, false, WrappingU3::from_u8_lossy(0));
+        payload.mask();
+
         Self {
             header,
             crc: calculate_crc(header.bits(), &payload),
             payload,
         }
-    }
-
-    #[must_use]
-    pub fn create(frame_num: WrappingU3, mut payload: Payload) -> Self {
-        payload.mask();
-        Self::new(
-            headers::Data::new(frame_num, false, WrappingU3::from_u8_lossy(0)),
-            payload,
-        )
     }
 
     /// Returns the frame number.

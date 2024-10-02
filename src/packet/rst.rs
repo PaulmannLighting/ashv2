@@ -27,12 +27,6 @@ impl Rst {
     }
 }
 
-impl Default for Rst {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Display for Rst {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "RST()")
