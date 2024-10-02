@@ -120,9 +120,9 @@ mod tests {
         match Packet::try_from(&DATA[..DATA.len() - 1]).unwrap() {
             Packet::Data(data) => {
                 assert_eq!(data.header(), 0x53);
-                assert_eq!(data.payload(), &DATA[1..DATA.len() - 3]);
                 assert_eq!(data.crc(), 0x6316);
                 assert!(data.is_crc_valid());
+                assert_eq!(data.into_payload().as_slice(), &DATA[1..DATA.len() - 3]);
             }
             packet => panic!("Expected Data, got {packet:?}"),
         }
