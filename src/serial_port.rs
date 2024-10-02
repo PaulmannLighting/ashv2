@@ -6,7 +6,7 @@ use crate::BaudRate;
 /// Opens a serial port depending on the local operating system.
 ///
 /// # Errors
-/// For errors please refer to [`SerialPortBuilder::open_native()`](serialport::SerialPortBuilder::open())
+/// For errors please refer to [`SerialPortBuilder::open_native()`](serialport::SerialPortBuilder::open_native())
 /// and [`serialport::new()`].
 pub fn open<'a>(
     path: impl Into<Cow<'a, str>>,
