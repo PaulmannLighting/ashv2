@@ -1,4 +1,5 @@
 mod buffers;
+mod constants;
 mod implementations;
 mod retransmit;
 mod state;
@@ -9,7 +10,7 @@ use crate::request::Request;
 use crate::status::Status;
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::state::State;
-use serialport::TTYPort;
+use serialport::SerialPort;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::mpsc::{Receiver, Sender};
@@ -57,14 +58,20 @@ use std::sync::Arc;
 ///
 /// ```
 #[derive(Debug)]
-pub struct Transceiver {
-    serial_port: TTYPort,
+pub struct Transceiver<T>
+where
+    T: SerialPort,
+{
+    serial_port: T,
     channels: Channels,
     buffers: Buffers,
     state: State,
 }
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     /// Create a new transceiver.
     ///
     /// # Parameters
@@ -77,7 +84,7 @@ impl Transceiver {
     /// silently discard any callbacks actively sent from the NCP.
     #[must_use]
     pub fn new(
-        serial_port: TTYPort,
+        serial_port: T,
         requests: Receiver<Request>,
         callback: Option<Sender<Box<[u8]>>>,
     ) -> Self {
@@ -85,7 +92,7 @@ impl Transceiver {
             serial_port,
             channels: Channels::new(requests, callback),
             buffers: Buffers::default(),
-            state: State::default(),
+            state: State::new(),
         }
     }
 

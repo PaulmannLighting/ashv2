@@ -1,6 +1,6 @@
 use crate::status::Status;
+use crate::transceiver::constants::T_RX_ACK_INIT;
 use crate::wrapping_u3::WrappingU3;
-use crate::Transceiver;
 use std::time::{Duration, SystemTime};
 
 /// The state of the transceiver.
@@ -12,10 +12,22 @@ pub struct State {
     pub(super) last_received_frame_num: Option<WrappingU3>,
     pub(super) reject: bool,
     pub(super) within_transaction: bool,
-    t_rx_ack: Duration,
+    pub(crate) t_rx_ack: Duration,
 }
 
 impl State {
+    pub(in crate::transceiver) const fn new() -> Self {
+        Self {
+            status: Status::Disconnected,
+            last_n_rdy_transmission: None,
+            frame_number: WrappingU3::from_u8_lossy(0),
+            last_received_frame_num: None,
+            reject: false,
+            within_transaction: false,
+            t_rx_ack: T_RX_ACK_INIT,
+        }
+    }
+
     /// Returns the next frame number.
     pub(in crate::transceiver) fn next_frame_number(&mut self) -> WrappingU3 {
         let frame_number = self.frame_number;
@@ -44,29 +56,6 @@ impl State {
         self.last_received_frame_num = None;
         self.reject = false;
         self.within_transaction = false;
-        self.t_rx_ack = Transceiver::T_RX_ACK_INIT;
-    }
-
-    pub(in crate::transceiver) fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
-        self.t_rx_ack = last_ack_duration
-            .map_or_else(
-                || self.t_rx_ack * 2,
-                |duration| self.t_rx_ack * 7 / 8 + duration / 2,
-            )
-            .clamp(Transceiver::T_RX_ACK_MIN, Transceiver::T_RX_ACK_MAX);
-    }
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            status: Status::Disconnected,
-            last_n_rdy_transmission: None,
-            frame_number: WrappingU3::from_u8_lossy(0),
-            last_received_frame_num: None,
-            reject: false,
-            within_transaction: false,
-            t_rx_ack: Transceiver::T_RX_ACK_INIT,
-        }
+        self.t_rx_ack = T_RX_ACK_INIT;
     }
 }

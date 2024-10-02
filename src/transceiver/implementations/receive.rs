@@ -4,9 +4,13 @@ use crate::protocol::Mask;
 use crate::status::Status;
 use crate::Transceiver;
 use log::{debug, error, trace, warn};
+use serialport::SerialPort;
 use std::io::ErrorKind;
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     /// Receives a packet from the serial port.
     ///
     /// Returns `Ok(None)` if no packet was received within the timeout.

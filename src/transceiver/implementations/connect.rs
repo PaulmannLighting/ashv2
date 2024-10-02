@@ -2,9 +2,13 @@ use crate::packet::Packet;
 use crate::status::Status;
 use crate::Transceiver;
 use log::{debug, info};
+use serialport::SerialPort;
 use std::time::SystemTime;
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     pub(in crate::transceiver) fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
         let start = SystemTime::now();

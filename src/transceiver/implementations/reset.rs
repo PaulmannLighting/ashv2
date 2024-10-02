@@ -1,8 +1,12 @@
 use crate::status::Status;
 use crate::transceiver::Transceiver;
 use log::{error, warn};
+use serialport::SerialPort;
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     pub(in crate::transceiver) fn reset(&mut self, status: Status) {
         self.buffers.clear();
         self.state.reset(status);

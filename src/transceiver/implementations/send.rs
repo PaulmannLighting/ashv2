@@ -1,9 +1,13 @@
 use crate::packet::{Ack, Data, Nak, RST};
 use crate::transceiver::Transceiver;
+use serialport::SerialPort;
 use std::io::{Error, ErrorKind};
 use std::time::SystemTime;
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     /// Send an ACK frame with the given ACK number.
     pub(in crate::transceiver) fn ack(&mut self) -> std::io::Result<()> {
         self.send_ack(&Ack::create(self.state.ack_number(), self.state.n_rdy()))

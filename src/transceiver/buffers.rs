@@ -1,11 +1,12 @@
 use super::retransmit::Retransmit;
-use crate::{FrameBuffer, Transceiver};
+use crate::transceiver::constants::ACK_TIMEOUTS;
+use crate::FrameBuffer;
 
 /// Buffers used by the transceiver.
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
-    pub(super) retransmits: heapless::Vec<Retransmit, { Transceiver::ACK_TIMEOUTS }>,
+    pub(super) retransmits: heapless::Vec<Retransmit, ACK_TIMEOUTS>,
     pub(super) response: Vec<u8>,
 }
 

@@ -1,10 +1,14 @@
 use crate::packet::Data;
 use crate::Transceiver;
 use log::warn;
+use serialport::SerialPort;
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     pub(in crate::transceiver) fn transaction(
         &mut self,
         mut chunks: Chunks<'_, u8>,

@@ -1,6 +1,5 @@
 mod callbacks;
 mod connect;
-mod constants;
 mod frame_io;
 mod receive;
 mod reject;

@@ -3,9 +3,13 @@ use crate::packet::Packet;
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::transceiver::Transceiver;
 use log::{debug, trace};
-use std::io::{Error, ErrorKind, Read, Write};
+use serialport::SerialPort;
+use std::io::{Error, ErrorKind, Read};
 
-impl Transceiver {
+impl<T> Transceiver<T>
+where
+    T: SerialPort,
+{
     /// Read an ASH [`Packet`].
     ///
     /// # Arguments
@@ -91,9 +95,9 @@ impl Transceiver {
     /// # Errors
     ///
     /// Returns an [`Error`](Error) if any I/O error occurs.
-    pub(in crate::transceiver) fn write_frame<T>(&mut self, frame: &T) -> std::io::Result<()>
+    pub(in crate::transceiver) fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        T: Frame,
+        F: Frame,
     {
         debug!("Writing frame: {frame}");
         trace!("{frame:#04X?}");
