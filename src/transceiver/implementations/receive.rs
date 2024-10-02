@@ -68,7 +68,7 @@ impl Transceiver {
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
             self.reject()?;
-        } else if data.frame_num() == self.ack_number() {
+        } else if data.frame_num() == self.state.ack_number() {
             self.ack(data.frame_num())?;
             self.state.reject = false;
             self.state.last_received_frame_num.replace(data.frame_num());
