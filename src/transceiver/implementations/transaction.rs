@@ -1,5 +1,6 @@
 use crate::packet::Data;
 use crate::transceiver::Transceiver;
+use log::warn;
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 
@@ -11,14 +12,22 @@ impl Transceiver {
         self.state.within_transaction = true;
 
         // Make sure that we do not receive any callbacks during the transaction.
-        self.disable_callbacks()?;
+        self.clear_callbacks()?;
 
         loop {
             if !self.send_chunks(&mut chunks)? {
                 break;
             }
 
-            self.receive()?;
+            // Handle responses to sent chunks.
+            while let Some(packet) = self.receive()? {
+                self.handle_packet(&packet)?;
+            }
+        }
+
+        // Handle any remaining responses.
+        while let Some(packet) = self.receive()? {
+            self.handle_packet(&packet)?;
         }
 
         Ok(())
@@ -53,7 +62,22 @@ impl Transceiver {
         self.write_frame(&data)
     }
 
-    fn disable_callbacks(&mut self) -> std::io::Result<()> {
-        self.ack(self.state.ack_number())
+    fn clear_callbacks(&mut self) -> std::io::Result<()> {
+        self.ack()?;
+
+        while let Some(packet) = self.receive()? {
+            self.handle_packet(&packet)?;
+        }
+
+        // Any data we received can not be a response to our transaction.
+        if self.buffers.response.is_empty() {
+            return Ok(());
+        }
+
+        warn!("Received data before beginning transaction. Forwarding to callback channel.");
+        self.channels
+            .callback(self.buffers.response.clone().into())?;
+        self.buffers.response.clear();
+        Ok(())
     }
 }

@@ -45,18 +45,25 @@ impl Channels {
                     std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
                 })
         } else {
-            warn!("No response channel set. Discarding response.");
+            error!("No response channel set. Discarding response.");
             Ok(())
         }
     }
 
-    pub fn callback(&self, payload: Box<[u8]>) -> Result<(), SendError<Box<[u8]>>> {
+    pub fn callback(&self, payload: Box<[u8]>) -> std::io::Result<()> {
         self.callback.as_ref().map_or_else(
             || {
                 warn!("No callback set. Discarding response.");
                 Ok(())
             },
-            |callback| callback.send(payload),
+            |callback| {
+                callback
+                    .send(payload)
+                    .inspect_err(|error| error!("ASHv2 failed to send callback: {error}"))
+                    .map_err(|_| {
+                        std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send callback")
+                    })
+            },
         )
     }
 }
