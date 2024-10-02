@@ -1,9 +1,10 @@
 use crate::status::Status;
 use crate::wrapping_u3::WrappingU3;
-use std::time::SystemTime;
+use crate::Transceiver;
+use std::time::{Duration, SystemTime};
 
 /// The state of the transceiver.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct State {
     pub(super) status: Status,
     pub(super) last_n_rdy_transmission: Option<SystemTime>,
@@ -11,6 +12,7 @@ pub struct State {
     pub(super) last_received_frame_num: Option<WrappingU3>,
     pub(super) reject: bool,
     pub(super) within_transaction: bool,
+    t_rx_ack: Duration,
 }
 
 impl State {
@@ -42,5 +44,29 @@ impl State {
         self.last_received_frame_num = None;
         self.reject = false;
         self.within_transaction = false;
+        self.t_rx_ack = Transceiver::T_RX_ACK_INIT;
+    }
+
+    pub(in crate::transceiver) fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
+        self.t_rx_ack = last_ack_duration
+            .map_or_else(
+                || self.t_rx_ack * 2,
+                |duration| self.t_rx_ack * 7 / 8 + duration / 2,
+            )
+            .clamp(Transceiver::T_RX_ACK_MIN, Transceiver::T_RX_ACK_MAX);
+    }
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            status: Status::Disconnected,
+            last_n_rdy_transmission: None,
+            frame_number: WrappingU3::from_u8_lossy(0),
+            last_received_frame_num: None,
+            reject: false,
+            within_transaction: false,
+            t_rx_ack: Transceiver::T_RX_ACK_INIT,
+        }
     }
 }
