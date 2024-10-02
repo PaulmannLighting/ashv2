@@ -99,22 +99,24 @@ where
     where
         F: Frame,
     {
+        let buffer = &mut self.buffers.frame;
         debug!("Writing frame: {frame}");
-        trace!("{frame:#04X?}");
-        self.buffers.frame.clear();
-        frame.buffer(&mut self.buffers.frame).map_err(|()| {
+        trace!("Frame: {frame:#04X?}");
+        buffer.clear();
+        frame.buffer(buffer).map_err(|()| {
             Error::new(
                 ErrorKind::OutOfMemory,
                 "could not append frame bytes to buffer",
             )
         })?;
-        self.buffers.frame.stuff()?;
-        self.buffers
-            .frame
+        trace!("Frame bytes: {buffer:#04X?}");
+        buffer.stuff()?;
+        trace!("Stuffed bytes: {buffer:#04X?}");
+        buffer
             .push(FLAG)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;
-        trace!("Writing bytes: {:#04X?}", self.buffers.frame);
-        self.serial_port.write_all(&self.buffers.frame)?;
+        trace!("Writing bytes: {buffer:#04X?}");
+        self.serial_port.write_all(buffer)?;
         self.serial_port.flush()
     }
 }
