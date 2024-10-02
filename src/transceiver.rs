@@ -10,7 +10,10 @@ use crate::status::Status;
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::state::State;
 use serialport::TTYPort;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
 
 /// `ASHv2` transceiver.
 ///
@@ -21,6 +24,9 @@ use std::sync::mpsc::{Receiver, Sender};
 /// # Usage
 ///
 /// ```
+/// use std::sync::Arc;
+/// use std::sync::atomic::AtomicBool;
+/// use std::sync::atomic::Ordering::Relaxed;
 /// use std::sync::mpsc::channel;
 /// use std::thread::spawn;
 /// use serialport::FlowControl;
@@ -31,7 +37,9 @@ use std::sync::mpsc::{Receiver, Sender};
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
 ///     Ok(serial_port) => {let (sender, receiver) = channel();
 ///         let transceiver = Transceiver::new(serial_port, receiver, None);
-///         let _thread_handle = spawn(move || transceiver.run());
+///         let running = Arc::new(AtomicBool::new(true));
+///         let running_transceiver = running.clone();
+///         let _thread_handle = spawn(move || transceiver.run(running_transceiver));
 ///         let host = Host::from(sender);
 ///
 ///         let version_command = &[0x00, 0x01, 0x02, 0x03];
@@ -41,6 +49,8 @@ use std::sync::mpsc::{Receiver, Sender};
 ///             Ok(response) => println!("{response:?}"),
 ///             Err(error) => eprintln!("{error}"),
 ///         }
+///
+///         running.store(false, Relaxed);
 ///     },
 ///     Err(error) => eprintln!("{error}"),
 /// }
@@ -82,8 +92,9 @@ impl Transceiver {
     /// Run the transceiver.
     ///
     /// This should be called in a separate thread.
-    pub fn run(mut self) {
-        loop {
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn run(mut self, running: Arc<AtomicBool>) {
+        while running.load(Relaxed) {
             if let Err(error) = self.main() {
                 self.handle_reset(error);
             }
