@@ -1,7 +1,7 @@
 //! Asynchronous host controller for the `ASHv2` protocol.
 
+pub mod any_sender;
 mod async_request;
-pub mod sender_ext;
 
 use crate::request::Request;
 use async_request::AsyncRequest;
