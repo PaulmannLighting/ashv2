@@ -98,16 +98,10 @@ impl Transceiver {
     }
 
     fn communicate(&mut self) -> std::io::Result<()> {
-        if self.state.reject {
-            return self.try_clear_reject_condition();
-        }
-
         if let Some(bytes) = self.channels.receive()? {
-            self.transaction(bytes.ash_chunks()?)?;
+            self.transaction(bytes.ash_chunks()?)
         } else {
-            self.handle_callbacks()?;
+            self.handle_callbacks()
         }
-
-        Ok(())
     }
 }

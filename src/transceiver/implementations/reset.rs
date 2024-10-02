@@ -8,10 +8,6 @@ impl Transceiver {
         self.state.reset(status);
     }
 
-    pub(in crate::transceiver) fn try_clear_reject_condition(&mut self) -> std::io::Result<()> {
-        todo!("Clear reject condition")
-    }
-
     pub(in crate::transceiver) fn handle_reset(&mut self, error: std::io::Error) {
         error!("I/O error: {error}");
 
