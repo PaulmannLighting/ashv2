@@ -74,7 +74,7 @@ where
                 )
             })?;
         let data = Data::new(self.state.next_frame_number(), payload);
-        self.write_frame(&data)
+        self.send_data(data)
     }
 
     fn clear_callbacks(&mut self, timeout: Duration) -> std::io::Result<()> {
