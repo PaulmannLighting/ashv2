@@ -31,7 +31,6 @@ use std::sync::Arc;
 /// use std::sync::mpsc::channel;
 /// use std::thread::spawn;
 /// use serialport::FlowControl;
-/// use tokio::task::futures;
 /// use ashv2::{open, BaudRate, CommunicateSync, Host, Transceiver};
 ///
 /// match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
