@@ -69,14 +69,12 @@ impl Transceiver {
             warn!("Received data frame with invalid CRC.");
             self.enter_reject()?;
         } else if data.frame_num() == self.state.ack_number() {
-            self.ack(data.frame_num())?;
             self.state.reject = false;
             self.state.last_received_frame_num.replace(data.frame_num());
-            debug!("Sending ACK to transmitter: {}", data.ack_num());
+            self.ack()?;
             self.buffers.ack_sent_packets(data.ack_num());
             self.buffers.response.extend_from_slice(data.payload());
         } else if data.is_retransmission() {
-            debug!("Sending ACK to transmitter: {}", data.ack_num());
             self.buffers.ack_sent_packets(data.ack_num());
             self.buffers.response.extend_from_slice(data.payload());
         } else {

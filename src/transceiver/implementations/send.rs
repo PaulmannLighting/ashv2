@@ -1,13 +1,12 @@
 use crate::packet::{Ack, Data, Nak, RST};
 use crate::transceiver::Transceiver;
-use crate::wrapping_u3::WrappingU3;
 use std::io::{Error, ErrorKind};
 use std::time::SystemTime;
 
 impl Transceiver {
     /// Send an ACK frame with the given ACK number.
-    pub(in crate::transceiver) fn ack(&mut self, ack_number: WrappingU3) -> std::io::Result<()> {
-        self.send_ack(&Ack::create(ack_number, self.state.n_rdy()))
+    pub(in crate::transceiver) fn ack(&mut self) -> std::io::Result<()> {
+        self.send_ack(&Ack::create(self.state.ack_number(), self.state.n_rdy()))
     }
 
     /// Send a NAK frame with the current ACK number.
