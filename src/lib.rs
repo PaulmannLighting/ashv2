@@ -11,7 +11,6 @@ pub use baud_rate::BaudRate;
 use code::Code;
 pub use frame_buffer::FrameBuffer;
 pub use host::{AsyncAsh, SyncAsh};
-pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
 
