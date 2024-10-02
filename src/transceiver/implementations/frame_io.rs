@@ -181,15 +181,4 @@ where
         self.serial_port.write_all(buffer)?;
         self.serial_port.flush()
     }
-    fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
-        self.buffers
-            .retransmits
-            .insert(0, data.into())
-            .map_err(|_| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: failed to enqueue retransmit",
-                )
-            })
-    }
 }

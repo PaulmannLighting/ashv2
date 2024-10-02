@@ -1,14 +1,28 @@
+use crate::packet::Data;
 use crate::transceiver::constants::{T_RX_ACK_MAX, T_RX_ACK_MIN};
 use crate::wrapping_u3::WrappingU3;
 use crate::Transceiver;
-use log::trace;
+use log::{debug, trace};
 use serialport::SerialPort;
+use std::io::{Error, ErrorKind};
 use std::time::{Duration, SystemTime};
 
 impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
+    pub(in crate::transceiver) fn enqueue_retransmit(&mut self, data: Data) -> std::io::Result<()> {
+        self.buffers
+            .retransmits
+            .insert(0, data.into())
+            .map_err(|_| {
+                Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ASHv2: failed to enqueue retransmit",
+                )
+            })
+    }
+
     pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
         trace!("Handling ACK: {ack_num}");
         while let Some(retransmit) = self
@@ -18,11 +32,14 @@ where
             .position(|retransmit| retransmit.frame_num() + 1 == ack_num)
             .map(|index| self.buffers.retransmits.remove(index))
         {
-            if let Ok(duration) = SystemTime::now().duration_since(retransmit.sent_at()) {
-                self.update_t_rx_ack(Some(duration));
+            if let Ok(duration) = retransmit.elapsed() {
+                debug!(
+                    "ACKed packet #{} after {duration:?}",
+                    retransmit.into_data().frame_num()
+                );
+            } else {
+                debug!("ACKed packet #{}", retransmit.into_data().frame_num());
             }
-
-            trace!("ACKed packet #{}", retransmit.into_data().frame_num());
         }
     }
 
