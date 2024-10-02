@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
+use crate::crc::CRC;
 use crate::frame_buffer::FrameBuffer;
-use crate::CRC;
 
 pub trait Frame: Debug + Display {
     /// Returns the frame's raw header bytes.

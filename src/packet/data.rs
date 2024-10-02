@@ -1,9 +1,9 @@
+use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::wrapping_u3::WrappingU3;
-use crate::CRC;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 
@@ -143,11 +143,11 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::Data;
+    use crate::crc::CRC;
     use crate::frame::Frame;
     use crate::frame_buffer::FrameBuffer;
     use crate::packet::headers;
     use crate::protocol::Mask;
-    use crate::CRC;
 
     #[test]
     fn test_frame_num() {

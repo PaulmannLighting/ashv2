@@ -1,7 +1,8 @@
 use crate::code::Code;
+use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
-use crate::{CRC, VERSION};
+use crate::VERSION;
 use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 

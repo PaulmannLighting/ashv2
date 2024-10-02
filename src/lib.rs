@@ -5,8 +5,6 @@
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
 
-use crc::{Crc, CRC_16_IBM_3740};
-
 pub use baud_rate::BaudRate;
 pub use host::{AsyncAsh, SyncAsh};
 pub use serial_port::open;
@@ -15,6 +13,7 @@ pub use transceiver::Transceiver;
 mod baud_rate;
 mod channels;
 mod code;
+mod crc;
 mod frame;
 mod frame_buffer;
 mod host;
@@ -26,5 +25,4 @@ mod status;
 mod transceiver;
 mod wrapping_u3;
 
-const CRC: Crc<u16> = Crc::<u16>::new(&CRC_16_IBM_3740);
 const VERSION: u8 = 0x02;
