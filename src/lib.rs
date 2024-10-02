@@ -14,8 +14,6 @@ pub use host::Host;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
 
-mod ash_read;
-mod ash_write;
 mod baud_rate;
 mod channels;
 mod code;
