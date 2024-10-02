@@ -23,9 +23,11 @@ impl clap::ValueEnum for BaudRate {
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         Some(match self {
             Self::RstCts => clap::builder::PossibleValue::new("RST/CTS")
+                .alias("RST-CTS")
                 .alias("RST_CTS")
                 .alias("RstCts"),
             Self::XOnXOff => clap::builder::PossibleValue::new("XON/XOFF")
+                .alias("XON-XOFF")
                 .alias("XON_XOFF")
                 .alias("XOnXOff"),
         })
