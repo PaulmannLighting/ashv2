@@ -1,7 +1,8 @@
 use crate::packet::Packet;
 use crate::status::Status;
+use crate::transceiver::constants::T_RSTACK_MAX;
 use crate::Transceiver;
-use log::{debug, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use std::time::SystemTime;
 
@@ -14,19 +15,33 @@ where
         let start = SystemTime::now();
         let mut attempts: usize = 0;
 
-        loop {
+        debug!("Waiting for RST_ACK...");
+        'attempts: loop {
             attempts += 1;
             self.rst()?;
 
-            debug!("Waiting for RST_ACK...");
             let packet = loop {
                 if let Some(packet) = self.receive()? {
                     break packet;
+                } else if let Ok(elapsed) = start.elapsed() {
+                    if elapsed > T_RSTACK_MAX {
+                        continue 'attempts;
+                    }
+                } else {
+                    error!("System time jumped.");
+                    continue 'attempts;
                 }
             };
 
             match packet {
                 Packet::RstAck(rst_ack) => {
+                    if !rst_ack.is_ash_v2() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::Unsupported,
+                            "Received RSTACK is not ASHv2.",
+                        ));
+                    }
+
                     self.state.status = Status::Connected;
                     info!(
                         "ASHv2 connection established after {attempts} attempt{}.",
