@@ -1,3 +1,6 @@
+//! `ASHv2` frame I/O implementation.
+//!
+//! This module contains the implementation of the `ASHv2` frame I/O operations.
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
