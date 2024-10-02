@@ -47,7 +47,7 @@ where
         debug!("Transaction completed.");
         self.state.within_transaction = false;
         // Send ACK without `nRDY` set, to re-enable callbacks.
-        // self.ack()?;
+        self.ack()?;
         Ok(())
     }
 
@@ -83,7 +83,7 @@ where
 
     fn clear_callbacks(&mut self, timeout: Duration) -> std::io::Result<()> {
         // Disable callbacks by sending an ACK with `nRDY` set.
-        //self.ack()?;
+        self.ack()?;
 
         while let Some(packet) = self.receive_with_timeout(timeout)? {
             self.handle_packet(packet)?;
