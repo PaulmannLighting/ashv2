@@ -28,13 +28,15 @@ where
         nak_num: WrappingU3,
     ) -> std::io::Result<()> {
         trace!("Handling NAK: {nak_num}");
-        while let Some(retransmit) = self
+
+        if let Some(retransmit) = self
             .buffers
             .retransmits
             .iter()
             .position(|retransmit| retransmit.frame_num() == nak_num)
             .map(|index| self.buffers.retransmits.remove(index))
         {
+            debug!("Retransmitting NACK'ed packet #{}", retransmit.frame_num());
             self.send_data(retransmit.into_data())?;
         }
 
@@ -49,6 +51,10 @@ where
             .position(|retransmit| retransmit.is_timed_out(T_RX_ACK_MAX))
             .map(|index| self.buffers.retransmits.remove(index))
         {
+            debug!(
+                "Retransmitting timed-out packet #{}",
+                retransmit.frame_num()
+            );
             self.send_data(retransmit.into_data())?;
         }
 
