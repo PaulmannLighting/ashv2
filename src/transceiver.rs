@@ -1,15 +1,16 @@
 mod buffers;
+mod channels;
 mod constants;
 mod implementations;
 mod sent_data;
 mod state;
 
-use crate::channels::Channels;
 use crate::protocol::AshChunks;
 use crate::request::Request;
 use crate::status::Status;
 use crate::transceiver::buffers::Buffers;
 use crate::transceiver::state::State;
+use channels::Channels;
 use serialport::SerialPort;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;

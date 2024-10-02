@@ -11,7 +11,6 @@ pub use serial_port::open;
 pub use transceiver::Transceiver;
 
 mod baud_rate;
-mod channels;
 mod code;
 mod crc;
 mod frame;
