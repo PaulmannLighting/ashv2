@@ -19,6 +19,7 @@ impl Channels {
             callback,
         }
     }
+
     pub fn receive(&mut self) -> std::io::Result<Option<Box<[u8]>>> {
         match self.requests.try_recv() {
             Ok(request) => {
@@ -35,21 +36,18 @@ impl Channels {
         }
     }
 
-    pub fn response(&self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
-        self.response.as_ref().map_or_else(
-            || {
-                warn!("No response channel set. Discarding response.");
-                Ok(())
-            },
-            |response| {
-                response
-                    .send(payload)
-                    .inspect_err(|error| error!("ASHv2 failed to send response: {error}"))
-                    .map_err(|_| {
-                        std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
-                    })
-            },
-        )
+    pub fn respond(&mut self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
+        if let Some(response) = self.response.take() {
+            response
+                .send(payload)
+                .inspect_err(|error| error!("ASHv2 failed to send response: {error}"))
+                .map_err(|_| {
+                    std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send reponse")
+                })
+        } else {
+            warn!("No response channel set. Discarding response.");
+            Ok(())
+        }
     }
 
     pub fn callback(&self, payload: Box<[u8]>) -> Result<(), SendError<Box<[u8]>>> {

@@ -37,7 +37,7 @@ impl Transceiver {
                 Packet::Data(ref data) => self.handle_data(data)?,
                 Packet::Error(ref error) => self.handle_error(error),
                 Packet::Nak(ref nak) => self.handle_nak(nak)?,
-                Packet::RstAck(ref rst_ack) => self.handle_rst_ack(rst_ack),
+                Packet::RstAck(ref rst_ack) => self.handle_rst_ack(rst_ack)?,
                 Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
         } else if let Packet::RstAck(ref rst_ack) = packet {
@@ -67,7 +67,7 @@ impl Transceiver {
 
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
-            self.reject()?;
+            self.enter_reject()?;
         } else if data.frame_num() == self.state.ack_number() {
             self.ack(data.frame_num())?;
             self.state.reject = false;
@@ -83,7 +83,7 @@ impl Transceiver {
             debug!("Received out-of-sequence data frame: {data}");
 
             if !self.state.reject {
-                self.reject()?;
+                self.enter_reject()?;
             }
         }
 
@@ -117,7 +117,7 @@ impl Transceiver {
         self.nak_sent_packets(nak.ack_num())
     }
 
-    fn handle_rst_ack(&mut self, rst_ack: &RstAck) {
+    fn handle_rst_ack(&mut self, rst_ack: &RstAck) -> std::io::Result<()> {
         if !rst_ack.is_ash_v2() {
             error!("{rst_ack} is not ASHv2: {}", rst_ack.version());
         }
@@ -130,16 +130,14 @@ impl Transceiver {
                 debug!("NCP acknowledged reset due to: {code}");
             },
         );
-        self.reset_state();
-        self.state.status = Status::Connected;
-        self.abort_current_command();
+        self.leave_reject();
+        self.abort_current_command()
     }
 
-    fn reset_state(&mut self) {
-        todo!("Reset state")
-    }
-
-    fn abort_current_command(&mut self) {
-        todo!("Abort current command")
+    fn abort_current_command(&mut self) -> std::io::Result<()> {
+        self.channels.respond(Err(std::io::Error::new(
+            ErrorKind::ConnectionReset,
+            "NCP reset",
+        )))
     }
 }
