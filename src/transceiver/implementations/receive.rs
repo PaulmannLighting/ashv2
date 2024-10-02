@@ -130,6 +130,7 @@ impl Transceiver {
                 debug!("NCP acknowledged reset due to: {code}");
             },
         );
+
         self.leave_reject();
         self.abort_current_command()
     }
