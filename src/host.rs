@@ -9,6 +9,10 @@ pub use sync_ash::SyncAsh;
 /// A trait to identify types that can be used as `ASHv2` hosts.
 pub trait Host {
     /// Send a request to the transceiver.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`SendError`] if the request could not be sent.
     fn send(&self, request: Request) -> Result<(), SendError<Request>>;
 }
 
