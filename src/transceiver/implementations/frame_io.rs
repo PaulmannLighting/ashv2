@@ -135,7 +135,7 @@ where
                     error = false;
                 }
                 FLAG => {
-                    debug!("Received flag byte.");
+                    trace!("Received flag byte.");
 
                     if !error && !buffer.is_empty() {
                         debug!("Received frame.");
@@ -145,14 +145,14 @@ where
                         return Ok(());
                     }
 
-                    debug!("Resetting buffer due to error or empty buffer.");
-                    trace!("Error condition: {error}");
+                    trace!("Resetting buffer due to error or empty buffer.");
+                    trace!("Error condition was: {error}");
                     trace!("Buffer: {buffer:#04X?}");
                     buffer.clear();
                     error = false;
                 }
                 SUBSTITUTE => {
-                    debug!("Received SUBSTITUTE byte. Setting error condition.");
+                    trace!("Received SUBSTITUTE byte. Setting error condition.");
                     error = true;
                 }
                 X_ON => {
