@@ -166,7 +166,7 @@ fn run(serial_port: impl SerialPort + 'static) {
     let _thread_handle = spawn(|| transceiver.run(running_transceiver));
 
     for (command, response) in COMMANDS {
-        info!("Sending command: {command:#04X?}");
+        info!("Sending command: {}", InlineBytes(command));
 
         match host.communicate(command) {
             Ok(bytes) => {
@@ -183,7 +183,7 @@ fn run(serial_port: impl SerialPort + 'static) {
     }
 
     match host.communicate(&LONG_COMMAND) {
-        Ok(response) => info!("Got response for long command: {response:#04X?}"),
+        Ok(response) => info!("Got response for long command: {}", InlineBytes(&response)),
         Err(error) => error!("Got error: {error:?}"),
     }
 
