@@ -5,7 +5,7 @@ use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::transceiver::Transceiver;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use serialport::SerialPort;
 use std::io::{Error, ErrorKind, Read};
 use std::time::SystemTime;
@@ -122,34 +122,33 @@ where
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
     fn buffer_frame(&mut self) -> std::io::Result<()> {
-        self.buffers.frame.clear();
+        let buffer = &mut self.buffers.frame;
+        buffer.clear();
         let serial_port = &mut self.serial_port;
         let mut error = false;
 
         for byte in serial_port.bytes() {
             match byte? {
                 CANCEL => {
-                    debug!("Resetting buffer due to cancel byte.");
-                    trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", self.buffers.frame);
-                    self.buffers.frame.clear();
+                    trace!("Resetting buffer due to cancel byte.");
+                    buffer.clear();
                     error = false;
                 }
                 FLAG => {
                     debug!("Received flag byte.");
 
-                    if !error && !self.buffers.frame.is_empty() {
-                        debug!("Frame complete.");
-                        trace!("Buffer: {:#04X?}", self.buffers.frame);
-                        self.buffers.frame.unstuff();
-                        trace!("Unstuffed buffer: {:#04X?}", self.buffers.frame);
+                    if !error && !buffer.is_empty() {
+                        debug!("Received frame.");
+                        trace!("Buffer: {buffer:#04X?}");
+                        buffer.unstuff();
+                        trace!("Unstuffed buffer: {:#04X?}", buffer);
                         return Ok(());
                     }
 
                     debug!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition: {error}");
-                    trace!("Buffer: {:#04X?}", self.buffers.frame);
-                    self.buffers.frame.clear();
+                    trace!("Buffer: {buffer:#04X?}");
+                    buffer.clear();
                     error = false;
                 }
                 SUBSTITUTE => {
@@ -157,16 +156,16 @@ where
                     error = true;
                 }
                 X_ON => {
-                    debug!("NCP requested to resume transmission.");
+                    warn!("NCP requested to resume transmission. Ignoring.");
                 }
                 X_OFF => {
-                    debug!("NCP requested to stop transmission.");
+                    warn!("NCP requested to stop transmission. Ignoring.");
                 }
                 WAKE => {
                     debug!("NCP tried to wake us up.");
                 }
                 byte => {
-                    if self.buffers.frame.push(byte).is_err() {
+                    if buffer.push(byte).is_err() {
                         return Err(Error::new(
                             ErrorKind::OutOfMemory,
                             "ASHv2 frame buffer overflow",
