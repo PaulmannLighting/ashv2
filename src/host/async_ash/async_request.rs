@@ -1,4 +1,4 @@
-use super::any_sender::AnySender;
+use crate::host::Host;
 use crate::request::Request;
 use std::future::Future;
 use std::io::{Error, ErrorKind, Result};
@@ -14,7 +14,10 @@ pub struct AsyncRequest {
 
 impl AsyncRequest {
     #[must_use]
-    pub fn new(sender: impl Into<AnySender<Request>>, payload: &[u8]) -> Self {
+    pub fn new<T>(sender: T, payload: &[u8]) -> Self
+    where
+        T: Host + Send + 'static,
+    {
         let shared_state = Arc::new(Mutex::new(SharedState {
             output: None,
             waker: None,
@@ -22,7 +25,6 @@ impl AsyncRequest {
 
         let (request, response) = Request::new(payload.into());
         let thread_shared_state = shared_state.clone();
-        let sender = sender.into();
 
         spawn(move || {
             if sender.send(request).is_err() {
