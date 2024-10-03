@@ -18,12 +18,11 @@ where
         let start = SystemTime::now();
         let mut attempts: usize = 0;
 
-        debug!("Waiting for RST_ACK...");
         'attempts: loop {
             attempts += 1;
             self.rst()?;
 
-            // Wait to receive `RSTACK` from the NCP.
+            debug!("Waiting for RSTACK...");
             let packet = loop {
                 if let Some(packet) = self.receive()? {
                     break packet;
