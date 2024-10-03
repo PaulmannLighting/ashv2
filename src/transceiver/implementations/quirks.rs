@@ -2,6 +2,8 @@
 
 use crate::transceiver::buffers::Buffers;
 
+/// This specific `EZSP` invalid command response without `reason: EzspStatus` field may be sent
+/// repeatedly by the NCP if the host-sent multi-package request was utterly garbage.
 const QUIRKY_INVALID_COMMAND_RESPONSE: [u8; 4] = [0xAA, 0x80, 0x01, 0x58];
 
 /// Quirks for the transceiver buffers.
