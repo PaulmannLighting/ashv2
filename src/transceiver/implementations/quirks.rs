@@ -18,6 +18,6 @@ impl Buffers {
             return false;
         }
 
-        payload[0] == 0xAA && payload[3] != 0x58
+        payload[0] == 0xAA && payload[3] == 0x58
     }
 }
