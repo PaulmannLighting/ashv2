@@ -6,7 +6,7 @@
 //! This library is free software and is not affiliated with Silicon Labs.
 
 pub use baud_rate::BaudRate;
-pub use host::{AsyncAsh, SyncAsh};
+pub use host::{AsyncAsh, Host, SyncAsh};
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
