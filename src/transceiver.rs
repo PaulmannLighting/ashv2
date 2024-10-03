@@ -110,6 +110,10 @@ where
         }
     }
 
+    /// Main loop of the transceiver.
+    ///
+    /// This method checks whether the transceiver is connected and establishes a connection if not.
+    /// Otherwise, it will communicate with the NCP via the `ASHv2` protocol.
     fn main(&mut self) -> std::io::Result<()> {
         match self.state.status {
             Status::Disconnected | Status::Failed => Ok(self.connect()?),
@@ -117,6 +121,10 @@ where
         }
     }
 
+    /// Communicate with the NCP.
+    ///
+    /// If there is an incoming transaction, handle it.
+    /// Otherwise, handle callbacks.
     fn communicate(&mut self) -> std::io::Result<()> {
         if let Some(bytes) = self.channels.receive()? {
             self.transaction(bytes.ash_chunks()?)
