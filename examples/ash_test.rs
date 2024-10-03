@@ -134,10 +134,11 @@ struct InlineBytes<'a>(&'a [u8]);
 
 impl std::fmt::Display for InlineBytes<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let max_index = self.0.len().saturating_sub(1);
         write!(f, "[")?;
 
         for (index, byte) in self.0.iter().enumerate() {
-            if self.0.len().saturating_sub(1) == index {
+            if index == max_index {
                 write!(f, "{byte:#04X}")?;
             } else {
                 write!(f, "{byte:#04X}, ")?;
