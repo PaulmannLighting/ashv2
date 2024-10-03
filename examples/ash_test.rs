@@ -130,6 +130,24 @@ struct Args {
     tty: String,
 }
 
+struct InlineBytes<'a>(&'a [u8]);
+
+impl std::fmt::Display for InlineBytes<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+
+        for (index, byte) in self.0.iter().enumerate() {
+            if self.0.len().saturating_sub(1) == index {
+                write!(f, "{byte:#04X}")?;
+            } else {
+                write!(f, "{byte:#04X}, ")?;
+            }
+        }
+
+        write!(f, "]")
+    }
+}
+
 fn main() {
     env_logger::init();
     let args = Args::parse();
@@ -170,22 +188,4 @@ fn run(serial_port: impl SerialPort + 'static) {
     }
 
     running.store(false, Relaxed);
-}
-
-struct InlineBytes<'a>(&'a [u8]);
-
-impl std::fmt::Display for InlineBytes<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[")?;
-
-        for (index, byte) in self.0.iter().enumerate() {
-            if self.0.len().saturating_sub(1) == index {
-                write!(f, "{byte:#04X}")?;
-            } else {
-                write!(f, "{byte:#04X}, ")?;
-            }
-        }
-
-        write!(f, "]")
-    }
 }
