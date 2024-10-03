@@ -22,6 +22,8 @@ log = "0.4"
 serialport = { version = "4.4", default-features = false }
 
 [dev-dependencies]
+clap = { version = "4.5", features = ["derive"] }
+env_logger = "0.11"
 
 [features]
 clap = ["dep:clap"]
