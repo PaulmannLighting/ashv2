@@ -2,11 +2,10 @@
 
 use ashv2::{open, BaudRate, SyncAsh, Transceiver};
 use clap::Parser;
-use log::{error, info};
+use log::{error, info, warn};
 use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, sync_channel, Receiver};
 use std::sync::Arc;
 use std::thread::spawn;
 
@@ -161,10 +160,11 @@ fn main() {
 
 fn run(serial_port: impl SerialPort + 'static) {
     let (host, receiver) = channel();
-    let transceiver = Transceiver::new(serial_port, receiver, None);
+    let (callback_tx, callback_rx) = sync_channel(1);
+    let transceiver = Transceiver::new(serial_port, receiver, Some(callback_tx));
     let running = Arc::new(AtomicBool::new(true));
-    let running_transceiver = running.clone();
-    let _thread_handle = spawn(|| transceiver.run(running_transceiver));
+    let callback_thread = spawn(|| receive_callbacks(callback_rx));
+    let transceiver_thread = spawn(|| transceiver.run(running));
 
     for (command, response) in COMMANDS {
         info!("Sending command: {}", InlineBytes(command));
@@ -188,5 +188,19 @@ fn run(serial_port: impl SerialPort + 'static) {
         Err(error) => error!("Got error: {error:?}"),
     }
 
-    running.store(false, Relaxed);
+    callback_thread.join().expect("Callback thread panicked.");
+    transceiver_thread
+        .join()
+        .expect("Transceiver thread panicked.");
+}
+
+fn receive_callbacks(receiver: Receiver<Box<[u8]>>) {
+    info!("Receiving callbacks.");
+
+    loop {
+        match receiver.recv() {
+            Ok(callback) => warn!("Got callback: {}", InlineBytes(&callback)),
+            Err(error) => error!("Got error: {error}"),
+        }
+    }
 }
