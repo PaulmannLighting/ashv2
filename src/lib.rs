@@ -20,6 +20,7 @@ mod code;
 mod crc;
 mod frame;
 mod frame_buffer;
+mod hex_slice;
 mod packet;
 mod protocol;
 mod request;
