@@ -5,13 +5,13 @@ use std::io::{Error, ErrorKind};
 use std::time::{Duration, SystemTime, SystemTimeError};
 
 #[derive(Debug)]
-pub struct SentData {
+pub struct Transmission {
     sent: SystemTime,
     data: Data,
     transmits: usize,
 }
 
-impl SentData {
+impl Transmission {
     #[must_use]
     pub const fn frame_num(&self) -> WrappingU3 {
         self.data.frame_num()
@@ -54,7 +54,7 @@ impl SentData {
     }
 }
 
-impl From<Data> for SentData {
+impl From<Data> for Transmission {
     fn from(data: Data) -> Self {
         Self {
             sent: SystemTime::now(),
@@ -67,7 +67,7 @@ impl From<Data> for SentData {
 #[cfg(test)]
 mod tests {
     use crate::packet::Data;
-    use crate::transceiver::sent_data::SentData;
+    use crate::transceiver::transmission::Transmission;
     use crate::wrapping_u3::WrappingU3;
 
     #[test]
@@ -77,9 +77,9 @@ mod tests {
             heapless::Vec::new(),
             WrappingU3::default(),
         );
-        let sent_data: SentData = data.into();
-        assert_eq!(sent_data.transmits, 0);
-        assert!(!sent_data.data.is_retransmission());
+        let transmission: Transmission = data.into();
+        assert_eq!(transmission.transmits, 0);
+        assert!(!transmission.data.is_retransmission());
     }
 
     #[test]
@@ -89,10 +89,10 @@ mod tests {
             heapless::Vec::new(),
             WrappingU3::default(),
         );
-        let mut sent_data: SentData = data.into();
-        let data = sent_data.data_for_transmit().unwrap();
+        let mut transmission: Transmission = data.into();
+        let data = transmission.data_for_transmit().unwrap();
         assert!(!data.is_retransmission());
-        assert_eq!(sent_data.transmits, 1);
+        assert_eq!(transmission.transmits, 1);
     }
 
     #[test]
@@ -102,10 +102,10 @@ mod tests {
             heapless::Vec::new(),
             WrappingU3::default(),
         );
-        let mut sent_data: SentData = data.into();
-        let _transmit = sent_data.data_for_transmit().unwrap();
-        let retransmit = sent_data.data_for_transmit().unwrap();
+        let mut transmission: Transmission = data.into();
+        let _transmit = transmission.data_for_transmit().unwrap();
+        let retransmit = transmission.data_for_transmit().unwrap();
         assert!(retransmit.is_retransmission());
-        assert_eq!(sent_data.transmits, 2);
+        assert_eq!(transmission.transmits, 2);
     }
 }

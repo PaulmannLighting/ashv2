@@ -1,5 +1,5 @@
 use super::constants::TX_K;
-use super::sent_data::SentData;
+use super::transmission::Transmission;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Data;
 use crate::protocol::Mask;
@@ -9,7 +9,7 @@ use log::trace;
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
-    pub(super) sent_data: heapless::Vec<SentData, TX_K>,
+    pub(super) transmissions: heapless::Vec<Transmission, TX_K>,
     pub(super) response: Vec<u8>,
 }
 
@@ -17,7 +17,7 @@ impl Buffers {
     /// Resets the transceiver buffers.
     pub(super) fn clear(&mut self) {
         self.frame.clear();
-        self.sent_data.clear();
+        self.transmissions.clear();
         self.response.clear();
     }
 

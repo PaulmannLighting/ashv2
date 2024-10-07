@@ -4,7 +4,7 @@
 use crate::frame::Frame;
 use crate::packet::{Ack, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
-use crate::transceiver::sent_data::SentData;
+use crate::transceiver::transmission::Transmission;
 use crate::transceiver::Transceiver;
 use log::{debug, trace, warn};
 use serialport::SerialPort;
@@ -69,10 +69,10 @@ where
     /// Returns an [Error] if the serial port read operation failed.
     pub(in crate::transceiver) fn send_data(
         &mut self,
-        mut sent_data: SentData,
+        mut transmission: Transmission,
     ) -> std::io::Result<()> {
-        self.write_frame(sent_data.data_for_transmit()?)?;
-        self.enqueue_sent_data(sent_data)
+        self.write_frame(transmission.data_for_transmit()?)?;
+        self.enqueue_transmission(transmission)
     }
 
     /// Send a raw `ACK` frame.

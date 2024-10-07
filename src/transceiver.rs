@@ -2,8 +2,8 @@ mod buffers;
 mod channels;
 mod constants;
 mod implementations;
-mod sent_data;
 mod state;
+mod transmission;
 
 use crate::protocol::AshChunks;
 use crate::request::Request;

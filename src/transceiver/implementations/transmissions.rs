@@ -8,7 +8,7 @@
 //!   * not been acknowledged by the NCP in time.
 //!
 use crate::transceiver::constants::{T_RX_ACK_MAX, T_RX_ACK_MIN};
-use crate::transceiver::sent_data::SentData;
+use crate::transceiver::transmission::Transmission;
 use crate::wrapping_u3::WrappingU3;
 use crate::Transceiver;
 use log::{debug, trace};
@@ -21,32 +21,38 @@ where
     T: SerialPort,
 {
     /// Enqueue a `DATA` frame for retransmission.
-    pub(in crate::transceiver) fn enqueue_sent_data(
+    pub(in crate::transceiver) fn enqueue_transmission(
         &mut self,
-        sent_data: SentData,
+        transmission: Transmission,
     ) -> std::io::Result<()> {
-        self.buffers.sent_data.insert(0, sent_data).map_err(|_| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "ASHv2: failed to enqueue retransmit",
-            )
-        })
+        self.buffers
+            .transmissions
+            .insert(0, transmission)
+            .map_err(|_| {
+                Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ASHv2: failed to enqueue retransmit",
+                )
+            })
     }
 
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
     pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
-        while let Some(sent_data) = self
+        while let Some(transmission) = self
             .buffers
-            .sent_data
+            .transmissions
             .iter()
-            .position(|sent_data| sent_data.frame_num() + 1 == ack_num)
-            .map(|index| self.buffers.sent_data.remove(index))
+            .position(|transmission| transmission.frame_num() + 1 == ack_num)
+            .map(|index| self.buffers.transmissions.remove(index))
         {
-            if let Ok(duration) = sent_data.elapsed() {
-                trace!("ACKed packet {} after {duration:?}", sent_data.into_data());
+            if let Ok(duration) = transmission.elapsed() {
+                trace!(
+                    "ACKed packet {} after {duration:?}",
+                    transmission.into_data()
+                );
                 self.update_t_rx_ack(Some(duration));
             } else {
-                trace!("ACKed packet {}", sent_data.into_data());
+                trace!("ACKed packet {}", transmission.into_data());
             }
         }
     }
@@ -58,15 +64,15 @@ where
     ) -> std::io::Result<()> {
         trace!("Handling NAK: {nak_num}");
 
-        if let Some(sent_data) = self
+        if let Some(transmission) = self
             .buffers
-            .sent_data
+            .transmissions
             .iter()
-            .position(|sent_data| sent_data.frame_num() == nak_num)
-            .map(|index| self.buffers.sent_data.remove(index))
+            .position(|transmission| transmission.frame_num() == nak_num)
+            .map(|index| self.buffers.transmissions.remove(index))
         {
-            debug!("Retransmitting NAK'ed packet #{}", sent_data.frame_num());
-            self.send_data(sent_data)?;
+            debug!("Retransmitting NAK'ed packet #{}", transmission.frame_num());
+            self.send_data(transmission)?;
         }
 
         Ok(())
@@ -74,15 +80,18 @@ where
 
     /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
     pub(in crate::transceiver) fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
-        while let Some(sent_data) = self
+        while let Some(transmission) = self
             .buffers
-            .sent_data
+            .transmissions
             .iter()
-            .position(|sent_data| sent_data.is_timed_out(self.state.t_rx_ack))
-            .map(|index| self.buffers.sent_data.remove(index))
+            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack))
+            .map(|index| self.buffers.transmissions.remove(index))
         {
-            debug!("Retransmitting timed-out packet #{}", sent_data.frame_num());
-            self.send_data(sent_data)?;
+            debug!(
+                "Retransmitting timed-out packet #{}",
+                transmission.frame_num()
+            );
+            self.send_data(transmission)?;
         }
 
         self.update_t_rx_ack(None);

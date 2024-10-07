@@ -38,7 +38,7 @@ where
             //
             // We do this here to avoid going into an infinite loop
             // if the NCP does not respond to out pushed chunks.
-            while self.buffers.sent_data.is_full() {
+            while self.buffers.transmissions.is_full() {
                 self.retransmit_timed_out_data()?;
 
                 while let Some(packet) = self.receive()? {
@@ -53,7 +53,7 @@ where
         }
 
         // Wait for retransmits to finish.
-        while !self.buffers.sent_data.is_empty() {
+        while !self.buffers.transmissions.is_empty() {
             self.retransmit_timed_out_data()?;
 
             while let Some(packet) = self.receive()? {
@@ -73,7 +73,7 @@ where
     ///
     /// Returns `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
-        while !self.buffers.sent_data.is_full() {
+        while !self.buffers.transmissions.is_full() {
             if let Some(chunk) = chunks.next() {
                 self.send_chunk(chunk)?;
             } else {
