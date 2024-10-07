@@ -3,7 +3,7 @@ use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::VERSION;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -83,6 +83,26 @@ impl TryFrom<&[u8]> for RstAck {
             reset_code: *reset_code,
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
+    }
+}
+
+impl UpperHex for RstAck {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "RstAck {{ header: {:#04X}, version: {:#04X}, reset_code: {:#04X}, crc: {:#06X} }}",
+            self.header, self.version, self.reset_code, self.crc
+        )
+    }
+}
+
+impl LowerHex for RstAck {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "RstAck {{ header: {:#04x}, version: {:#04x}, reset_code: {:#04x}, crc: {:#06x} }}",
+            self.header, self.version, self.reset_code, self.crc
+        )
     }
 }
 

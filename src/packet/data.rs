@@ -1,10 +1,11 @@
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
+use crate::hex_slice::HexSlice;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::wrapping_u3::WrappingU3;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
@@ -97,6 +98,30 @@ impl Frame for Data {
         buffer.push(self.header.bits()).map_err(drop)?;
         buffer.extend_from_slice(&self.payload)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
+    }
+}
+
+impl UpperHex for Data {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Data {{ header: {:#04X}, payload: {:X}, crc: {:#06X} }}",
+            self.header.bits(),
+            HexSlice::new(&self.payload),
+            self.crc
+        )
+    }
+}
+
+impl LowerHex for Data {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Data {{ header: {:#04x}, payload: {:x}, crc: {:#06x} }}",
+            self.header.bits(),
+            HexSlice::new(&self.payload),
+            self.crc
+        )
     }
 }
 

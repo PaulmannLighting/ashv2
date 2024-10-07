@@ -1,6 +1,6 @@
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 pub const RST: Rst = Rst::new();
@@ -64,6 +64,26 @@ impl TryFrom<&[u8]> for Rst {
             header: *header,
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
+    }
+}
+
+impl UpperHex for Rst {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Rst {{ header: {:#04X}, crc: {:#06X} }}",
+            self.header, self.crc
+        )
+    }
+}
+
+impl LowerHex for Rst {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Rst {{ header: {:#04x}, crc: {:#06x} }}",
+            self.header, self.crc
+        )
     }
 }
 

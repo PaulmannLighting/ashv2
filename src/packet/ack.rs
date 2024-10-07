@@ -3,7 +3,7 @@ use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::wrapping_u3::WrappingU3;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -81,6 +81,28 @@ impl TryFrom<&[u8]> for Ack {
             header: headers::Ack::from_bits_retain(*header),
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
+    }
+}
+
+impl UpperHex for Ack {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Ack {{ header: {:#04X}, crc: {:#06X} }}",
+            self.header.bits(),
+            self.crc
+        )
+    }
+}
+
+impl LowerHex for Ack {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Ack {{ header: {:#04x}, crc: {:#06x} }}",
+            self.header.bits(),
+            self.crc
+        )
     }
 }
 

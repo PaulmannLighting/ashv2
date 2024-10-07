@@ -2,7 +2,7 @@ use crate::code::Code;
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -82,6 +82,26 @@ impl TryFrom<&[u8]> for Error {
             code: *code,
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
+    }
+}
+
+impl UpperHex for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Error {{ header: {:#04X}, version: {:#04X}, code: {:#04X}, crc: {:#06X} }}",
+            self.header, self.version, self.code, self.crc
+        )
+    }
+}
+
+impl LowerHex for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Error {{ header: {:#04x}, version: {:#04x}, code: {:#04x}, crc: {:#06x} }}",
+            self.header, self.version, self.code, self.crc
+        )
     }
 }
 
