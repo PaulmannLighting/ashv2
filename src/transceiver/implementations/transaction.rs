@@ -27,6 +27,7 @@ where
         // Make sure that we do not receive any callbacks during the transaction.
         self.clear_callbacks()?;
 
+        // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks(&mut chunks)? {
             // Handle responses to sent chunks.
             while let Some(packet) = self.receive()? {
