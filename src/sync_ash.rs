@@ -1,6 +1,6 @@
 //! Synchronous host controller for the `ASHv2` protocol.
 
-use crate::host::Host;
+use crate::any_sender::AnySender;
 use crate::request::Request;
 use std::io::ErrorKind;
 
@@ -16,7 +16,7 @@ pub trait SyncAsh {
 
 impl<T> SyncAsh for T
 where
-    T: Host,
+    T: AnySender,
 {
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>> {
         let (request, response) = Request::new(payload.into());

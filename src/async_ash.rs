@@ -2,7 +2,7 @@
 
 mod async_request;
 
-use crate::host::Host;
+use crate::any_sender::AnySender;
 use async_request::AsyncRequest;
 use std::future::Future;
 
@@ -21,7 +21,7 @@ pub trait AsyncAsh {
 
 impl<T> AsyncAsh for T
 where
-    T: Clone + Host + Send + Sync + 'static,
+    T: Clone + AnySender + Send + Sync + 'static,
 {
     async fn communicate(&self, payload: &[u8]) -> <AsyncRequest as Future>::Output {
         AsyncRequest::new(self.clone(), payload).await
