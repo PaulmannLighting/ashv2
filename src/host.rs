@@ -19,6 +19,15 @@ impl<T> Host<T>
 where
     T: Decoder,
 {
+    /// Create a new host.
+    pub fn new(decoder: T, sender: SyncSender<Request>) -> Self {
+        Self {
+            decoder,
+            sender,
+            buffer: BytesMut::new(),
+        }
+    }
+
     /// Communicate with the NCP.
     ///
     /// Sends a payload request to the NCP and returns the decoded response.

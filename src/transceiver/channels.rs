@@ -7,7 +7,7 @@ use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
-    response: Option<SyncSender<Box<[u8]>>>,
+    pub(super) response: Option<SyncSender<Box<[u8]>>>,
     callback: Option<SyncSender<Box<[u8]>>>,
 }
 

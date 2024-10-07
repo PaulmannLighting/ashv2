@@ -1,13 +1,15 @@
 //! Test `ASHv2` connection.
 
-use ashv2::{open, BaudRate, SyncAsh, Transceiver};
+use ashv2::{open, BaudRate, Host, Transceiver};
+use bytes::BytesMut;
 use clap::Parser;
 use log::{error, info, warn};
 use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, sync_channel, Receiver};
+use std::sync::mpsc::{sync_channel, Receiver};
 use std::sync::Arc;
 use std::thread::spawn;
+use tokio_util::codec::Decoder;
 
 const COMMANDS: [(&[u8], &[u8]); 0x1A] = [
     // Version (legacy frame format) command
@@ -148,6 +150,26 @@ impl std::fmt::Display for InlineBytes<'_> {
     }
 }
 
+/// An example decoder.
+#[derive(Debug, Default)]
+pub struct ExampleDecoder(Vec<u8>);
+
+impl Decoder for ExampleDecoder {
+    type Item = Box<[u8]>;
+    type Error = std::io::Error;
+
+    fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.0.clear();
+        self.0.extend(buffer.split());
+
+        if self.0.len() >= 4 {
+            Ok(Some(self.0.as_slice().into()))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
 fn main() {
     env_logger::init();
     let args = Args::parse();
@@ -159,12 +181,13 @@ fn main() {
 }
 
 fn run(serial_port: impl SerialPort + 'static) {
-    let (host, receiver) = channel();
+    let (sender, receiver) = sync_channel(32);
     let (callback_tx, callback_rx) = sync_channel(1);
     let transceiver = Transceiver::new(serial_port, receiver, Some(callback_tx));
     let running = Arc::new(AtomicBool::new(true));
     let callback_thread = spawn(|| receive_callbacks(callback_rx));
     let transceiver_thread = spawn(|| transceiver.run(running));
+    let mut host = Host::new(ExampleDecoder::default(), sender);
 
     for (command, response) in COMMANDS {
         info!("Sending command: {}", InlineBytes(command));
