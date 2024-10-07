@@ -1,19 +1,19 @@
 use crate::request::Request;
 use log::error;
 use std::io::{Error, ErrorKind};
-use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
+use std::sync::mpsc::{Receiver, SendError, Sender, TryRecvError};
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
-    pub(super) response: Option<SyncSender<Box<[u8]>>>,
-    callback: Option<SyncSender<Box<[u8]>>>,
+    pub(super) response: Option<Sender<Box<[u8]>>>,
+    callback: Option<Sender<Box<[u8]>>>,
 }
 
 impl Channels {
     /// Create a new set of communication channels.
-    pub const fn new(requests: Receiver<Request>, callback: Option<SyncSender<Box<[u8]>>>) -> Self {
+    pub const fn new(requests: Receiver<Request>, callback: Option<Sender<Box<[u8]>>>) -> Self {
         Self {
             requests,
             response: None,
@@ -41,24 +41,22 @@ impl Channels {
     /// Respond to the host.
     pub fn respond(&mut self, payload: Box<[u8]>) {
         if let Some(response) = self.response.take() {
-            if let Err(error) = response.try_send(payload) {
+            if let Err(error) = response.send(payload) {
                 match error {
-                    TrySendError::Disconnected(_) => {
+                    SendError(_) => {
                         error!("ASHv2: Response channel has disconnected.");
                     }
-                    TrySendError::Full(_) => error!("ASHv2: Response channel's buffer is full."),
                 }
             }
         } else if let Some(callback) = &mut self.callback {
-            if let Err(error) = callback.try_send(payload) {
+            if let Err(error) = callback.send(payload) {
                 match error {
-                    TrySendError::Disconnected(_) => {
+                    SendError(_) => {
                         self.callback.take();
                         error!(
                             "ASHv2: Callback channel has disconnected. Closing callback channel forever.",
                         );
                     }
-                    TrySendError::Full(_) => error!("ASHv2: Callback channel's buffer is full."),
                 }
             }
         } else {

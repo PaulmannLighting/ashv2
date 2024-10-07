@@ -14,7 +14,7 @@ use serialport::SerialPort;
 use state::State;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::mpsc::{Receiver, SyncSender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 
 /// `ASHv2` transceiver.
@@ -54,7 +54,7 @@ where
     pub fn new(
         serial_port: T,
         requests: Receiver<Request>,
-        callback: Option<SyncSender<Box<[u8]>>>,
+        callback: Option<Sender<Box<[u8]>>>,
     ) -> Self {
         Self {
             serial_port,

@@ -5,12 +5,14 @@
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
 
+pub use ash_framed::AshFramed;
 pub use baud_rate::BaudRate;
 pub use host::Host;
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
 
+mod ash_framed;
 mod baud_rate;
 mod code;
 mod crc;
