@@ -37,7 +37,13 @@ where
             //
             // We do this here to avoid going into an infinite loop
             // if the NCP does not respond to out pushed chunks.
-            self.retransmit_timed_out_data()?;
+            while self.buffers.sent_data.is_full() {
+                self.retransmit_timed_out_data()?;
+
+                while let Some(packet) = self.receive()? {
+                    self.handle_packet(packet)?;
+                }
+            }
         }
 
         // Handle any remaining responses.
