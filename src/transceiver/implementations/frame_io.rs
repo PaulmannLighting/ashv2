@@ -72,7 +72,15 @@ where
         mut transmission: Transmission,
     ) -> std::io::Result<()> {
         self.write_frame(transmission.data_for_transmit()?)?;
-        self.enqueue_transmission(transmission)
+        self.buffers
+            .transmissions
+            .insert(0, transmission)
+            .map_err(|_| {
+                Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ASHv2: failed to enqueue retransmit",
+                )
+            })
     }
 
     /// Send a raw `ACK` frame.

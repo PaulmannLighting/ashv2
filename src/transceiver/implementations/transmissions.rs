@@ -8,34 +8,16 @@
 //!   * not been acknowledged by the NCP in time.
 //!
 use crate::transceiver::constants::{T_RX_ACK_MAX, T_RX_ACK_MIN};
-use crate::transceiver::transmission::Transmission;
 use crate::wrapping_u3::WrappingU3;
 use crate::Transceiver;
 use log::{debug, trace};
 use serialport::SerialPort;
-use std::io::{Error, ErrorKind};
 use std::time::Duration;
 
 impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Enqueue a `DATA` frame for retransmission.
-    pub(in crate::transceiver) fn enqueue_transmission(
-        &mut self,
-        transmission: Transmission,
-    ) -> std::io::Result<()> {
-        self.buffers
-            .transmissions
-            .insert(0, transmission)
-            .map_err(|_| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: failed to enqueue retransmit",
-                )
-            })
-    }
-
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
     pub(in crate::transceiver) fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
         while let Some(transmission) = self
