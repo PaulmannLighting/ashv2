@@ -32,6 +32,12 @@ where
             while let Some(packet) = self.receive()? {
                 self.handle_packet(packet)?;
             }
+
+            // Retransmit timed out data.
+            //
+            // We do this here to avoid going into an infinite loop
+            // if the NCP does not respond to out pushed chunks.
+            self.retransmit_timed_out_data()?;
         }
 
         // Handle any remaining responses.
