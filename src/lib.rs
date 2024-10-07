@@ -5,28 +5,24 @@
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
 
-pub use any_sender::AnySender;
-pub use async_ash::AsyncAsh;
 pub use baud_rate::BaudRate;
+pub use host::Host;
 pub use request::Request;
 pub use serial_port::open;
-pub use sync_ash::SyncAsh;
 pub use transceiver::Transceiver;
 
-mod any_sender;
-mod async_ash;
 mod baud_rate;
 mod code;
 mod crc;
 mod frame;
 mod frame_buffer;
 mod hex_slice;
+mod host;
 mod packet;
 mod protocol;
 mod request;
 mod serial_port;
 mod status;
-mod sync_ash;
 mod transceiver;
 mod wrapping_u3;
 

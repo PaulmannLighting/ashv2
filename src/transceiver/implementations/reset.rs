@@ -1,7 +1,7 @@
 //! Reset and error handling implementation.
 use crate::status::Status;
 use crate::transceiver::Transceiver;
-use log::{error, warn};
+use log::error;
 use serialport::SerialPort;
 
 impl<T> Transceiver<T>
@@ -16,12 +16,11 @@ where
     }
 
     /// Handle I/O errors.
-    pub(in crate::transceiver) fn handle_io_error(&mut self, error: std::io::Error) {
+    pub(in crate::transceiver) fn handle_io_error(&mut self, error: &std::io::Error) {
         error!("I/O error: {error}");
 
         if self.state.within_transaction {
-            warn!("Aborting current transaction with error.");
-            self.channels.respond(Err(error)).unwrap_or_else(drop);
+            error!("Aborting current transaction due to error.");
         }
 
         self.reset();

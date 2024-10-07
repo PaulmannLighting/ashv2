@@ -1,16 +1,12 @@
 use super::constants::TX_K;
 use super::transmission::Transmission;
 use crate::frame_buffer::FrameBuffer;
-use crate::packet::Data;
-use crate::protocol::Mask;
-use log::trace;
 
 /// Buffers used by the transceiver.
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub(super) frame: FrameBuffer,
     pub(super) transmissions: heapless::Vec<Transmission, TX_K>,
-    pub(super) response: Vec<u8>,
 }
 
 impl Buffers {
@@ -18,14 +14,5 @@ impl Buffers {
     pub(super) fn clear(&mut self) {
         self.frame.clear();
         self.transmissions.clear();
-        self.response.clear();
-    }
-
-    /// Extends the response buffer with the given data.
-    pub fn extend_response(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
-        payload.mask();
-        trace!("Extending response buffer with: {:#04X?}", payload);
-        self.response.extend_from_slice(&payload);
-        trace!("Response buffer is now: {:#04X?}", self.response);
     }
 }

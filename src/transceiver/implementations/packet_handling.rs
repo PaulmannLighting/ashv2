@@ -3,6 +3,7 @@
 //! This module contains methods to handle incoming packets sent by the NCP.
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Error, Nak, Packet, RstAck};
+use crate::protocol::Mask;
 use crate::status::Status;
 use crate::Transceiver;
 use log::{debug, error, trace, warn};
@@ -57,17 +58,23 @@ where
             self.state.last_received_frame_num.replace(data.frame_num());
             self.ack()?;
             self.ack_sent_packets(data.ack_num());
-            self.buffers.extend_response(data.into_payload());
+            self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {
             warn!("Received retransmission of frame: {data}");
             self.ack_sent_packets(data.ack_num());
-            self.buffers.extend_response(data.into_payload());
+            self.handle_payload(data.into_payload());
         } else {
             debug!("Received out-of-sequence data frame: {data}");
             self.enter_reject()?;
         }
 
         Ok(())
+    }
+
+    /// Extends the response buffer with the given data.
+    fn handle_payload(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
+        payload.mask();
+        self.channels.respond(payload.as_slice().into());
     }
 
     /// Handle an incoming `ERROR` packet.

@@ -1,5 +1,5 @@
 use crate::request::Request;
-use log::{error, warn};
+use log::error;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 
@@ -7,7 +7,7 @@ use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
-    response: Option<SyncSender<std::io::Result<Box<[u8]>>>>,
+    response: Option<SyncSender<Box<[u8]>>>,
     callback: Option<SyncSender<Box<[u8]>>>,
 }
 
@@ -39,51 +39,30 @@ impl Channels {
     }
 
     /// Respond to the host.
-    pub fn respond(&mut self, payload: std::io::Result<Box<[u8]>>) -> std::io::Result<()> {
-        let Some(response) = self.response.take() else {
-            error!("No response channel set. Discarding response.");
-            return Ok(());
-        };
-
-        if let Err(error) = response.try_send(payload) {
-            match error {
-                TrySendError::Disconnected(_) => Err(Error::new(
-                    ErrorKind::BrokenPipe,
-                    "ASHv2: Response channel has disconnected.",
-                )),
-                TrySendError::Full(_) => Err(Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: Response channel's buffer is full.",
-                )),
-            }
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Send a callback via the callback channel.
-    pub fn callback(&mut self, payload: Box<[u8]>) -> std::io::Result<()> {
-        let Some(callback) = self.callback.as_ref() else {
-            warn!("No callback set. Discarding response.");
-            return Ok(());
-        };
-
-        if let Err(error) = callback.try_send(payload) {
-            match error {
-                TrySendError::Disconnected(_) => {
-                    self.callback.take();
-                    Err(Error::new(
-                        ErrorKind::BrokenPipe,
-                        "ASHv2: Callback channel has disconnected. Closing callback channel forever.",
-                    ))
+    pub fn respond(&mut self, payload: Box<[u8]>) {
+        if let Some(response) = self.response.take() {
+            if let Err(error) = response.try_send(payload) {
+                match error {
+                    TrySendError::Disconnected(_) => {
+                        error!("ASHv2: Response channel has disconnected.");
+                    }
+                    TrySendError::Full(_) => error!("ASHv2: Response channel's buffer is full."),
                 }
-                TrySendError::Full(_) => Err(Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: Callback channel's buffer is full.",
-                )),
+            }
+        } else if let Some(callback) = &mut self.callback {
+            if let Err(error) = callback.try_send(payload) {
+                match error {
+                    TrySendError::Disconnected(_) => {
+                        self.callback.take();
+                        error!(
+                            "ASHv2: Callback channel has disconnected. Closing callback channel forever.",
+                        );
+                    }
+                    TrySendError::Full(_) => error!("ASHv2: Callback channel's buffer is full."),
+                }
             }
         } else {
-            Ok(())
+            error!("Neither response channel not callback channel are available. Discarding data.");
         }
     }
 

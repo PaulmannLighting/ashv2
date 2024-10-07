@@ -20,6 +20,8 @@ crc = "3.2"
 heapless = "0.8"
 log = "0.4"
 serialport = { version = "4.4", default-features = false }
+tokio-util = { version = "0.7.12", features = ["codec"] }
+bytes = "1.7.2"
 
 [dev-dependencies]
 clap = { version = "4.5", features = ["derive"] }

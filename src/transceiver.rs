@@ -6,8 +6,8 @@ mod state;
 mod transmission;
 
 use crate::protocol::AshChunks;
-use crate::request::Request;
 use crate::status::Status;
+use crate::Request;
 use buffers::Buffers;
 use channels::Channels;
 use serialport::SerialPort;
@@ -25,40 +25,6 @@ use std::sync::Arc;
 /// The [`AsyncAsh`](crate::AsyncAsh) and [`SyncAsh`](crate::SyncAsh) traits can be used to
 /// provide the sender of the channel wih a method to communicate with the NCP via the transceiver.
 ///
-/// # Usage
-///
-/// ```
-/// use std::sync::Arc;
-/// use std::sync::atomic::AtomicBool;
-/// use std::sync::atomic::Ordering::Relaxed;
-/// use std::sync::mpsc::channel;
-/// use std::thread::spawn;
-/// use serialport::FlowControl;
-/// use ashv2::{open, BaudRate, SyncAsh, Transceiver};
-///
-/// let serial_port = match open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Software) {
-///     Ok(serial_port) => serial_port,
-///     Err(error) => {
-///         eprintln!("{error}");
-///         return;
-///     }
-/// };
-///
-/// let (host, receiver) = channel();
-/// let transceiver = Transceiver::new(serial_port, receiver, None);
-/// let running = Arc::new(AtomicBool::new(true));
-/// let running_transceiver = running.clone();
-/// let _thread_handle = spawn(move || transceiver.run(running_transceiver));
-///
-/// let version_command = &[0x00, 0x01, 0x02, 0x03];
-///
-/// match host.communicate(version_command) {
-///     Ok(response) => println!("{response:?}"),
-///     Err(error) => eprintln!("{error}"),
-/// }
-///
-/// running.store(false, Relaxed);
-/// ```
 #[derive(Debug)]
 pub struct Transceiver<T>
 where
@@ -105,7 +71,7 @@ where
     pub fn run(mut self, running: Arc<AtomicBool>) {
         while running.load(Relaxed) {
             if let Err(error) = self.main() {
-                self.handle_io_error(error);
+                self.handle_io_error(&error);
             }
         }
     }

@@ -7,7 +7,7 @@
 //!
 use crate::packet::Data;
 use crate::Transceiver;
-use log::{debug, warn};
+use log::debug;
 use serialport::SerialPort;
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
@@ -61,7 +61,6 @@ where
             }
         }
 
-        self.send_response()?;
         debug!("Transaction completed.");
         self.state.within_transaction = false;
         // Send ACK without `nRDY` set, to re-enable callbacks.
@@ -110,23 +109,6 @@ where
             self.handle_packet(packet)?;
         }
 
-        // Any data we received can not be a response to our transaction.
-        if self.buffers.response.is_empty() {
-            return Ok(());
-        }
-
-        warn!("Received data before beginning transaction. Forwarding to callback channel.");
-        self.channels
-            .callback(self.buffers.response.clone().into())?;
-        self.buffers.response.clear();
-        Ok(())
-    }
-
-    /// Send the response to the host.
-    fn send_response(&mut self) -> std::io::Result<()> {
-        self.channels
-            .respond(Ok(self.buffers.response.clone().into()))?;
-        self.buffers.clear();
         Ok(())
     }
 }
