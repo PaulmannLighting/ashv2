@@ -67,7 +67,7 @@ where
     /// # Errors
     ///
     /// Returns an [Error] if the serial port read operation failed.
-    pub(in crate::transceiver) fn send_data(
+    pub(in crate::transceiver) fn transmit(
         &mut self,
         mut transmission: Transmission,
     ) -> std::io::Result<()> {
