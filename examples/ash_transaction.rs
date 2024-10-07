@@ -1,7 +1,6 @@
 //! Test `ASHv2` connection.
 
 use ashv2::{open, AshFramed, BaudRate, Transceiver};
-use bytes::BytesMut;
 use clap::Parser;
 use futures::SinkExt;
 use log::{error, info};
@@ -11,6 +10,7 @@ use std::sync::mpsc::sync_channel;
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio_stream::StreamExt;
+use tokio_util::bytes::BytesMut;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 const COMMANDS: [(&[u8], &[u8]); 0x1A] = [

@@ -1,7 +1,6 @@
 //! Test `ASHv2` connection.
 
 use ashv2::{open, BaudRate, Host, Transceiver};
-use bytes::BytesMut;
 use clap::Parser;
 use log::{error, info, warn};
 use serialport::{FlowControl, SerialPort};
@@ -9,6 +8,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, sync_channel, Receiver};
 use std::sync::Arc;
 use std::thread::spawn;
+use tokio_util::bytes::BytesMut;
 use tokio_util::codec::Decoder;
 
 const COMMANDS: [(&[u8], &[u8]); 0x1A] = [
