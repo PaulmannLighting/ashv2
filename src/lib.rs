@@ -18,7 +18,6 @@ mod code;
 mod crc;
 mod frame;
 mod frame_buffer;
-mod hex_slice;
 mod host;
 mod packet;
 mod protocol;
@@ -26,6 +25,6 @@ mod request;
 mod serial_port;
 mod status;
 mod transceiver;
-mod wrapping_u3;
+mod utils;
 
 const VERSION: u8 = 0x02;

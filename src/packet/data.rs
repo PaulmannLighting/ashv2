@@ -1,10 +1,9 @@
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
-use crate::hex_slice::HexSlice;
 use crate::packet::headers;
 use crate::protocol::Mask;
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::{HexSlice, WrappingU3};
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 

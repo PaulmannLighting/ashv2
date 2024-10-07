@@ -1,6 +1,6 @@
 use crate::status::Status;
 use crate::transceiver::constants::T_RX_ACK_INIT;
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::WrappingU3;
 use std::time::{Duration, SystemTime};
 
 /// The state of the transceiver.

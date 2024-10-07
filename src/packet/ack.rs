@@ -2,7 +2,7 @@ use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::WrappingU3;
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
@@ -111,7 +111,7 @@ mod tests {
     use super::Ack;
     use crate::frame::Frame;
     use crate::packet::headers;
-    use crate::wrapping_u3::WrappingU3;
+    use crate::utils::WrappingU3;
 
     const ACK1: Ack = Ack {
         header: headers::Ack::from_bits_retain(0x81),

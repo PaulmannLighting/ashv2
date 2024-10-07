@@ -8,7 +8,7 @@
 //!   * not been acknowledged by the NCP in time.
 //!
 use crate::transceiver::constants::{T_RX_ACK_MAX, T_RX_ACK_MIN};
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::WrappingU3;
 use crate::Transceiver;
 use log::{debug, trace};
 use serialport::SerialPort;

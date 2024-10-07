@@ -2,7 +2,7 @@ use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::WrappingU3;
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 

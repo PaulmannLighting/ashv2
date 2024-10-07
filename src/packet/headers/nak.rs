@@ -1,4 +1,4 @@
-use crate::wrapping_u3::WrappingU3;
+use crate::utils::WrappingU3;
 use bitflags::bitflags;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
