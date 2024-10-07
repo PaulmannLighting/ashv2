@@ -3,7 +3,7 @@ use super::sent_data::SentData;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::Data;
 use crate::protocol::Mask;
-use log::{trace, warn};
+use log::trace;
 
 /// Buffers used by the transceiver.
 #[derive(Debug, Default)]
@@ -24,12 +24,6 @@ impl Buffers {
     /// Extends the response buffer with the given data.
     pub fn extend_response(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
         payload.mask();
-
-        if self.is_duplicate_invalid_command(&payload) {
-            warn!("Received duplicate invalid command response. Ignoring.");
-            return;
-        }
-
         trace!("Extending response buffer with: {:#04X?}", payload);
         self.response.extend_from_slice(&payload);
         trace!("Response buffer is now: {:#04X?}", self.response);

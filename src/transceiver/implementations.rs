@@ -2,7 +2,6 @@ mod callbacks;
 mod connect;
 mod frame_io;
 mod packet_handling;
-mod quirks;
 mod reject;
 mod reset;
 mod sent_data;
