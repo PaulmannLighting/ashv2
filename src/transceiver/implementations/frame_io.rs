@@ -2,8 +2,9 @@
 //!
 //! This module contains the implementation of the `ASHv2` frame I/O operations.
 use crate::frame::Frame;
-use crate::packet::{Ack, Data, Nak, Packet, RST};
+use crate::packet::{Ack, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::transceiver::sent_data::SentData;
 use crate::transceiver::Transceiver;
 use log::{debug, trace, warn};
 use serialport::SerialPort;
@@ -66,21 +67,12 @@ where
     /// # Errors
     ///
     /// Returns an [Error] if the serial port read operation failed.
-    pub(in crate::transceiver) fn send_data(&mut self, data: Data) -> std::io::Result<()> {
-        self.write_frame(&data)?;
-        self.enqueue_sent_data(data)
-    }
-
-    /// Retransmit a `DATA` frame.
-    ///
-    /// Set the `is_retransmission` flag in the `DATA` frame and send it.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
-    pub(in crate::transceiver) fn retransmit(&mut self, mut data: Data) -> std::io::Result<()> {
-        data.set_is_retransmission(true);
-        self.send_data(data)
+    pub(in crate::transceiver) fn send_data(
+        &mut self,
+        mut sent_data: SentData,
+    ) -> std::io::Result<()> {
+        self.write_frame(sent_data.data_for_transmit()?)?;
+        self.enqueue_sent_data(sent_data)
     }
 
     /// Send a raw `ACK` frame.

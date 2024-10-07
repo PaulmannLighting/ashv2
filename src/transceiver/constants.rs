@@ -2,7 +2,6 @@ use std::time::Duration;
 
 #[cfg(any())]
 pub(super) const MAX_STARTUP_ATTEMPTS: usize = 5;
-#[cfg(any())]
 pub(super) const ACK_TIMEOUTS: usize = 4;
 pub(super) const TX_K: usize = 5;
 pub(super) const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);

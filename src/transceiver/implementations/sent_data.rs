@@ -7,8 +7,8 @@
 //!   * have been `NAK`ed by the NCP or
 //!   * not been acknowledged by the NCP in time.
 //!
-use crate::packet::Data;
 use crate::transceiver::constants::{T_RX_ACK_MAX, T_RX_ACK_MIN};
+use crate::transceiver::sent_data::SentData;
 use crate::wrapping_u3::WrappingU3;
 use crate::Transceiver;
 use log::{debug, trace};
@@ -21,8 +21,11 @@ where
     T: SerialPort,
 {
     /// Enqueue a `DATA` frame for retransmission.
-    pub(in crate::transceiver) fn enqueue_sent_data(&mut self, data: Data) -> std::io::Result<()> {
-        self.buffers.sent_data.insert(0, data.into()).map_err(|_| {
+    pub(in crate::transceiver) fn enqueue_sent_data(
+        &mut self,
+        sent_data: SentData,
+    ) -> std::io::Result<()> {
+        self.buffers.sent_data.insert(0, sent_data).map_err(|_| {
             Error::new(
                 ErrorKind::OutOfMemory,
                 "ASHv2: failed to enqueue retransmit",
@@ -63,7 +66,7 @@ where
             .map(|index| self.buffers.sent_data.remove(index))
         {
             debug!("Retransmitting NAK'ed packet #{}", sent_data.frame_num());
-            self.retransmit(sent_data.into_data())?;
+            self.send_data(sent_data)?;
         }
 
         Ok(())
@@ -79,7 +82,7 @@ where
             .map(|index| self.buffers.sent_data.remove(index))
         {
             debug!("Retransmitting timed-out packet #{}", sent_data.frame_num());
-            self.retransmit(sent_data.into_data())?;
+            self.send_data(sent_data)?;
         }
 
         self.update_t_rx_ack(None);

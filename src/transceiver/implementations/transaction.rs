@@ -98,7 +98,7 @@ where
             payload,
             self.state.ack_number(),
         );
-        self.send_data(data)
+        self.send_data(data.into())
     }
 
     /// Clear any callbacks received before the transaction.
