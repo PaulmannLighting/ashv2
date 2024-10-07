@@ -107,21 +107,21 @@ impl TryFrom<&[u8]> for Data {
         let [header, payload @ .., crc0, crc1] = buffer else {
             return Err(std::io::Error::new(
                 ErrorKind::UnexpectedEof,
-                "ASHv2 DATA: insufficient data",
+                "ASHv2: Too few bytes for DATA.",
             ));
         };
 
         if payload.len() < Self::MIN_PAYLOAD_SIZE {
             return Err(std::io::Error::new(
                 ErrorKind::UnexpectedEof,
-                "ASHv2 DATA: insufficient payload",
+                "ASHv2: Too few bytes for payload for DATA.",
             ));
         }
 
         Ok(Self {
             header: headers::Data::from_bits_retain(*header),
             payload: payload.try_into().map_err(|()| {
-                std::io::Error::new(ErrorKind::OutOfMemory, "ASHv2 DATA: payload too large")
+                std::io::Error::new(ErrorKind::OutOfMemory, "ASHv2: Payload too large for DATA.")
             })?,
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })

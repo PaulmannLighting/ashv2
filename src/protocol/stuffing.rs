@@ -23,7 +23,10 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
             if RESERVED_BYTES.contains(byte) {
                 *byte ^= COMPLEMENT_BIT;
                 self.insert(index, ESCAPE).map_err(|_| {
-                    Error::new(ErrorKind::OutOfMemory, "could not insert escape byte")
+                    Error::new(
+                        ErrorKind::OutOfMemory,
+                        "ASHv2: Could not insert escape byte.",
+                    )
                 })?;
                 index += 2;
             } else {

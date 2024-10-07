@@ -32,7 +32,7 @@ impl Channels {
                 TryRecvError::Empty => Ok(None),
                 TryRecvError::Disconnected => Err(Error::new(
                     ErrorKind::BrokenPipe,
-                    "ASHv2 receiver channel disconnected",
+                    "ASHv2: Receiver channel disconnected.",
                 )),
             },
         }
@@ -49,11 +49,11 @@ impl Channels {
             match error {
                 TrySendError::Disconnected(_) => Err(Error::new(
                     ErrorKind::BrokenPipe,
-                    "Response channel has disconnected.",
+                    "ASHv2: Response channel has disconnected.",
                 )),
                 TrySendError::Full(_) => Err(Error::new(
                     ErrorKind::OutOfMemory,
-                    "Response channel's buffer is full.",
+                    "ASHv2: Response channel's buffer is full.",
                 )),
             }
         } else {
@@ -74,12 +74,12 @@ impl Channels {
                     self.callback.take();
                     Err(Error::new(
                         ErrorKind::BrokenPipe,
-                        "Callback channel has disconnected. Closing callback channel forever.",
+                        "ASHv2: Callback channel has disconnected. Closing callback channel forever.",
                     ))
                 }
                 TrySendError::Full(_) => Err(Error::new(
                     ErrorKind::OutOfMemory,
-                    "Callback channel's buffer is full.",
+                    "ASHv2: Callback channel's buffer is full.",
                 )),
             }
         } else {

@@ -21,12 +21,12 @@ where
     fn communicate(&self, payload: &[u8]) -> std::io::Result<Box<[u8]>> {
         let (request, response) = Request::new(payload.into());
         self.send(request).map_err(|_| {
-            std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2 failed to send request.")
+            std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2: Failed to send request.")
         })?;
         response.recv().map_err(|_| {
             std::io::Error::new(
                 ErrorKind::BrokenPipe,
-                "ASHv2 response channel disconnected.",
+                "ASHv2: Response channel disconnected.",
             )
         })?
     }

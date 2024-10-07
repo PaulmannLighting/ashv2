@@ -16,7 +16,7 @@ impl AshChunks for [u8] {
         if self.len() < Data::MIN_PAYLOAD_SIZE {
             return Err(Error::new(
                 ErrorKind::UnexpectedEof,
-                "Not enough data to fill a chunk.",
+                "ASHv2: Not enough data to fill a chunk.",
             ));
         }
 
@@ -34,7 +34,7 @@ impl AshChunks for [u8] {
 
         Err(Error::new(
             ErrorKind::InvalidData,
-            "Could not distribute data across chunks.",
+            "ASHv2: Could not distribute data across chunks.",
         ))
     }
 }

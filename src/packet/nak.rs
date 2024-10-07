@@ -71,9 +71,9 @@ impl TryFrom<&[u8]> for Nak {
     fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
         let [header, crc0, crc1] = buffer else {
             return Err(if buffer.len() < Self::SIZE {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2 NAK: insufficient data")
+                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2: Too few bytes for NAK.")
             } else {
-                std::io::Error::new(ErrorKind::InvalidData, "ASHv2 NAK: too much data")
+                std::io::Error::new(ErrorKind::OutOfMemory, "ASHv2: Too many bytes for NAK.")
             });
         };
 

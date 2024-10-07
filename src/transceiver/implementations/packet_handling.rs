@@ -85,7 +85,10 @@ where
             },
         );
 
-        std::io::Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
+        std::io::Error::new(
+            ErrorKind::ConnectionReset,
+            "ASHv2: NCP entered ERROR state.",
+        )
     }
 
     /// Handle an incoming `NAK` packet.
@@ -116,7 +119,7 @@ where
 
         std::io::Error::new(
             ErrorKind::ConnectionReset,
-            "NCP received unexpected RSTACK.",
+            "ASHv2: NCP received unexpected RSTACK.",
         )
     }
 }

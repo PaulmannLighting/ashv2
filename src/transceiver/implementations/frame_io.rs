@@ -168,7 +168,7 @@ where
                     if buffer.push(byte).is_err() {
                         return Err(Error::new(
                             ErrorKind::OutOfMemory,
-                            "ASHv2 frame buffer overflow",
+                            "ASHv2: frame buffer overflow",
                         ));
                     }
                 }
@@ -177,7 +177,7 @@ where
 
         Err(Error::new(
             ErrorKind::UnexpectedEof,
-            "byte stream terminated unexpectedly",
+            "ASHv2: Byte stream terminated unexpectedly",
         ))
     }
 
@@ -197,15 +197,15 @@ where
         frame.buffer(buffer).map_err(|()| {
             Error::new(
                 ErrorKind::OutOfMemory,
-                "could not append frame bytes to buffer",
+                "ASHv2: Could not append frame bytes to buffer.",
             )
         })?;
         trace!("Frame bytes: {buffer:#04X?}");
         buffer.stuff()?;
         trace!("Stuffed bytes: {buffer:#04X?}");
-        buffer
-            .push(FLAG)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "could not append flag byte"))?;
+        buffer.push(FLAG).map_err(|_| {
+            Error::new(ErrorKind::OutOfMemory, "ASHv2: Could not append flag byte.")
+        })?;
         trace!("Writing bytes: {buffer:#04X?}");
         self.serial_port.write_all(buffer)?;
         self.serial_port.flush()

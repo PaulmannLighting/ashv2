@@ -43,7 +43,7 @@ where
                     if !rst_ack.is_ash_v2() {
                         return Err(std::io::Error::new(
                             std::io::ErrorKind::Unsupported,
-                            "Received RSTACK is not ASHv2.",
+                            "ASHv2: Received RSTACK is not ASHv2.",
                         ));
                     }
 

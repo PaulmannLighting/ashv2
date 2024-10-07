@@ -33,7 +33,7 @@ impl AsyncRequest {
                     .expect("Mutex is poisoned.")
                     .set_output(Err(Error::new(
                         ErrorKind::BrokenPipe,
-                        "ASHv2 failed to send request.",
+                        "ASHv2: Failed to send request.",
                     )));
             } else if let Ok(payload) = response.recv() {
                 thread_shared_state
@@ -46,7 +46,7 @@ impl AsyncRequest {
                     .expect("Mutex is poisoned.")
                     .set_output(Err(Error::new(
                         ErrorKind::BrokenPipe,
-                        "ASHv2 response channel disconnected.",
+                        "ASHv2: Response channel disconnected.",
                     )));
             }
         });
