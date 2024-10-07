@@ -43,25 +43,20 @@ where
             std::io::Error::new(ErrorKind::BrokenPipe, "ASHv2: Failed to send request.")
         })?;
 
-        self.buffer.extend_from_slice(&response.recv().map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::BrokenPipe,
-                "ASHv2: Response channel disconnected.",
-            )
-        })?);
-
         loop {
+            if self.buffer.is_empty() {
+                self.buffer.extend_from_slice(&response.recv().map_err(|_| {
+                    std::io::Error::new(
+                        ErrorKind::BrokenPipe,
+                        "ASHv2: Response channel disconnected.",
+                    )
+                })?);
+            }
+
             if let Some(item) = self.decoder.decode(&mut self.buffer)? {
                 self.buffer.clear();
                 return Ok(item);
             }
-
-            self.buffer.extend_from_slice(&response.recv().map_err(|_| {
-                std::io::Error::new(
-                    ErrorKind::BrokenPipe,
-                    "ASHv2: Response channel disconnected.",
-                )
-            })?);
         }
     }
 }
