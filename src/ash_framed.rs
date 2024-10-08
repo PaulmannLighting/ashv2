@@ -4,6 +4,7 @@ use std::task::Poll;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// A framed asynchronous `ASHv2` host.
+#[derive(Debug)]
 pub struct AshFramed {
     sender: SyncSender<Request>,
     receiver: Option<Receiver<Box<[u8]>>>,
@@ -15,6 +16,15 @@ impl AshFramed {
     pub const fn new(sender: SyncSender<Request>) -> Self {
         Self {
             sender,
+            receiver: None,
+        }
+    }
+}
+
+impl Clone for AshFramed {
+    fn clone(&self) -> Self {
+        Self {
+            sender: self.sender.clone(),
             receiver: None,
         }
     }
