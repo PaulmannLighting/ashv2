@@ -31,7 +31,7 @@ impl AsyncWrite for AshFramed {
         Poll::Ready(
             self.sender
                 .send(request)
-                .map(|_| buf.len())
+                .map(|()| buf.len())
                 .map_err(|_| std::io::ErrorKind::BrokenPipe.into()),
         )
     }
