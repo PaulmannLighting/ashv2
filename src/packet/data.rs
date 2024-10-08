@@ -102,25 +102,25 @@ impl Frame for Data {
 
 impl UpperHex for Data {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Data {{ header: {:#04X}, payload: {:#04X}, crc: {:#06X} }}",
-            self.header.bits(),
-            HexSlice::new(&self.payload),
-            self.crc
-        )
+        write!(f, "Data {{ header: ")?;
+        UpperHex::fmt(&self.header.bits(), f)?;
+        write!(f, ", payload: ")?;
+        UpperHex::fmt(&HexSlice::new(&self.payload), f)?;
+        write!(f, ", crc: ")?;
+        UpperHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 
 impl LowerHex for Data {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Data {{ header: {:#04x}, payload: {:#04x}, crc: {:#06x} }}",
-            self.header.bits(),
-            HexSlice::new(&self.payload),
-            self.crc
-        )
+        write!(f, "Data {{ header: ")?;
+        LowerHex::fmt(&self.header.bits(), f)?;
+        write!(f, ", payload: ")?;
+        LowerHex::fmt(&HexSlice::new(&self.payload), f)?;
+        write!(f, ", crc: ")?;
+        LowerHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 

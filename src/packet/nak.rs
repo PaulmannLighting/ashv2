@@ -3,6 +3,7 @@ use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::utils::WrappingU3;
+use crate::HexSlice;
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
@@ -86,23 +87,21 @@ impl TryFrom<&[u8]> for Nak {
 
 impl UpperHex for Nak {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Nak {{ header: {:#04X}, crc: {:#06X} }}",
-            self.header.bits(),
-            self.crc
-        )
+        write!(f, "Nak {{ header: ")?;
+        UpperHex::fmt(&self.header.bits(), f)?;
+        write!(f, ", crc: ")?;
+        UpperHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 
 impl LowerHex for Nak {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Nak {{ header: {:#04x}, crc: {:#06x} }}",
-            self.header.bits(),
-            self.crc
-        )
+        write!(f, "Nak {{ header: ")?;
+        LowerHex::fmt(&self.header.bits(), f)?;
+        write!(f, ", crc: ")?;
+        LowerHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::frame::Frame;
 use crate::frame_buffer::FrameBuffer;
+use crate::HexSlice;
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
@@ -69,21 +70,21 @@ impl TryFrom<&[u8]> for Rst {
 
 impl UpperHex for Rst {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Rst {{ header: {:#04X}, crc: {:#06X} }}",
-            self.header, self.crc
-        )
+        write!(f, "Rst {{ header: ")?;
+        UpperHex::fmt(&self.header, f)?;
+        write!(f, ", crc: ")?;
+        UpperHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 
 impl LowerHex for Rst {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Rst {{ header: {:#04x}, crc: {:#06x} }}",
-            self.header, self.crc
-        )
+        write!(f, "Rst {{ header: ")?;
+        LowerHex::fmt(&self.header, f)?;
+        write!(f, ", crc: ")?;
+        LowerHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        write!(f, " }}")
     }
 }
 
