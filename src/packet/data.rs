@@ -104,7 +104,7 @@ impl UpperHex for Data {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Data {{ header: {:#04X}, payload: {:X}, crc: {:#06X} }}",
+            "Data {{ header: {:#04X}, payload: {:#04X}, crc: {:#06X} }}",
             self.header.bits(),
             HexSlice::new(&self.payload),
             self.crc
@@ -116,7 +116,7 @@ impl LowerHex for Data {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Data {{ header: {:#04x}, payload: {:x}, crc: {:#06x} }}",
+            "Data {{ header: {:#04x}, payload: {:#04x}, crc: {:#06x} }}",
             self.header.bits(),
             HexSlice::new(&self.payload),
             self.crc
