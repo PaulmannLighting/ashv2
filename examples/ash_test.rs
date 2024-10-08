@@ -1,15 +1,17 @@
 //! Test `ASHv2` connection.
 
-use ashv2::{open, BaudRate, Host, Transceiver};
+use ashv2::{open, AshFramed, BaudRate, Transceiver};
 use clap::Parser;
-use log::{error, info, warn};
+use futures::SinkExt;
+use log::{error, info};
 use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, sync_channel, Receiver};
+use std::sync::mpsc::sync_channel;
 use std::sync::Arc;
 use std::thread::spawn;
+use tokio_stream::StreamExt;
 use tokio_util::bytes::BytesMut;
-use tokio_util::codec::Decoder;
+use tokio_util::codec::{Decoder, Encoder, Framed};
 
 const COMMANDS: [(&[u8], &[u8]); 0x1A] = [
     // Version (legacy frame format) command
@@ -123,8 +125,6 @@ const COMMANDS: [(&[u8], &[u8]); 0x1A] = [
     ),
 ];
 
-const LONG_COMMAND: [u8; 256] = [0xAA; 256];
-
 #[derive(Debug, Parser)]
 struct Args {
     #[arg(index = 1)]
@@ -152,9 +152,9 @@ impl std::fmt::Display for InlineBytes<'_> {
 
 /// An example decoder.
 #[derive(Debug, Default)]
-pub struct ExampleDecoder(Vec<u8>);
+pub struct MyCodec(Vec<u8>);
 
-impl Decoder for ExampleDecoder {
+impl Decoder for MyCodec {
     type Item = Box<[u8]>;
     type Error = std::io::Error;
 
@@ -170,60 +170,60 @@ impl Decoder for ExampleDecoder {
     }
 }
 
-fn main() {
+impl Encoder<Box<[u8]>> for MyCodec {
+    type Error = std::io::Error;
+
+    fn encode(&mut self, item: Box<[u8]>, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        dst.extend_from_slice(&item);
+        Ok(())
+    }
+}
+
+#[tokio::main]
+async fn main() {
     env_logger::init();
     let args = Args::parse();
 
     match open(args.tty, BaudRate::RstCts, FlowControl::Software) {
-        Ok(serial_port) => run(serial_port),
+        Ok(serial_port) => run(serial_port).await,
         Err(error) => error!("{error}"),
     }
 }
 
-fn run(serial_port: impl SerialPort + 'static) {
+async fn run(serial_port: impl SerialPort + 'static) {
     let (sender, receiver) = sync_channel(32);
-    let (callback_tx, callback_rx) = channel();
-    let transceiver = Transceiver::new(serial_port, receiver, Some(callback_tx));
+    let transceiver = Transceiver::new(serial_port, receiver, None);
     let running = Arc::new(AtomicBool::new(true));
-    let callback_thread = spawn(|| receive_callbacks(callback_rx));
     let transceiver_thread = spawn(|| transceiver.run(running));
-    let mut host = Host::new(sender);
+    let mut framed = Framed::new(AshFramed::new(sender), MyCodec::default());
 
     for (command, response) in COMMANDS {
         info!("Sending command: {}", InlineBytes(command));
 
-        match host.communicate::<ExampleDecoder>(command) {
-            Ok(bytes) => {
-                info!("Got response: {}", InlineBytes(&bytes));
-
-                if bytes.iter().as_slice() == response {
-                    info!("Response matches expected response.");
-                } else {
-                    error!("Response does not match expected response.");
-                }
+        match framed.send(command.into()).await {
+            Ok(()) => {
+                info!("Sent bytes: {}", InlineBytes(command));
             }
             Err(error) => error!("Got error: {error:?}"),
         }
+
+        if let Some(item) = framed.next().await {
+            match item {
+                Ok(bytes) => {
+                    info!("Got response: {}", InlineBytes(&bytes));
+
+                    if bytes.iter().as_slice() == response {
+                        info!("Response matches expected response.");
+                    } else {
+                        error!("Response does not match expected response.");
+                    }
+                }
+                Err(error) => error!("Got error: {error:?}"),
+            }
+        }
     }
 
-    match host.communicate::<ExampleDecoder>(&LONG_COMMAND) {
-        Ok(response) => info!("Got response for long command: {}", InlineBytes(&response)),
-        Err(error) => error!("Got error: {error:?}"),
-    }
-
-    callback_thread.join().expect("Callback thread panicked.");
     transceiver_thread
         .join()
         .expect("Transceiver thread panicked.");
-}
-
-fn receive_callbacks(receiver: Receiver<Box<[u8]>>) {
-    info!("Receiving callbacks.");
-
-    loop {
-        match receiver.recv() {
-            Ok(callback) => warn!("Got callback: {}", InlineBytes(&callback)),
-            Err(error) => error!("Got error: {error}"),
-        }
-    }
 }
