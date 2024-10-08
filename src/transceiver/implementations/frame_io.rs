@@ -1,13 +1,16 @@
 //! `ASHv2` frame I/O implementation.
 //!
 //! This module contains the implementation of the `ASHv2` frame I/O operations.
+
 use crate::frame::Frame;
 use crate::packet::{Ack, Nak, Packet, RST};
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::transceiver::transmission::Transmission;
 use crate::transceiver::Transceiver;
+use crate::utils::HexSlice;
 use log::{debug, trace, warn};
 use serialport::SerialPort;
+use std::fmt::UpperHex;
 use std::io::{Error, ErrorKind, Read};
 use std::time::SystemTime;
 
@@ -139,15 +142,15 @@ where
 
                     if !error && !buffer.is_empty() {
                         debug!("Received frame.");
-                        trace!("Buffer: {buffer:#04X?}");
+                        trace!("Buffer: {:#04X}", HexSlice::new(buffer));
                         buffer.unstuff();
-                        trace!("Unstuffed buffer: {:#04X?}", buffer);
+                        trace!("Unstuffed buffer: {:#04X}", HexSlice::new(buffer));
                         return Ok(());
                     }
 
                     trace!("Resetting buffer due to error or empty buffer.");
                     trace!("Error condition was: {error}");
-                    trace!("Buffer: {buffer:#04X?}");
+                    trace!("Buffer: {:#04X}", HexSlice::new(buffer));
                     buffer.clear();
                     error = false;
                 }
@@ -188,11 +191,11 @@ where
     /// Returns an [Error] if the serial port write operation failed.
     fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: Frame,
+        F: Frame + UpperHex,
     {
         let buffer = &mut self.buffers.frame;
         debug!("Writing frame: {frame}");
-        trace!("Frame: {frame:#04X?}");
+        trace!("Frame: {frame:#04X}");
         buffer.clear();
         frame.buffer(buffer).map_err(|()| {
             Error::new(
@@ -200,13 +203,13 @@ where
                 "ASHv2: Could not append frame bytes to buffer.",
             )
         })?;
-        trace!("Frame bytes: {buffer:#04X?}");
+        trace!("Frame bytes: {:#04X}", HexSlice::new(buffer));
         buffer.stuff()?;
-        trace!("Stuffed bytes: {buffer:#04X?}");
+        trace!("Stuffed bytes: {:#04X}", HexSlice::new(buffer));
         buffer.push(FLAG).map_err(|_| {
             Error::new(ErrorKind::OutOfMemory, "ASHv2: Could not append flag byte.")
         })?;
-        trace!("Writing bytes: {buffer:#04X?}");
+        trace!("Writing bytes: {:#04X}", HexSlice::new(buffer));
         self.serial_port.write_all(buffer)?;
         self.serial_port.flush()
     }

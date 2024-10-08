@@ -4,7 +4,7 @@ use std::fmt::{LowerHex, UpperHex};
 pub struct HexSlice<'a>(&'a [u8]);
 
 impl<'a> HexSlice<'a> {
-    /// Creates a new `HexSlice`.
+    /// Creates a new `HexSlice` from a slice of bytes.
     pub const fn new(slice: &'a [u8]) -> Self {
         Self(slice)
     }
@@ -20,10 +20,10 @@ impl UpperHex for HexSlice<'_> {
         write!(f, "[")?;
 
         for (index, byte) in self.0.iter().enumerate() {
-            if index == self.max_index() {
-                write!(f, "{byte:#04X}")?;
-            } else {
-                write!(f, "{byte:#04X}, ")?;
+            UpperHex::fmt(byte, f)?;
+
+            if index != self.max_index() {
+                write!(f, ", ")?;
             }
         }
 
@@ -36,10 +36,10 @@ impl LowerHex for HexSlice<'_> {
         write!(f, "[")?;
 
         for (index, byte) in self.0.iter().enumerate() {
-            if index == self.max_index() {
-                write!(f, "{byte:#04x}")?;
-            } else {
-                write!(f, "{byte:#04x}, ")?;
+            UpperHex::fmt(byte, f)?;
+
+            if index != self.max_index() {
+                write!(f, ", ")?;
             }
         }
 

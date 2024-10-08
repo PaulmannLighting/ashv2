@@ -1,6 +1,6 @@
 //! Test `ASHv2` connection.
 
-use ashv2::{open, AshFramed, BaudRate, Transceiver};
+use ashv2::{open, AshFramed, BaudRate, HexSlice, Transceiver};
 use clap::Parser;
 use futures::SinkExt;
 use log::{error, info};
@@ -131,25 +131,6 @@ struct Args {
     tty: String,
 }
 
-struct InlineBytes<'a>(&'a [u8]);
-
-impl std::fmt::Display for InlineBytes<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let max_index = self.0.len().saturating_sub(1);
-        write!(f, "[")?;
-
-        for (index, byte) in self.0.iter().enumerate() {
-            if index == max_index {
-                write!(f, "{byte:#04X}")?;
-            } else {
-                write!(f, "{byte:#04X}, ")?;
-            }
-        }
-
-        write!(f, "]")
-    }
-}
-
 /// An example decoder.
 #[derive(Debug, Default)]
 pub struct MyCodec(Vec<u8>);
@@ -198,11 +179,11 @@ async fn run(serial_port: impl SerialPort + 'static) {
     let mut framed = Framed::new(AshFramed::new(sender), MyCodec::default());
 
     for (command, response) in COMMANDS {
-        info!("Sending command: {}", InlineBytes(command));
+        info!("Sending command: {:#04X}", HexSlice::new(command));
 
         match framed.send(command.into()).await {
             Ok(()) => {
-                info!("Sent bytes: {}", InlineBytes(command));
+                info!("Sent bytes: {:#04X}", HexSlice::new(command));
             }
             Err(error) => error!("Got error: {error:?}"),
         }
@@ -210,7 +191,7 @@ async fn run(serial_port: impl SerialPort + 'static) {
         if let Some(item) = framed.next().await {
             match item {
                 Ok(bytes) => {
-                    info!("Got response: {}", InlineBytes(&bytes));
+                    info!("Got response: {:#04X}", HexSlice::new(&bytes));
 
                     if bytes.iter().as_slice() == response {
                         info!("Response matches expected response.");

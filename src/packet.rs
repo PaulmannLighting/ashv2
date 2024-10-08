@@ -4,7 +4,7 @@ pub use error::Error;
 pub use nak::Nak;
 pub use rst::{Rst, RST};
 pub use rst_ack::RstAck;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 mod ack;
@@ -62,6 +62,32 @@ impl TryFrom<&[u8]> for Packet {
                 ErrorKind::InvalidData,
                 format!("ASHv2: Unknown packet header: {header:#04X}"),
             )),
+        }
+    }
+}
+
+impl LowerHex for Packet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ack(ack) => LowerHex::fmt(ack, f),
+            Self::Data(data) => LowerHex::fmt(data, f),
+            Self::Error(error) => LowerHex::fmt(error, f),
+            Self::Nak(nak) => LowerHex::fmt(nak, f),
+            Self::Rst(rst) => LowerHex::fmt(rst, f),
+            Self::RstAck(rst_ack) => LowerHex::fmt(rst_ack, f),
+        }
+    }
+}
+
+impl UpperHex for Packet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ack(ack) => UpperHex::fmt(ack, f),
+            Self::Data(data) => UpperHex::fmt(data, f),
+            Self::Error(error) => UpperHex::fmt(error, f),
+            Self::Nak(nak) => UpperHex::fmt(nak, f),
+            Self::Rst(rst) => UpperHex::fmt(rst, f),
+            Self::RstAck(rst_ack) => UpperHex::fmt(rst_ack, f),
         }
     }
 }

@@ -21,7 +21,7 @@ where
     /// Returns an [Error] if the packet handling failed.
     pub(in crate::transceiver) fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Handling: {packet}");
-        trace!("{packet:#04X?}");
+        trace!("{packet:#04X}");
 
         if self.state.status == Status::Connected {
             match packet {
