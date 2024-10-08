@@ -54,12 +54,12 @@ mod tests {
     #[test]
     fn test_upper_hex() {
         let slice = HexSlice::new(&[0x01, 0x02, 0x03]);
-        assert_eq!(format!("{slice:X}"), "[0x01, 0x02, 0x03]");
+        assert_eq!(format!("{slice:#04X}"), "[0x01, 0x02, 0x03]");
     }
 
     #[test]
     fn test_lower_hex() {
         let slice = HexSlice::new(&[0x01, 0x02, 0x03]);
-        assert_eq!(format!("{slice:x}"), "[0x01, 0x02, 0x03]");
+        assert_eq!(format!("{slice:#04x}"), "[0x01, 0x02, 0x03]");
     }
 }
