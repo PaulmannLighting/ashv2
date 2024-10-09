@@ -133,18 +133,15 @@ struct Args {
 
 /// An example decoder.
 #[derive(Debug, Default)]
-pub struct MyCodec(Vec<u8>);
+pub struct MyCodec;
 
 impl Decoder for MyCodec {
     type Item = Box<[u8]>;
     type Error = std::io::Error;
 
     fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        self.0.clear();
-        self.0.extend(buffer.split());
-
-        if self.0.len() >= 4 {
-            Ok(Some(self.0.as_slice().into()))
+        if buffer.len() >= 4 {
+            Ok(Some(buffer.split().as_ref().into()))
         } else {
             Ok(None)
         }
