@@ -133,9 +133,9 @@ struct Args {
 
 /// An example decoder.
 #[derive(Debug, Default)]
-pub struct MyCodec;
+pub struct RawCodec;
 
-impl Decoder for MyCodec {
+impl Decoder for RawCodec {
     type Item = Box<[u8]>;
     type Error = std::io::Error;
 
@@ -148,7 +148,7 @@ impl Decoder for MyCodec {
     }
 }
 
-impl Encoder<Box<[u8]>> for MyCodec {
+impl Encoder<Box<[u8]>> for RawCodec {
     type Error = std::io::Error;
 
     fn encode(&mut self, item: Box<[u8]>, dst: &mut BytesMut) -> Result<(), Self::Error> {
@@ -173,7 +173,7 @@ async fn run(serial_port: impl SerialPort + 'static) {
     let transceiver = Transceiver::new(serial_port, receiver, None);
     let running = Arc::new(AtomicBool::new(true));
     let transceiver_thread = spawn(|| transceiver.run(running));
-    let mut framed = Framed::new(AshFramed::new(sender), MyCodec::default());
+    let mut framed = Framed::new(AshFramed::new(sender), RawCodec::default());
 
     for (command, response) in COMMANDS {
         info!("Sending command: {:#04X}", HexSlice::new(command));
