@@ -1,5 +1,6 @@
 use crate::Request;
-use std::sync::mpsc::{Receiver, SyncSender};
+use std::io::ErrorKind;
+use std::sync::mpsc::{Receiver, SyncSender, TryRecvError};
 use std::task::Poll;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -42,7 +43,7 @@ impl AsyncWrite for AshFramed {
             self.sender
                 .send(request)
                 .map(|()| buf.len())
-                .map_err(|_| std::io::ErrorKind::BrokenPipe.into()),
+                .map_err(|_| ErrorKind::BrokenPipe.into()),
         )
     }
 
@@ -72,9 +73,14 @@ impl AsyncRead for AshFramed {
             || Poll::Ready(Ok(())),
             |receiver| {
                 receiver.try_recv().map_or_else(
-                    |_| {
-                        cx.waker().wake_by_ref();
-                        Poll::Pending
+                    |error| match error {
+                        TryRecvError::Disconnected => {
+                            Poll::Ready(Err(ErrorKind::BrokenPipe.into()))
+                        }
+                        TryRecvError::Empty => {
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        }
                     },
                     |payload| {
                         buf.put_slice(&payload);
