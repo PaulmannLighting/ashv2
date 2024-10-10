@@ -1,17 +1,17 @@
 use crate::Request;
 use std::io::ErrorKind;
-use std::sync::mpsc::{Receiver, SyncSender, TryRecvError};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
 use std::task::Poll;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
-pub struct AshFramed {
+pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     receiver: Option<Receiver<Box<[u8]>>>,
 }
 
-impl AshFramed {
+impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     /// Create a new `AshFramed` instance.
     #[must_use]
     pub const fn new(sender: SyncSender<Request>) -> Self {
@@ -22,7 +22,7 @@ impl AshFramed {
     }
 }
 
-impl Clone for AshFramed {
+impl<const BUF_SIZE: usize> Clone for AshFramed<BUF_SIZE> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -31,13 +31,14 @@ impl Clone for AshFramed {
     }
 }
 
-impl AsyncWrite for AshFramed {
+impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     fn poll_write(
         mut self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
-        let (request, receiver) = Request::new(buf.into());
+        let (sender, receiver) = sync_channel(BUF_SIZE);
+        let request = Request::new(buf.into(), sender);
         self.receiver.replace(receiver);
         Poll::Ready(
             self.sender
@@ -63,7 +64,7 @@ impl AsyncWrite for AshFramed {
     }
 }
 
-impl AsyncRead for AshFramed {
+impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,

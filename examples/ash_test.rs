@@ -132,7 +132,7 @@ struct Args {
 }
 
 /// An example decoder.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RawCodec;
 
 impl Decoder for RawCodec {
@@ -173,7 +173,7 @@ async fn run(serial_port: impl SerialPort + 'static) {
     let transceiver = Transceiver::new(serial_port, receiver, None);
     let running = Arc::new(AtomicBool::new(true));
     let transceiver_thread = spawn(|| transceiver.run(running));
-    let mut framed = Framed::new(AshFramed::new(sender), RawCodec::default());
+    let mut framed = Framed::new(AshFramed::<2>::new(sender), RawCodec);
 
     for (command, response) in COMMANDS {
         info!("Sending command: {:#04X}", HexSlice::new(command));
