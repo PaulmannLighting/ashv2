@@ -40,15 +40,16 @@ impl Channels {
 
     /// Respond to the host.
     pub fn respond(&mut self, payload: Box<[u8]>) {
-        if let Some(response) = self.response.take() {
+        if let Some(response) = &mut self.response {
             if let Err(error) = response.try_send(payload) {
                 match error {
                     TrySendError::Full(_) => {
                         error!("ASHv2: Response channel is congested. Dropping response frame.");
                     }
                     TrySendError::Disconnected(_) => {
+                        self.response.take();
                         error!(
-                            "ASHv2: Response channel has disconnected. Dropping response frame."
+                            "ASHv2: Response channel has disconnected. Closing response channel."
                         );
                     }
                 }
