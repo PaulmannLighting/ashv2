@@ -1,16 +1,15 @@
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::SyncSender;
 
 /// An incoming request.
 #[derive(Debug)]
 pub struct Request {
     pub(crate) payload: Box<[u8]>,
-    pub(crate) response: Sender<Box<[u8]>>,
+    pub(crate) response: SyncSender<Box<[u8]>>,
 }
 
 impl Request {
     #[must_use]
-    pub(crate) fn new(payload: Box<[u8]>) -> (Self, Receiver<Box<[u8]>>) {
-        let (response, rx) = channel();
-        (Self { payload, response }, rx)
+    pub(crate) fn new(payload: Box<[u8]>, response: SyncSender<Box<[u8]>>) -> Self {
+        Self { payload, response }
     }
 }
