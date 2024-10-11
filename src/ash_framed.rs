@@ -6,12 +6,14 @@ use std::task::{Poll, Waker};
 use std::thread::spawn;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
+type SharedResult<T> = Arc<Mutex<Option<T>>>;
+
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     receiver: Option<Receiver<Box<[u8]>>>,
-    result: Arc<Mutex<Option<std::io::Result<Box<[u8]>>>>>,
+    result: SharedResult<std::io::Result<Box<[u8]>>>,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
@@ -90,7 +92,7 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
 fn spawn_reader(
     receiver: Receiver<Box<[u8]>>,
     waker: Waker,
-    state: Arc<Mutex<Option<std::io::Result<Box<[u8]>>>>>,
+    state: SharedResult<std::io::Result<Box<[u8]>>>,
 ) {
     spawn(move || {
         if let Ok(payload) = receiver.recv() {
