@@ -41,6 +41,19 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
             return Poll::Ready(result);
         }
 
+        if self
+            .state
+            .lock()
+            .expect("sent_bytes mutex poisoned")
+            .sending
+        {
+            return Poll::Pending;
+        }
+
+        self.state
+            .lock()
+            .expect("sent_bytes mutex poisoned")
+            .sending = true;
         spawn_writer::<BUF_SIZE>(
             self.sender.clone(),
             cx.waker().clone(),
@@ -122,6 +135,7 @@ fn spawn_writer<const BUF_SIZE: usize>(
         let mut lock = state.lock().expect("sent_bytes mutex poisoned");
         lock.sent_bytes.replace(result);
         lock.receiver.replace(response_rx);
+        lock.sending = false;
         drop(lock);
         waker.wake();
     });
@@ -141,6 +155,7 @@ fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<Sh
 
 #[derive(Debug, Default)]
 struct SharedState {
+    sending: bool,
     sent_bytes: Option<std::io::Result<usize>>,
     receiver: Option<Receiver<Box<[u8]>>>,
     result: Option<std::io::Result<Box<[u8]>>>,
@@ -148,6 +163,7 @@ struct SharedState {
 
 impl SharedState {
     fn reset(&mut self) {
+        self.sending = false;
         self.sent_bytes = None;
         self.receiver = None;
         self.result = None;
