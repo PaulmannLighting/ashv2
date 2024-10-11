@@ -21,6 +21,8 @@ use tokio_util::codec::Framed;
 struct Args {
     #[arg(index = 1)]
     tty: String,
+    #[arg(short, long, help = "keep listening for callbacks")]
+    keep_listening: bool,
 }
 
 #[tokio::main]
@@ -29,12 +31,12 @@ async fn main() {
     let args = Args::parse();
 
     match open(args.tty, BaudRate::RstCts, FlowControl::Software) {
-        Ok(serial_port) => run(serial_port).await,
+        Ok(serial_port) => run(serial_port, args.keep_listening).await,
         Err(error) => error!("{error}"),
     }
 }
 
-async fn run(serial_port: impl SerialPort + 'static) {
+async fn run(serial_port: impl SerialPort + 'static, keep_listening: bool) {
     let (sender, receiver) = sync_channel(32);
     let transceiver = Transceiver::new(serial_port, receiver, None);
     let running = Arc::new(AtomicBool::new(true));
@@ -67,7 +69,9 @@ async fn run(serial_port: impl SerialPort + 'static) {
         }
     }
 
-    transceiver_thread
-        .join()
-        .expect("Transceiver thread panicked.");
+    if keep_listening {
+        transceiver_thread
+            .join()
+            .expect("Transceiver thread panicked.");
+    }
 }
