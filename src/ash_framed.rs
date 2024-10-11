@@ -31,6 +31,7 @@ impl<const BUF_SIZE: usize> Clone for AshFramed<BUF_SIZE> {
     }
 }
 
+// TODO: This isn't truly async, but blocking. It should be replaced with a proper async implementation.
 impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     fn poll_write(
         mut self: std::pin::Pin<&mut Self>,
@@ -64,6 +65,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     }
 }
 
+// TODO: This isn't truly async, but blocking. It should be replaced with a proper async implementation.
 impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
