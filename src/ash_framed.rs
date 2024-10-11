@@ -1,7 +1,9 @@
 use crate::Request;
 use std::io::ErrorKind;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
-use std::task::Poll;
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use std::sync::{Arc, Mutex};
+use std::task::{Poll, Waker};
+use std::thread::spawn;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// A framed asynchronous `ASHv2` host.
@@ -9,24 +11,17 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     receiver: Option<Receiver<Box<[u8]>>>,
+    result: Arc<Mutex<Option<std::io::Result<Box<[u8]>>>>>,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     /// Create a new `AshFramed` instance.
     #[must_use]
-    pub const fn new(sender: SyncSender<Request>) -> Self {
+    pub fn new(sender: SyncSender<Request>) -> Self {
         Self {
             sender,
             receiver: None,
-        }
-    }
-}
-
-impl<const BUF_SIZE: usize> Clone for AshFramed<BUF_SIZE> {
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-            receiver: None,
+            result: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -65,32 +60,50 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     }
 }
 
-// TODO: This isn't truly async, but blocking. It should be replaced with a proper async implementation.
 impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     fn poll_read(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        self.receiver.as_ref().map_or_else(
-            || Poll::Ready(Ok(())),
-            |receiver| {
-                receiver.try_recv().map_or_else(
-                    |error| match error {
-                        TryRecvError::Disconnected => {
-                            Poll::Ready(Err(ErrorKind::BrokenPipe.into()))
-                        }
-                        TryRecvError::Empty => {
-                            cx.waker().wake_by_ref();
-                            Poll::Pending
-                        }
-                    },
-                    |payload| {
-                        buf.put_slice(&payload);
+        if let Some(receiver) = self.receiver.take() {
+            spawn_reader(receiver, cx.waker().clone(), self.result.clone());
+        }
+
+        self.result
+            .lock()
+            .expect("result mutex poisoned")
+            .take()
+            .map_or_else(
+                || Poll::Pending,
+                |result| match result {
+                    Ok(data) => {
+                        buf.put_slice(&data);
                         Poll::Ready(Ok(()))
-                    },
-                )
-            },
-        )
+                    }
+                    Err(e) => Poll::Ready(Err(e)),
+                },
+            )
     }
+}
+
+fn spawn_reader(
+    receiver: Receiver<Box<[u8]>>,
+    waker: Waker,
+    state: Arc<Mutex<Option<std::io::Result<Box<[u8]>>>>>,
+) {
+    spawn(move || {
+        if let Ok(payload) = receiver.recv() {
+            state
+                .lock()
+                .expect("result mutex poisoned")
+                .replace(Ok(payload));
+        } else {
+            state
+                .lock()
+                .expect("result mutex poisoned")
+                .replace(Err(ErrorKind::BrokenPipe.into()));
+        }
+        waker.wake();
+    });
 }
