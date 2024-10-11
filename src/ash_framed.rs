@@ -12,7 +12,8 @@ type SharedResult<T> = Arc<Mutex<Option<T>>>;
 #[derive(Debug)]
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
-    receiver: Option<Receiver<Box<[u8]>>>,
+    sent_bytes: SharedResult<std::io::Result<usize>>,
+    receiver: SharedResult<Receiver<Box<[u8]>>>,
     result: SharedResult<std::io::Result<Box<[u8]>>>,
 }
 
@@ -22,28 +23,38 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     pub fn new(sender: SyncSender<Request>) -> Self {
         Self {
             sender,
-            receiver: None,
+            sent_bytes: Arc::new(Mutex::new(None)),
+            receiver: Arc::new(Mutex::new(None)),
             result: Arc::new(Mutex::new(None)),
         }
     }
 }
 
-// TODO: This isn't truly async, but blocking. It should be replaced with a proper async implementation.
 impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     fn poll_write(
-        mut self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
-        let (sender, receiver) = sync_channel(BUF_SIZE);
-        let request = Request::new(buf.into(), sender);
-        self.receiver.replace(receiver);
-        Poll::Ready(
-            self.sender
-                .send(request)
-                .map(|()| buf.len())
-                .map_err(|_| ErrorKind::BrokenPipe.into()),
-        )
+        let result = self
+            .sent_bytes
+            .lock()
+            .expect("sent_bytes mutex poisoned")
+            .take();
+
+        if let Some(result) = result {
+            return Poll::Ready(result);
+        }
+
+        spawn_writer::<BUF_SIZE>(
+            self.sender.clone(),
+            cx.waker().clone(),
+            buf.to_vec().into_boxed_slice(),
+            self.sent_bytes.clone(),
+            self.receiver.clone(),
+        );
+
+        Poll::Pending
     }
 
     fn poll_flush(
@@ -54,21 +65,34 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     }
 
     fn poll_shutdown(
-        mut self: std::pin::Pin<&mut Self>,
+        self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> Poll<std::io::Result<()>> {
-        self.receiver.take();
+        self.sent_bytes
+            .lock()
+            .expect("sent_bytes mutex poisoned")
+            .take();
+        self.receiver
+            .lock()
+            .expect("receiver mutex poisoned")
+            .take();
         Poll::Ready(Ok(()))
     }
 }
 
 impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     fn poll_read(
-        mut self: std::pin::Pin<&mut Self>,
+        self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        if let Some(receiver) = self.receiver.take() {
+        let receiver = self
+            .receiver
+            .lock()
+            .expect("receiver mutex poisoned")
+            .take();
+
+        if let Some(receiver) = receiver {
             spawn_reader(receiver, cx.waker().clone(), self.result.clone());
         }
 
@@ -87,6 +111,33 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
                 },
             )
     }
+}
+
+fn spawn_writer<const BUF_SIZE: usize>(
+    sender: SyncSender<Request>,
+    waker: Waker,
+    payload: Box<[u8]>,
+    sent_bytes: SharedResult<std::io::Result<usize>>,
+    receiver: SharedResult<Receiver<Box<[u8]>>>,
+) {
+    spawn(move || {
+        let len = payload.len();
+        let (response_tx, response_rx) = sync_channel(BUF_SIZE);
+        let request = Request::new(payload, response_tx);
+        let result = sender
+            .send(request)
+            .map(|()| len)
+            .map_err(|_| ErrorKind::BrokenPipe.into());
+        sent_bytes
+            .lock()
+            .expect("sent_bytes mutex poisoned")
+            .replace(result);
+        receiver
+            .lock()
+            .expect("receiver mutex poisoned")
+            .replace(response_rx);
+        waker.wake();
+    });
 }
 
 fn spawn_reader(
