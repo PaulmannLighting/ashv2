@@ -1,4 +1,7 @@
+mod shared_state;
+
 use crate::Request;
+use shared_state::SharedState;
 use std::io::ErrorKind;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
@@ -130,21 +133,4 @@ fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<Sh
             .replace(result.map_err(|_| ErrorKind::BrokenPipe.into()));
         waker.wake();
     });
-}
-
-#[derive(Debug, Default)]
-struct SharedState {
-    sending: bool,
-    sent_bytes: Option<std::io::Result<usize>>,
-    receiver: Option<Receiver<Box<[u8]>>>,
-    result: Option<std::io::Result<Box<[u8]>>>,
-}
-
-impl SharedState {
-    fn reset(&mut self) {
-        self.sending = false;
-        self.sent_bytes = None;
-        self.receiver = None;
-        self.result = None;
-    }
 }
