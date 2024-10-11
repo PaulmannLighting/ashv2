@@ -11,3 +11,8 @@ at [silabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-g
 
 * Use `cargo fmt`
 * Check code with `cargo clippy`
+
+## Credits
+
+* Special thanks to *Simon Farnsworth*, *Kevin Reid* and the rest of the great community
+  at [users.rust-lang.org](https://users.rust-lang.org/).
