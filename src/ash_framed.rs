@@ -6,15 +6,11 @@ use std::task::{Poll, Waker};
 use std::thread::spawn;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-type SharedResult<T> = Arc<Mutex<Option<T>>>;
-
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
-    sent_bytes: SharedResult<std::io::Result<usize>>,
-    receiver: SharedResult<Receiver<Box<[u8]>>>,
-    result: SharedResult<std::io::Result<Box<[u8]>>>,
+    state: Arc<Mutex<SharedState>>,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
@@ -23,9 +19,7 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     pub fn new(sender: SyncSender<Request>) -> Self {
         Self {
             sender,
-            sent_bytes: Arc::new(Mutex::new(None)),
-            receiver: Arc::new(Mutex::new(None)),
-            result: Arc::new(Mutex::new(None)),
+            state: Arc::new(Mutex::new(SharedState::default())),
         }
     }
 }
@@ -37,9 +31,10 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
         let result = self
-            .sent_bytes
+            .state
             .lock()
             .expect("sent_bytes mutex poisoned")
+            .sent_bytes
             .take();
 
         if let Some(result) = result {
@@ -50,8 +45,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
             self.sender.clone(),
             cx.waker().clone(),
             buf.to_vec().into_boxed_slice(),
-            self.sent_bytes.clone(),
-            self.receiver.clone(),
+            self.state.clone(),
         );
 
         Poll::Pending
@@ -68,14 +62,10 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> Poll<std::io::Result<()>> {
-        self.sent_bytes
+        self.state
             .lock()
             .expect("sent_bytes mutex poisoned")
-            .take();
-        self.receiver
-            .lock()
-            .expect("receiver mutex poisoned")
-            .take();
+            .reset();
         Poll::Ready(Ok(()))
     }
 }
@@ -87,18 +77,20 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
         let receiver = self
-            .receiver
+            .state
             .lock()
             .expect("receiver mutex poisoned")
+            .receiver
             .take();
 
         if let Some(receiver) = receiver {
-            spawn_reader(receiver, cx.waker().clone(), self.result.clone());
+            spawn_reader(receiver, cx.waker().clone(), self.state.clone());
         }
 
-        self.result
+        self.state
             .lock()
             .expect("result mutex poisoned")
+            .result
             .take()
             .map_or_else(
                 || Poll::Pending,
@@ -117,8 +109,7 @@ fn spawn_writer<const BUF_SIZE: usize>(
     sender: SyncSender<Request>,
     waker: Waker,
     payload: Box<[u8]>,
-    sent_bytes: SharedResult<std::io::Result<usize>>,
-    receiver: SharedResult<Receiver<Box<[u8]>>>,
+    state: Arc<Mutex<SharedState>>,
 ) {
     spawn(move || {
         let len = payload.len();
@@ -128,35 +119,44 @@ fn spawn_writer<const BUF_SIZE: usize>(
             .send(request)
             .map(|()| len)
             .map_err(|_| ErrorKind::BrokenPipe.into());
-        sent_bytes
-            .lock()
-            .expect("sent_bytes mutex poisoned")
-            .replace(result);
-        receiver
-            .lock()
-            .expect("receiver mutex poisoned")
-            .replace(response_rx);
+        let mut lock = state.lock().expect("sent_bytes mutex poisoned");
+        lock.sent_bytes.replace(result);
+        lock.receiver.replace(response_rx);
+        drop(lock);
         waker.wake();
     });
 }
 
-fn spawn_reader(
-    receiver: Receiver<Box<[u8]>>,
-    waker: Waker,
-    state: SharedResult<std::io::Result<Box<[u8]>>>,
-) {
+fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<SharedState>>) {
     spawn(move || {
         if let Ok(payload) = receiver.recv() {
             state
                 .lock()
                 .expect("result mutex poisoned")
+                .result
                 .replace(Ok(payload));
         } else {
             state
                 .lock()
                 .expect("result mutex poisoned")
+                .result
                 .replace(Err(ErrorKind::BrokenPipe.into()));
         }
         waker.wake();
     });
+}
+
+#[derive(Debug, Default)]
+struct SharedState {
+    sent_bytes: Option<std::io::Result<usize>>,
+    receiver: Option<Receiver<Box<[u8]>>>,
+    result: Option<std::io::Result<Box<[u8]>>>,
+}
+
+impl SharedState {
+    fn reset(&mut self) {
+        self.sent_bytes = None;
+        self.receiver = None;
+        self.result = None;
+    }
 }
