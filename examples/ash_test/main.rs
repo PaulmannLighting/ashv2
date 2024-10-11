@@ -1,51 +1,26 @@
 //! Test `ASHv2` connection.
 
 mod commands;
+mod raw_codec;
 
 use ashv2::{open, AshFramed, BaudRate, HexSlice, Transceiver};
 use clap::Parser;
 use commands::COMMANDS;
 use futures::SinkExt;
 use log::{error, info};
+use raw_codec::RawCodec;
 use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::sync_channel;
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio_stream::StreamExt;
-use tokio_util::bytes::BytesMut;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::Framed;
 
 #[derive(Debug, Parser)]
 struct Args {
     #[arg(index = 1)]
     tty: String,
-}
-
-/// An example decoder.
-#[derive(Debug)]
-pub struct RawCodec;
-
-impl Decoder for RawCodec {
-    type Item = Box<[u8]>;
-    type Error = std::io::Error;
-
-    fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if buffer.len() >= 4 {
-            Ok(Some(buffer.split().as_ref().into()))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-impl Encoder<Box<[u8]>> for RawCodec {
-    type Error = std::io::Error;
-
-    fn encode(&mut self, item: Box<[u8]>, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        dst.extend_from_slice(&item);
-        Ok(())
-    }
 }
 
 #[tokio::main]
