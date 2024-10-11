@@ -30,30 +30,17 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         cx: &mut std::task::Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
-        let result = self
-            .state
-            .lock()
-            .expect("sent_bytes mutex poisoned")
-            .sent_bytes
-            .take();
+        let result = self.state.lock().expect("mutex poisoned").sent_bytes.take();
 
         if let Some(result) = result {
             return Poll::Ready(result);
         }
 
-        if self
-            .state
-            .lock()
-            .expect("sent_bytes mutex poisoned")
-            .sending
-        {
+        if self.state.lock().expect("mutex poisoned").sending {
             return Poll::Pending;
         }
 
-        self.state
-            .lock()
-            .expect("sent_bytes mutex poisoned")
-            .sending = true;
+        self.state.lock().expect("mutex poisoned").sending = true;
         spawn_writer::<BUF_SIZE>(
             self.sender.clone(),
             cx.waker().clone(),
@@ -75,10 +62,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
     ) -> Poll<std::io::Result<()>> {
-        self.state
-            .lock()
-            .expect("sent_bytes mutex poisoned")
-            .reset();
+        self.state.lock().expect("mutex poisoned").reset();
         Poll::Ready(Ok(()))
     }
 }
@@ -89,12 +73,7 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
         cx: &mut std::task::Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        let receiver = self
-            .state
-            .lock()
-            .expect("receiver mutex poisoned")
-            .receiver
-            .take();
+        let receiver = self.state.lock().expect("mutex poisoned").receiver.take();
 
         if let Some(receiver) = receiver {
             spawn_reader(receiver, cx.waker().clone(), self.state.clone());
@@ -102,7 +81,7 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
 
         self.state
             .lock()
-            .expect("result mutex poisoned")
+            .expect("mutex poisoned")
             .result
             .take()
             .map_or_else(
@@ -132,7 +111,7 @@ fn spawn_writer<const BUF_SIZE: usize>(
             .send(request)
             .map(|()| len)
             .map_err(|_| ErrorKind::BrokenPipe.into());
-        let mut lock = state.lock().expect("sent_bytes mutex poisoned");
+        let mut lock = state.lock().expect("mutex poisoned");
         lock.sent_bytes.replace(result);
         lock.receiver.replace(response_rx);
         lock.sending = false;
@@ -146,7 +125,7 @@ fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<Sh
         let result = receiver.recv();
         state
             .lock()
-            .expect("result mutex poisoned")
+            .expect("mutex poisoned")
             .result
             .replace(result.map_err(|_| ErrorKind::BrokenPipe.into()));
         waker.wake();
