@@ -81,7 +81,7 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
         }
 
         let Some(receiver) = &self.receiver else {
-            return Poll::Ready(Err(ErrorKind::WouldBlock.into()));
+            return Poll::Pending;
         };
 
         match receiver.try_recv() {
