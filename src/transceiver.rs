@@ -34,7 +34,8 @@ use transmission::Transmission;
 /// The transceiver is responsible for handling the communication between the host and the NCP.
 /// It is supposed to be run in a separate thread.
 ///
-/// The [`AshFramed`](crate::AshFramed) provides a stream to communicate with the NCP via the transceiver.
+/// The [`AshFramed`](crate::AshFramed) struct implements a stream
+/// to communicate with the NCP via the transceiver.
 #[derive(Debug)]
 pub struct Transceiver<T>
 where
