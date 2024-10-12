@@ -1,6 +1,6 @@
 use std::sync::mpsc::SyncSender;
 
-/// An incoming request.
+/// A request sent by [`AshFramed`](crate::AshFramed) to the [`Transceiver`](crate::Transceiver).
 #[derive(Debug)]
 pub struct Request {
     pub(crate) payload: Box<[u8]>,
