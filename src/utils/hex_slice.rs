@@ -5,6 +5,7 @@ pub struct HexSlice<'a>(&'a [u8]);
 
 impl<'a> HexSlice<'a> {
     /// Creates a new `HexSlice` from a slice of bytes.
+    #[must_use]
     pub const fn new(slice: &'a [u8]) -> Self {
         Self(slice)
     }

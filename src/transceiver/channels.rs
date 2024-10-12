@@ -48,9 +48,9 @@ impl Channels {
     /// Respond to the host.
     pub fn respond(&mut self, payload: Box<[u8]>) {
         if let Some(response) = self.response.clone() {
-            self.send_response(response, payload);
+            self.send_response(&response, payload);
         } else if let Some(callback) = self.callback.clone() {
-            self.send_callback(callback, payload);
+            self.send_callback(&callback, payload);
         } else {
             error!("Neither response channel not callback channel are available. Discarding data.");
         }
@@ -71,7 +71,7 @@ impl Channels {
         }
     }
 
-    fn send_response(&mut self, response: SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
+    fn send_response(&mut self, response: &SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
         if let Err(error) = response.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
@@ -89,7 +89,7 @@ impl Channels {
         }
     }
 
-    fn send_callback(&mut self, callback: SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
+    fn send_callback(&mut self, callback: &SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
         if let Err(error) = callback.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
