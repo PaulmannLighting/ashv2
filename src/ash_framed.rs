@@ -3,9 +3,10 @@ mod shared_state;
 use crate::Request;
 use shared_state::SharedState;
 use std::io::ErrorKind;
+use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
-use std::task::{Poll, Waker};
+use std::task::{Context, Poll, Waker};
 use std::thread::spawn;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
@@ -27,10 +28,10 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncWrite for &AshFramed<BUF_SIZE> {
     fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
         let result = self.state.lock().expect("mutex poisoned").sent_bytes.take();
@@ -54,26 +55,20 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         Poll::Pending
     }
 
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         self.state.lock().expect("mutex poisoned").reset();
         Poll::Ready(Ok(()))
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncRead for &AshFramed<BUF_SIZE> {
     fn poll_read(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
         let receiver = self.state.lock().expect("mutex poisoned").receiver.take();
