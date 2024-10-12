@@ -31,7 +31,7 @@ use transmission::Transmission;
 
 /// `ASHv2` transceiver.
 ///
-/// The transceiver is responsible for handling the communication between the host and the NCP.
+/// The transceiver is responsible for handling the communication between the host and the NCP.  
 /// It is supposed to be run in a separate thread.
 ///
 /// The [`AshFramed`](crate::AshFramed) struct implements a stream
