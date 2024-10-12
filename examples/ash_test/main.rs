@@ -3,7 +3,7 @@
 mod commands;
 mod raw_codec;
 
-use ashv2::{open, AshFramed, BaudRate, HexSlice, Transceiver};
+use ashv2::{make_pair, open, BaudRate, HexSlice};
 use clap::Parser;
 use commands::COMMANDS;
 use futures::SinkExt;
@@ -11,7 +11,6 @@ use log::{error, info};
 use raw_codec::RawCodec;
 use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::sync_channel;
 use std::sync::Arc;
 use std::thread::spawn;
 use tokio_stream::StreamExt;
@@ -37,12 +36,9 @@ async fn main() {
 }
 
 async fn run(serial_port: impl SerialPort + 'static, keep_listening: bool) {
-    let (sender, receiver) = sync_channel(32);
-    let (waker_tx, waker_rx) = sync_channel(32);
-    let transceiver = Transceiver::new(serial_port, receiver, waker_rx, None);
+    let (mut ash, transceiver) = make_pair::<32, _>(serial_port, None);
     let running = Arc::new(AtomicBool::new(true));
     let transceiver_thread = spawn(|| transceiver.run(running));
-    let mut ash = AshFramed::<2>::new(sender, waker_tx);
     let mut framed = Framed::new(&mut ash, RawCodec);
 
     for (command, response) in COMMANDS {
