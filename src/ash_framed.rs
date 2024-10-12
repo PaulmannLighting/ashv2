@@ -33,6 +33,17 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
         self.buffer.clear();
         self.result = None;
     }
+
+    fn reschedule(&self, waker: Waker) -> Poll<std::io::Result<()>> {
+        if let Err(error) = self.waker.try_send(waker) {
+            return match error {
+                TrySendError::Full(_) => Poll::Ready(Err(ErrorKind::WouldBlock.into())),
+                TrySendError::Disconnected(_) => Poll::Ready(Err(ErrorKind::BrokenPipe.into())),
+            };
+        }
+
+        Poll::Pending
+    }
 }
 
 impl<const BUF_SIZE: usize> AsyncWrite for &mut AshFramed<BUF_SIZE> {
@@ -73,24 +84,17 @@ impl<const BUF_SIZE: usize> AsyncRead for &mut AshFramed<BUF_SIZE> {
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        if let Err(error) = self.waker.try_send(cx.waker().clone()) {
-            return match error {
-                TrySendError::Full(_) => Poll::Ready(Err(ErrorKind::WouldBlock.into())),
-                TrySendError::Disconnected(_) => Poll::Ready(Err(ErrorKind::BrokenPipe.into())),
-            };
-        }
-
         let Some(receiver) = &self.receiver else {
-            return Poll::Pending;
+            return self.reschedule(cx.waker().clone());
         };
 
         match receiver.try_recv() {
             Ok(data) => {
                 buf.put_slice(&data);
-                Poll::Pending
+                self.reschedule(cx.waker().clone())
             }
             Err(error) => match error {
-                TryRecvError::Empty => Poll::Pending,
+                TryRecvError::Empty => self.reschedule(cx.waker().clone()),
                 TryRecvError::Disconnected => Poll::Ready(Ok(())),
             },
         }
