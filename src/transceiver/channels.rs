@@ -10,7 +10,7 @@ pub struct Channels {
     requests: Receiver<Request>,
     waker: Receiver<Waker>,
     callback: Option<SyncSender<Box<[u8]>>>,
-    pub(super) response: Option<SyncSender<Box<[u8]>>>,
+    response: Option<SyncSender<Box<[u8]>>>,
 }
 
 impl Channels {
@@ -65,7 +65,8 @@ impl Channels {
     pub fn close(&mut self) {
         self.response.take();
 
-        if let Ok(waker) = self.waker.try_recv() {
+        // Wake up all remaining wakers.
+        while let Ok(waker) = self.waker.try_recv() {
             waker.wake();
         }
     }

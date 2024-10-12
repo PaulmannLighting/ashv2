@@ -21,7 +21,7 @@ where
 
         if self.state.within_transaction {
             error!("Aborting current transaction due to error.");
-            self.channels.response.take();
+            self.channels.close();
         }
 
         self.reset();
