@@ -30,7 +30,7 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     pub fn new(sender: SyncSender<Request>) -> Self {
         let running = Arc::new(AtomicBool::new(true));
         let state = Arc::new(Mutex::new(SharedState::default()));
-        let receiver = spawn_reader(running.clone(), state.clone());
+        let receiver = spawn_receiver(running.clone(), state.clone());
         Self {
             sender,
             running,
@@ -109,7 +109,7 @@ impl<const BUF_SIZE: usize> AsyncRead for &AshFramed<BUF_SIZE> {
     }
 }
 
-fn spawn_reader(running: Arc<AtomicBool>, state: Arc<Mutex<SharedState>>) -> JoinHandle<()> {
+fn spawn_receiver(running: Arc<AtomicBool>, state: Arc<Mutex<SharedState>>) -> JoinHandle<()> {
     spawn(move || {
         while running.load(Relaxed) {
             let receiver = state.lock().expect("mutex poisoned").receiver.take();
@@ -144,6 +144,7 @@ fn receive_loop(receiver: &Receiver<Box<[u8]>>, state: &Arc<Mutex<SharedState>>)
             }
 
             if let Some(waker) = lock.waker.take() {
+                drop(lock);
                 waker.wake();
             }
 
