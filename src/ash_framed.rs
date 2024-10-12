@@ -47,7 +47,7 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncWrite for &mut AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     fn poll_write(
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
@@ -59,7 +59,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for &mut AshFramed<BUF_SIZE> {
 
         match self.sender.try_send(request) {
             Ok(()) => {
-                self.as_mut().receiver.replace(response_rx);
+                self.receiver.replace(response_rx);
                 Poll::Ready(Ok(len))
             }
             Err(error) => match error {
@@ -74,12 +74,12 @@ impl<const BUF_SIZE: usize> AsyncWrite for &mut AshFramed<BUF_SIZE> {
     }
 
     fn poll_shutdown(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        self.as_mut().reset();
+        self.reset();
         Poll::Ready(Ok(()))
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncRead for &mut AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
