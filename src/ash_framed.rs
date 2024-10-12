@@ -1,5 +1,4 @@
-use crate::{HexSlice, Request};
-use log::{info, warn};
+use crate::Request;
 use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
@@ -35,8 +34,9 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
         self.result = None;
     }
 
-    fn reschedule(&self, waker: Waker) -> Poll<std::io::Result<()>> {
+    fn reschedule(&mut self, waker: Waker) -> Poll<std::io::Result<()>> {
         if let Err(error) = self.waker.try_send(waker) {
+            self.buffer.clear();
             return match error {
                 TrySendError::Full(_) => Poll::Ready(Err(ErrorKind::WouldBlock.into())),
                 TrySendError::Disconnected(_) => Poll::Ready(Err(ErrorKind::BrokenPipe.into())),
@@ -81,28 +81,24 @@ impl<const BUF_SIZE: usize> AsyncWrite for &mut AshFramed<BUF_SIZE> {
 
 impl<const BUF_SIZE: usize> AsyncRead for &mut AshFramed<BUF_SIZE> {
     fn poll_read(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
         let Some(receiver) = &self.receiver else {
-            warn!("No receiver channel available.");
             return self.reschedule(cx.waker().clone());
         };
 
         match receiver.try_recv() {
             Ok(data) => {
-                info!("Received data: {:#04X}", HexSlice::new(&data));
-                buf.put_slice(&data);
+                self.buffer.extend_from_slice(&data);
                 self.reschedule(cx.waker().clone())
             }
             Err(error) => match error {
-                TryRecvError::Empty => {
-                    info!("No data available.");
-                    self.reschedule(cx.waker().clone())
-                }
+                TryRecvError::Empty => self.reschedule(cx.waker().clone()),
                 TryRecvError::Disconnected => {
-                    info!("Channel disconnected. Done.");
+                    buf.put_slice(&self.buffer);
+                    self.buffer.clear();
                     Poll::Ready(Ok(()))
                 }
             },
