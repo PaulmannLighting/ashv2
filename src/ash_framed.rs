@@ -119,13 +119,27 @@ fn spawn_writer<const BUF_SIZE: usize>(
 }
 
 fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<SharedState>>) {
-    spawn(move || {
-        let result = receiver.recv();
-        state
-            .lock()
-            .expect("mutex poisoned")
-            .result
-            .replace(result.map_err(|_| ErrorKind::BrokenPipe.into()));
-        waker.wake();
+    spawn(move || loop {
+        if let Ok(data) = receiver.recv() {
+            state
+                .lock()
+                .expect("mutex poisoned")
+                .buffer
+                .extend_from_slice(&data);
+        } else {
+            let mut lock = state.lock().expect("mutex poisoned");
+
+            if lock.buffer.is_empty() {
+                lock.result.replace(Err(ErrorKind::UnexpectedEof.into()));
+            } else {
+                let result = Ok(lock.buffer.clone().into_boxed_slice());
+                lock.buffer.clear();
+                lock.result.replace(result);
+            }
+
+            drop(lock);
+            waker.wake();
+            return;
+        }
     });
 }
