@@ -63,8 +63,12 @@ where
 
         debug!("Transaction completed.");
         self.state.within_transaction = false;
+
         // Send ACK without `nRDY` set, to re-enable callbacks.
         self.ack()?;
+
+        // Close response channel.
+        self.channels.response.take();
         Ok(())
     }
 
