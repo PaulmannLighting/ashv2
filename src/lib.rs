@@ -10,7 +10,7 @@ pub use baud_rate::BaudRate;
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
-pub use utils::HexSlice;
+pub use utils::{make_pair, HexSlice};
 
 mod ash_framed;
 mod baud_rate;
