@@ -1,4 +1,5 @@
-use crate::Request;
+use crate::{HexSlice, Request};
+use log::{info, warn};
 use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
@@ -85,17 +86,25 @@ impl<const BUF_SIZE: usize> AsyncRead for &mut AshFramed<BUF_SIZE> {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
         let Some(receiver) = &self.receiver else {
+            warn!("No receiver channel available.");
             return self.reschedule(cx.waker().clone());
         };
 
         match receiver.try_recv() {
             Ok(data) => {
+                info!("Received data: {:#04X}", HexSlice::new(&data));
                 buf.put_slice(&data);
                 self.reschedule(cx.waker().clone())
             }
             Err(error) => match error {
-                TryRecvError::Empty => self.reschedule(cx.waker().clone()),
-                TryRecvError::Disconnected => Poll::Ready(Ok(())),
+                TryRecvError::Empty => {
+                    info!("No data available.");
+                    self.reschedule(cx.waker().clone())
+                }
+                TryRecvError::Disconnected => {
+                    info!("Channel disconnected. Done.");
+                    Poll::Ready(Ok(()))
+                }
             },
         }
     }
