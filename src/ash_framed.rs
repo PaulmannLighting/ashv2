@@ -4,11 +4,10 @@ use crate::Request;
 use shared_state::SharedState;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
-use std::thread::{sleep, spawn};
-use std::time::Duration;
+use std::thread::spawn;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// A framed asynchronous `ASHv2` host.
@@ -121,35 +120,26 @@ fn spawn_writer<const BUF_SIZE: usize>(
 
 fn spawn_reader(receiver: Receiver<Box<[u8]>>, waker: Waker, state: Arc<Mutex<SharedState>>) {
     spawn(move || loop {
-        match receiver.try_recv() {
-            Ok(data) => {
-                state
-                    .lock()
-                    .expect("mutex poisoned")
-                    .buffer
-                    .extend_from_slice(&data);
+        if let Ok(data) = receiver.recv() {
+            state
+                .lock()
+                .expect("mutex poisoned")
+                .buffer
+                .extend_from_slice(&data);
+        } else {
+            let mut lock = state.lock().expect("mutex poisoned");
+
+            if lock.buffer.is_empty() {
+                lock.result.replace(Err(ErrorKind::UnexpectedEof.into()));
+            } else {
+                let result = Ok(lock.buffer.clone().into_boxed_slice());
+                lock.buffer.clear();
+                lock.result.replace(result);
             }
-            Err(error) => match error {
-                TryRecvError::Empty => {
-                    sleep(Duration::from_millis(100));
-                    continue;
-                }
-                TryRecvError::Disconnected => {
-                    let mut lock = state.lock().expect("mutex poisoned");
 
-                    if lock.buffer.is_empty() {
-                        lock.result.replace(Err(ErrorKind::UnexpectedEof.into()));
-                    } else {
-                        let result = Ok(lock.buffer.clone().into_boxed_slice());
-                        lock.buffer.clear();
-                        lock.result.replace(result);
-                    }
-
-                    drop(lock);
-                    waker.wake();
-                    return;
-                }
-            },
+            drop(lock);
+            waker.wake();
+            return;
         }
     });
 }
