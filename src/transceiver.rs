@@ -16,6 +16,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::mpsc::{Receiver, SyncSender};
 use std::sync::Arc;
+use std::task::Waker;
 
 /// `ASHv2` transceiver.
 ///
@@ -54,11 +55,12 @@ where
     pub fn new(
         serial_port: T,
         requests: Receiver<Request>,
+        waker: Receiver<Waker>,
         callback: Option<SyncSender<Box<[u8]>>>,
     ) -> Self {
         Self {
             serial_port,
-            channels: Channels::new(requests, callback),
+            channels: Channels::new(requests, waker, callback),
             buffers: Buffers::default(),
             state: State::new(),
         }
