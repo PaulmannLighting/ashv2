@@ -41,7 +41,8 @@ async fn run(serial_port: impl SerialPort + 'static, keep_listening: bool) {
     let transceiver = Transceiver::new(serial_port, receiver, None);
     let running = Arc::new(AtomicBool::new(true));
     let transceiver_thread = spawn(|| transceiver.run(running));
-    let mut framed = Framed::new(AshFramed::<2>::new(sender), RawCodec);
+    let ash = AshFramed::<2>::new(sender);
+    let mut framed = Framed::new(&ash, RawCodec);
 
     for (command, response) in COMMANDS {
         info!("Sending command: {:#04X}", HexSlice::new(command));
