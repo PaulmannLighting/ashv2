@@ -8,7 +8,7 @@ use std::task::Waker;
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Request>,
-    pub(super) waker: Receiver<Waker>,
+    waker: Receiver<Waker>,
     callback: Option<SyncSender<Box<[u8]>>>,
     pub(super) response: Option<SyncSender<Box<[u8]>>>,
 }
@@ -59,6 +59,15 @@ impl Channels {
     /// Reset the response channel.
     pub fn reset(&mut self) {
         self.response.take();
+    }
+
+    /// Close the response channel.
+    pub fn close(&mut self) {
+        self.response.take();
+
+        if let Ok(waker) = self.waker.try_recv() {
+            waker.wake();
+        }
     }
 
     fn send_response(&mut self, response: SyncSender<Box<[u8]>>, payload: Box<[u8]>) {

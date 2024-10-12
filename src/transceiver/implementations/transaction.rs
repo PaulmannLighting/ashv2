@@ -68,7 +68,7 @@ where
         self.ack()?;
 
         // Close response channel.
-        self.channels.response.take();
+        self.channels.close();
         Ok(())
     }
 
