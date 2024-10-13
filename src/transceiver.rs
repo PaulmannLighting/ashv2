@@ -720,20 +720,20 @@ where
 {
     /// Enter the rejection state.
     fn enter_reject(&mut self) -> std::io::Result<()> {
-        if self.state.reject {
+        if self.state.reject() {
             Ok(())
         } else {
             trace!("Entering rejection state.");
-            self.state.reject = true;
+            self.state.set_reject(true);
             self.nak()
         }
     }
 
     /// Leave the rejection state.
     fn leave_reject(&mut self) {
-        if self.state.reject {
+        if self.state.reject() {
             trace!("Leaving rejection state.");
-            self.state.reject = false;
+            self.state.set_reject(false);
         }
     }
 }

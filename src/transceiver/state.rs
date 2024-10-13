@@ -10,7 +10,7 @@ pub struct State {
     last_n_rdy_transmission: Option<SystemTime>,
     frame_number: WrappingU3,
     last_received_frame_num: Option<WrappingU3>,
-    pub reject: bool,
+    reject: bool,
     pub within_transaction: bool,
     pub t_rx_ack: Duration,
 }
@@ -46,6 +46,16 @@ impl State {
     /// Sets the last received frame number.
     pub fn set_last_received_frame_num(&mut self, frame_num: WrappingU3) {
         self.last_received_frame_num.replace(frame_num);
+    }
+
+    /// Returns whether the transceiver is rejecting frames.
+    pub const fn reject(&self) -> bool {
+        self.reject
+    }
+
+    /// Sets whether the transceiver is rejecting frames.
+    pub fn set_reject(&mut self, reject: bool) {
+        self.reject = reject;
     }
 
     /// Returns the next frame number.
