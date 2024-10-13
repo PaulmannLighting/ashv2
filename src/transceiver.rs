@@ -521,7 +521,14 @@ where
                     warn!("NCP requested to stop transmission. Ignoring.");
                 }
                 WAKE => {
-                    debug!("NCP tried to wake us up.");
+                    if buffer.is_empty() {
+                        debug!("NCP tried to wake us up.");
+                    } else if buffer.push(WAKE).is_err() {
+                        return Err(Error::new(
+                            ErrorKind::OutOfMemory,
+                            "ASHv2: frame buffer overflow",
+                        ));
+                    }
                 }
                 byte => {
                     if buffer.push(byte).is_err() {
