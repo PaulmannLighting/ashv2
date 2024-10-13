@@ -10,7 +10,7 @@ use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::status::Status;
 use crate::utils::WrappingU3;
-use crate::{HexSlice, Request};
+use crate::{HexSlice, Payload, Request};
 use buffers::Buffers;
 use channels::Channels;
 use constants::{T_RSTACK_MAX, T_RX_ACK_MAX, T_RX_ACK_MIN};
@@ -67,7 +67,7 @@ where
         serial_port: T,
         requests: Receiver<Request>,
         waker: Receiver<Waker>,
-        callback: Option<SyncSender<Box<[u8]>>>,
+        callback: Option<SyncSender<Payload>>,
     ) -> Self {
         Self {
             serial_port,
@@ -636,7 +636,7 @@ where
     /// Extends the response buffer with the given data.
     fn handle_payload(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
         payload.mask();
-        self.channels.respond(payload.as_slice().into());
+        self.channels.respond(payload);
     }
 
     /// Handle an incoming `ERROR` packet.

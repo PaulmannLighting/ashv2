@@ -1,4 +1,4 @@
-use crate::Request;
+use crate::{Payload, Request};
 use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
@@ -10,7 +10,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     waker: SyncSender<Waker>,
-    receiver: Option<Receiver<Box<[u8]>>>,
+    receiver: Option<Receiver<Payload>>,
     buffer: Vec<u8>,
     result: Option<std::io::Result<Box<[u8]>>>,
 }

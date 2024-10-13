@@ -1,4 +1,6 @@
+use crate::packet::Data;
 use crate::request::Request;
+use crate::Payload;
 use log::error;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
@@ -9,8 +11,8 @@ use std::task::Waker;
 pub struct Channels {
     requests: Receiver<Request>,
     waker: Receiver<Waker>,
-    callback: Option<SyncSender<Box<[u8]>>>,
-    response: Option<SyncSender<Box<[u8]>>>,
+    callback: Option<SyncSender<Payload>>,
+    response: Option<SyncSender<Payload>>,
 }
 
 impl Channels {
@@ -18,7 +20,7 @@ impl Channels {
     pub const fn new(
         requests: Receiver<Request>,
         waker: Receiver<Waker>,
-        callback: Option<SyncSender<Box<[u8]>>>,
+        callback: Option<SyncSender<heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>>>,
     ) -> Self {
         Self {
             requests,
@@ -46,7 +48,7 @@ impl Channels {
     }
 
     /// Respond to the host.
-    pub fn respond(&mut self, payload: Box<[u8]>) {
+    pub fn respond(&mut self, payload: Payload) {
         if let Some(response) = self.response.clone() {
             self.send_response(&response, payload);
         } else if let Some(callback) = self.callback.clone() {
@@ -71,7 +73,7 @@ impl Channels {
         }
     }
 
-    fn send_response(&mut self, response: &SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
+    fn send_response(&mut self, response: &SyncSender<Payload>, payload: Payload) {
         if let Err(error) = response.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
@@ -89,7 +91,7 @@ impl Channels {
         }
     }
 
-    fn send_callback(&mut self, callback: &SyncSender<Box<[u8]>>, payload: Box<[u8]>) {
+    fn send_callback(&mut self, callback: &SyncSender<Payload>, payload: Payload) {
         if let Err(error) = callback.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {

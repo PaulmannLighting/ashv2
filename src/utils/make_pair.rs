@@ -1,11 +1,11 @@
-use crate::{AshFramed, Transceiver};
+use crate::{AshFramed, Payload, Transceiver};
 use serialport::SerialPort;
 use std::sync::mpsc::{sync_channel, SyncSender};
 
 /// Create a pair of an `AshFramed` and a `Transceiver`.
 pub fn make_pair<const BUF_SIZE: usize, T>(
     serial_port: T,
-    callback: Option<SyncSender<Box<[u8]>>>,
+    callback: Option<SyncSender<Payload>>,
 ) -> (AshFramed<BUF_SIZE>, Transceiver<T>)
 where
     T: SerialPort,
