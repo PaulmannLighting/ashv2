@@ -606,7 +606,7 @@ where
 
     /// Handle an incoming `DATA` packet.
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
-        trace!("Unmasked data: {data:#04X}");
+        trace!("Unmasked data: {:#04X}", data.unmasked());
 
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
