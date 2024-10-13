@@ -9,7 +9,7 @@ pub struct State {
     status: Status,
     last_n_rdy_transmission: Option<SystemTime>,
     frame_number: WrappingU3,
-    pub last_received_frame_num: Option<WrappingU3>,
+    last_received_frame_num: Option<WrappingU3>,
     pub reject: bool,
     pub within_transaction: bool,
     pub t_rx_ack: Duration,
@@ -41,6 +41,11 @@ impl State {
     /// Sets the last time a `nRDY` was sent to the NCP.
     pub fn set_last_n_rdy_transmission(&mut self, time: SystemTime) {
         self.last_n_rdy_transmission = Some(time);
+    }
+
+    /// Sets the last received frame number.
+    pub fn set_last_received_frame_num(&mut self, frame_num: WrappingU3) {
+        self.last_received_frame_num.replace(frame_num);
     }
 
     /// Returns the next frame number.

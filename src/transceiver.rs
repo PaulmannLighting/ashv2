@@ -613,7 +613,7 @@ where
             self.enter_reject()?;
         } else if data.frame_num() == self.state.ack_number() {
             self.leave_reject();
-            self.state.last_received_frame_num.replace(data.frame_num());
+            self.state.set_last_received_frame_num(data.frame_num());
             self.ack()?;
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
