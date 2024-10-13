@@ -66,6 +66,13 @@ impl Data {
     pub fn into_payload(self) -> Payload {
         self.payload
     }
+
+    /// Returns a copy of the data frame with the payload unmasked.
+    pub fn unmasked(&self) -> Self {
+        let mut unmasked = self.clone();
+        unmasked.payload.mask();
+        unmasked
+    }
 }
 
 impl Display for Data {
