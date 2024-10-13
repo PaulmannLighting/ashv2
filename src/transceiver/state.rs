@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug)]
 pub struct State {
     pub status: Status,
-    pub last_n_rdy_transmission: Option<SystemTime>,
+    last_n_rdy_transmission: Option<SystemTime>,
     frame_number: WrappingU3,
     pub last_received_frame_num: Option<WrappingU3>,
     pub reject: bool,
@@ -26,6 +26,11 @@ impl State {
             within_transaction: false,
             t_rx_ack: T_RX_ACK_INIT,
         }
+    }
+
+    /// Sets the last time a `nRDY` was sent to the NCP.
+    pub fn set_last_n_rdy_transmission(&mut self, time: SystemTime) {
+        self.last_n_rdy_transmission = Some(time);
     }
 
     /// Returns the next frame number.

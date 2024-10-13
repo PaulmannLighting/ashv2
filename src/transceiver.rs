@@ -440,9 +440,7 @@ where
     /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
         if ack.not_ready() {
-            self.state
-                .last_n_rdy_transmission
-                .replace(SystemTime::now());
+            self.state.set_last_n_rdy_transmission(SystemTime::now());
         }
 
         debug!("Sending ACK: {ack}");
@@ -452,9 +450,7 @@ where
     /// Send a raw `NAK` frame.
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         if nak.not_ready() {
-            self.state
-                .last_n_rdy_transmission
-                .replace(SystemTime::now());
+            self.state.set_last_n_rdy_transmission(SystemTime::now());
         }
 
         debug!("Sending NAK: {nak}");
@@ -548,7 +544,6 @@ where
         let buffer = &mut self.buffers.frame;
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
-        trace!("Frame: {frame:#04x}");
         buffer.clear();
         frame.buffer(buffer).map_err(|()| {
             Error::new(
@@ -583,7 +578,6 @@ where
     fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Handling: {packet}");
         trace!("{packet:#04X}");
-        trace!("{packet:#04x}");
 
         if self.state.status == Status::Connected {
             match packet {
@@ -612,6 +606,8 @@ where
 
     /// Handle an incoming `DATA` packet.
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
+        trace!("Unmasked data: {data:#04X}");
+
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");
             self.enter_reject()?;
