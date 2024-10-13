@@ -192,7 +192,7 @@ where
     /// Start a transaction of incoming data.
     fn transaction(&mut self, mut chunks: Chunks<'_, u8>) -> std::io::Result<()> {
         debug!("Starting transaction.");
-        self.state.within_transaction = true;
+        self.state.set_within_transaction(true);
 
         // Make sure that we do not receive any callbacks during the transaction.
         self.clear_callbacks()?;
@@ -232,7 +232,7 @@ where
         }
 
         debug!("Transaction completed.");
-        self.state.within_transaction = false;
+        self.state.set_within_transaction(false);
 
         // Send ACK without `nRDY` set, to re-enable callbacks.
         self.ack()?;
@@ -754,7 +754,7 @@ where
     fn handle_io_error(&mut self, error: &Error) {
         error!("{error}");
 
-        if self.state.within_transaction {
+        if self.state.within_transaction() {
             error!("Aborting current transaction due to error.");
             self.channels.close();
         }

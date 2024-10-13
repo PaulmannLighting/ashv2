@@ -11,7 +11,7 @@ pub struct State {
     frame_number: WrappingU3,
     last_received_frame_num: Option<WrappingU3>,
     reject: bool,
-    pub within_transaction: bool,
+    within_transaction: bool,
     pub t_rx_ack: Duration,
 }
 
@@ -56,6 +56,16 @@ impl State {
     /// Sets whether the transceiver is rejecting frames.
     pub fn set_reject(&mut self, reject: bool) {
         self.reject = reject;
+    }
+
+    /// Returns whether the transceiver is within a transaction.
+    pub const fn within_transaction(&self) -> bool {
+        self.within_transaction
+    }
+
+    /// Sets whether the transceiver is within a transaction.
+    pub fn set_within_transaction(&mut self, within_transaction: bool) {
+        self.within_transaction = within_transaction;
     }
 
     /// Returns the next frame number.
