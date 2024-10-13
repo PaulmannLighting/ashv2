@@ -50,7 +50,7 @@ impl TryFrom<&[u8]> for Packet {
 
     fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
         match *buffer.first().ok_or_else(|| {
-            std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2: Missing packet header.")
+            std::io::Error::new(ErrorKind::UnexpectedEof, "Missing packet header.")
         })? {
             Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
             RstAck::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
@@ -60,7 +60,7 @@ impl TryFrom<&[u8]> for Packet {
             header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),
             header => Err(std::io::Error::new(
                 ErrorKind::InvalidData,
-                format!("ASHv2: Unknown packet header: {header:#04X}"),
+                format!("Unknown packet header: {header:#04X}"),
             )),
         }
     }

@@ -149,7 +149,7 @@ where
                     if !rst_ack.is_ash_v2() {
                         return Err(Error::new(
                             ErrorKind::Unsupported,
-                            "ASHv2: Received RSTACK is not ASHv2.",
+                            "Received RSTACK is not ASHv2.",
                         ));
                     }
 
@@ -263,7 +263,7 @@ where
             chunk.try_into().map_err(|()| {
                 Error::new(
                     ErrorKind::OutOfMemory,
-                    "ASHv2: could not append chunk to frame buffer",
+                    "Could not append chunk to frame buffer",
                 )
             })?;
         let data = Data::new(
@@ -434,12 +434,7 @@ where
         self.buffers
             .transmissions
             .insert(0, transmission)
-            .map_err(|_| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "ASHv2: failed to enqueue retransmit",
-                )
-            })
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
     }
 
     /// Send a raw `ACK` frame.
@@ -524,18 +519,12 @@ where
                     if buffer.is_empty() {
                         debug!("NCP tried to wake us up.");
                     } else if buffer.push(WAKE).is_err() {
-                        return Err(Error::new(
-                            ErrorKind::OutOfMemory,
-                            "ASHv2: frame buffer overflow",
-                        ));
+                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
                     }
                 }
                 byte => {
                     if buffer.push(byte).is_err() {
-                        return Err(Error::new(
-                            ErrorKind::OutOfMemory,
-                            "ASHv2: frame buffer overflow",
-                        ));
+                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
                     }
                 }
             }
@@ -543,7 +532,7 @@ where
 
         Err(Error::new(
             ErrorKind::UnexpectedEof,
-            "ASHv2: Byte stream terminated unexpectedly",
+            "Byte stream terminated unexpectedly.",
         ))
     }
 
@@ -564,15 +553,15 @@ where
         frame.buffer(buffer).map_err(|()| {
             Error::new(
                 ErrorKind::OutOfMemory,
-                "ASHv2: Could not append frame bytes to buffer.",
+                "Could not append frame bytes to buffer.",
             )
         })?;
         trace!("Frame bytes: {:#04X}", HexSlice::new(buffer));
         buffer.stuff()?;
         trace!("Stuffed bytes: {:#04X}", HexSlice::new(buffer));
-        buffer.push(FLAG).map_err(|_| {
-            Error::new(ErrorKind::OutOfMemory, "ASHv2: Could not append flag byte.")
-        })?;
+        buffer
+            .push(FLAG)
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Could not append flag byte."))?;
         trace!("Writing bytes: {:#04X}", HexSlice::new(buffer));
         self.serial_port.write_all(buffer)?;
         self.serial_port.flush()
@@ -665,10 +654,7 @@ where
             },
         );
 
-        Error::new(
-            ErrorKind::ConnectionReset,
-            "ASHv2: NCP entered ERROR state.",
-        )
+        Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
     }
 
     /// Handle an incoming `NAK` packet.
@@ -699,7 +685,7 @@ where
 
         Error::new(
             ErrorKind::ConnectionReset,
-            "ASHv2: NCP received unexpected RSTACK.",
+            "NCP received unexpected RSTACK.",
         )
     }
 }
@@ -770,7 +756,7 @@ where
 
     /// Handle I/O errors.
     fn handle_io_error(&mut self, error: &Error) {
-        error!("I/O error: {error}");
+        error!("{error}");
 
         if self.state.within_transaction {
             error!("Aborting current transaction due to error.");

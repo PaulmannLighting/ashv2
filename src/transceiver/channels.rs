@@ -39,7 +39,7 @@ impl Channels {
                 TryRecvError::Empty => Ok(None),
                 TryRecvError::Disconnected => Err(Error::new(
                     ErrorKind::BrokenPipe,
-                    "ASHv2: Receiver channel disconnected.",
+                    "Receiver channel disconnected.",
                 )),
             },
         }
@@ -75,11 +75,11 @@ impl Channels {
         if let Err(error) = response.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
-                    error!("ASHv2: Response channel is congested. Dropping response frame.");
+                    error!("Response channel is congested. Dropping response frame.");
                 }
                 TrySendError::Disconnected(_) => {
                     self.response.take();
-                    error!("ASHv2: Response channel has disconnected. Closing response channel.");
+                    error!("Response channel has disconnected. Closing response channel.");
                 }
             }
         }
@@ -93,13 +93,11 @@ impl Channels {
         if let Err(error) = callback.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
-                    error!("ASHv2: Callback channel is congested. Dropping callback frame.");
+                    error!("Callback channel is congested. Dropping callback frame.");
                 }
                 TrySendError::Disconnected(_) => {
                     self.callback.take();
-                    error!(
-                            "ASHv2: Callback channel has disconnected. Closing callback channel forever.",
-                        );
+                    error!("Callback channel has disconnected. Closing callback channel forever.",);
                 }
             }
         }

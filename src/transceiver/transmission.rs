@@ -39,7 +39,7 @@ impl Transmission {
             return Err(Error::new(
                 ErrorKind::TimedOut,
                 format!(
-                    "ASHv2: Retransmission limit of frame #{} exceeded.",
+                    "Retransmission limit of frame #{} exceeded.",
                     self.data.frame_num()
                 ),
             ));

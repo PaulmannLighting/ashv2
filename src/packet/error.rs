@@ -71,9 +71,9 @@ impl TryFrom<&[u8]> for Error {
     fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
         let [header, version, code, crc0, crc1] = buffer else {
             return Err(if buffer.len() < Self::SIZE {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "ASHv2: Too few bytes for ERROR.")
+                std::io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for ERROR.")
             } else {
-                std::io::Error::new(ErrorKind::OutOfMemory, "ASHv2: Too many bytes for ERROR.")
+                std::io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for ERROR.")
             });
         };
 
