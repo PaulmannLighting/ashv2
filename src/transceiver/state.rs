@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 /// The state of the transceiver.
 #[derive(Debug)]
 pub struct State {
-    pub status: Status,
+    status: Status,
     last_n_rdy_transmission: Option<SystemTime>,
     frame_number: WrappingU3,
     pub last_received_frame_num: Option<WrappingU3>,
@@ -26,6 +26,16 @@ impl State {
             within_transaction: false,
             t_rx_ack: T_RX_ACK_INIT,
         }
+    }
+
+    /// Returns the current status of the ASHv2 connection.
+    pub const fn status(&self) -> Status {
+        self.status
+    }
+
+    /// Sets the current status of the ASHv2 connection.
+    pub fn set_status(&mut self, status: Status) {
+        self.status = status;
     }
 
     /// Sets the last time a `nRDY` was sent to the NCP.

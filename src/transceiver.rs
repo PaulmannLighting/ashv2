@@ -94,7 +94,7 @@ where
     /// This method checks whether the transceiver is connected and establishes a connection if not.
     /// Otherwise, it will communicate with the NCP via the `ASHv2` protocol.
     fn main(&mut self) -> std::io::Result<()> {
-        match self.state.status {
+        match self.state.status() {
             Status::Disconnected | Status::Failed => Ok(self.connect()?),
             Status::Connected => self.communicate(),
         }
@@ -153,7 +153,7 @@ where
                         ));
                     }
 
-                    self.state.status = Status::Connected;
+                    self.state.set_status(Status::Connected);
                     info!(
                         "ASHv2 connection established after {attempts} attempt{}.",
                         if attempts > 1 { "s" } else { "" }
@@ -579,7 +579,7 @@ where
         debug!("Handling: {packet}");
         trace!("{packet:#04X}");
 
-        if self.state.status == Status::Connected {
+        if self.state.status() == Status::Connected {
             match packet {
                 Packet::Ack(ref ack) => self.handle_ack(ack),
                 Packet::Data(data) => self.handle_data(data)?,
