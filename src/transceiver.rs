@@ -351,10 +351,10 @@ where
                 "Retransmitting timed-out packet #{}",
                 transmission.frame_num()
             );
+            self.update_t_rx_ack(None);
             self.transmit(transmission)?;
         }
 
-        self.update_t_rx_ack(None);
         Ok(())
     }
 
