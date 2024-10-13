@@ -112,14 +112,17 @@ impl UpperHex for Data {
     }
 }
 
+/// Display unmasked payload for debugging.
 impl LowerHex for Data {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut data = self.clone();
+        data.payload.mask();
         write!(f, "Data {{ header: ")?;
-        LowerHex::fmt(&self.header.bits(), f)?;
+        LowerHex::fmt(&data.header.bits(), f)?;
         write!(f, ", payload: ")?;
-        LowerHex::fmt(&HexSlice::new(&self.payload), f)?;
+        LowerHex::fmt(&HexSlice::new(&data.payload), f)?;
         write!(f, ", crc: ")?;
-        LowerHex::fmt(&HexSlice::new(&self.crc.to_be_bytes()), f)?;
+        LowerHex::fmt(&HexSlice::new(&data.crc.to_be_bytes()), f)?;
         write!(f, " }}")
     }
 }

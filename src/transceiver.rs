@@ -17,7 +17,7 @@ use constants::{T_RSTACK_MAX, T_RX_ACK_MAX, T_RX_ACK_MIN};
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use state::State;
-use std::fmt::UpperHex;
+use std::fmt::{LowerHex, UpperHex};
 use std::io::{Error, ErrorKind, Read};
 use std::slice::Chunks;
 use std::sync::{
@@ -547,11 +547,12 @@ where
     /// Returns an [Error] if the serial port write operation failed.
     fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: Frame + UpperHex,
+        F: Frame + LowerHex + UpperHex,
     {
         let buffer = &mut self.buffers.frame;
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
+        trace!("Frame: {frame:#04x}");
         buffer.clear();
         frame.buffer(buffer).map_err(|()| {
             Error::new(
@@ -586,6 +587,7 @@ where
     fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
         debug!("Handling: {packet}");
         trace!("{packet:#04X}");
+        trace!("{packet:#04x}");
 
         if self.state.status == Status::Connected {
             match packet {
