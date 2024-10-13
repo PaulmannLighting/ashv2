@@ -119,7 +119,7 @@ impl LowerHex for Data {
         data.payload.mask();
         write!(f, "Data {{ header: ")?;
         LowerHex::fmt(&data.header.bits(), f)?;
-        write!(f, ", payload: ")?;
+        write!(f, ", unmasked_payload: ")?;
         LowerHex::fmt(&HexSlice::new(&data.payload), f)?;
         write!(f, ", crc: ")?;
         LowerHex::fmt(&HexSlice::new(&data.crc.to_be_bytes()), f)?;
