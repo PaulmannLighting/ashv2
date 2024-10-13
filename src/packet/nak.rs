@@ -1,7 +1,7 @@
 use crate::crc::CRC;
 use crate::frame::Frame;
-use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
+use crate::types::FrameBuffer;
 use crate::utils::WrappingU3;
 use crate::HexSlice;
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};

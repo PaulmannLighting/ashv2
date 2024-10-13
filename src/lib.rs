@@ -10,6 +10,7 @@ pub use baud_rate::BaudRate;
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
+pub use types::Payload;
 pub use utils::{make_pair, HexSlice};
 
 mod ash_framed;
@@ -17,13 +18,13 @@ mod baud_rate;
 mod code;
 mod crc;
 mod frame;
-mod frame_buffer;
 mod packet;
 mod protocol;
 mod request;
 mod serial_port;
 mod status;
 mod transceiver;
+mod types;
 mod utils;
 
 const VERSION: u8 = 0x02;

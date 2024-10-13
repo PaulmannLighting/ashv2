@@ -1,8 +1,8 @@
 use crate::crc::CRC;
 use crate::frame::Frame;
-use crate::frame_buffer::FrameBuffer;
 use crate::packet::headers;
 use crate::protocol::Mask;
+use crate::types::FrameBuffer;
 use crate::utils::{HexSlice, WrappingU3};
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
@@ -172,9 +172,9 @@ mod tests {
     use super::Data;
     use crate::crc::CRC;
     use crate::frame::Frame;
-    use crate::frame_buffer::FrameBuffer;
     use crate::packet::headers;
     use crate::protocol::Mask;
+    use crate::types::FrameBuffer;
 
     #[test]
     fn test_frame_num() {
