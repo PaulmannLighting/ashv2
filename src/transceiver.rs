@@ -13,7 +13,7 @@ use crate::utils::WrappingU3;
 use crate::{HexSlice, Payload, Request};
 use buffers::Buffers;
 use channels::Channels;
-use constants::{T_RSTACK_MAX, T_RX_ACK_MAX, T_RX_ACK_MIN};
+use constants::T_RSTACK_MAX;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use state::State;
@@ -26,7 +26,7 @@ use std::sync::{
     Arc,
 };
 use std::task::Waker;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use transmission::Transmission;
 
 /// `ASHv2` transceiver.
@@ -313,7 +313,7 @@ where
                     "ACKed packet {} after {duration:?}",
                     transmission.into_data()
                 );
-                self.update_t_rx_ack(Some(duration));
+                self.state.update_t_rx_ack(Some(duration));
             } else {
                 trace!("ACKed packet {}", transmission.into_data());
             }
@@ -344,29 +344,18 @@ where
             .buffers
             .transmissions
             .iter()
-            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack))
+            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack()))
             .map(|index| self.buffers.transmissions.remove(index))
         {
             debug!(
                 "Retransmitting timed-out packet #{}",
                 transmission.frame_num()
             );
-            self.update_t_rx_ack(None);
+            self.state.update_t_rx_ack(None);
             self.transmit(transmission)?;
         }
 
         Ok(())
-    }
-
-    /// Update the `T_RX_ACK` timeout duration.
-    fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
-        self.state.t_rx_ack = last_ack_duration
-            .map_or_else(
-                || self.state.t_rx_ack * 2,
-                |duration| self.state.t_rx_ack * 7 / 8 + duration / 2,
-            )
-            .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
-        trace!("Updated T_RX_ACK to {:?}", self.state.t_rx_ack);
     }
 }
 

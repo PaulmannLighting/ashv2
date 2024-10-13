@@ -1,6 +1,7 @@
 use crate::status::Status;
-use crate::transceiver::constants::T_RX_ACK_INIT;
+use crate::transceiver::constants::{T_RX_ACK_INIT, T_RX_ACK_MAX, T_RX_ACK_MIN};
 use crate::utils::WrappingU3;
+use log::trace;
 use std::time::{Duration, SystemTime};
 
 /// The state of the transceiver.
@@ -12,7 +13,7 @@ pub struct State {
     last_received_frame_num: Option<WrappingU3>,
     reject: bool,
     within_transaction: bool,
-    pub t_rx_ack: Duration,
+    t_rx_ack: Duration,
 }
 
 impl State {
@@ -66,6 +67,22 @@ impl State {
     /// Sets whether the transceiver is within a transaction.
     pub fn set_within_transaction(&mut self, within_transaction: bool) {
         self.within_transaction = within_transaction;
+    }
+
+    /// Returns the `T_RX_ACK` timeout duration.
+    pub const fn t_rx_ack(&self) -> Duration {
+        self.t_rx_ack
+    }
+
+    /// Update the `T_RX_ACK` timeout duration.
+    pub fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
+        self.t_rx_ack = last_ack_duration
+            .map_or_else(
+                || self.t_rx_ack * 2,
+                |duration| self.t_rx_ack * 7 / 8 + duration / 2,
+            )
+            .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
+        trace!("Updated T_RX_ACK to {:?}", self.t_rx_ack);
     }
 
     /// Returns the next frame number.
