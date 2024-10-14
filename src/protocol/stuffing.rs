@@ -4,7 +4,7 @@ use std::io::{Error, ErrorKind, Result};
 const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
-/// Trait to allow stuffing of bytes.
+/// Stuff and un-stuff bytes.
 pub trait Stuffing {
     /// Stuffs bytes.
     fn stuff(&mut self) -> Result<()>;

@@ -1,3 +1,4 @@
+/// Mask bytes with pseudo-random numbers.
 pub trait Mask {
     /// Masks bytes with pseudo-random numbers.
     fn mask(&mut self);
@@ -11,6 +12,7 @@ impl Mask for [u8] {
     }
 }
 
+/// Generate a stream of pseudo-random numbers.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MaskGenerator {
     random: u8,
