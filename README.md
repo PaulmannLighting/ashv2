@@ -7,6 +7,10 @@ Asynchronous Serial Host protocol, version 2
 The official protocol description can be found
 at [silabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-gateway-protocol-reference.pdf).
 
+## Legal
+
+This project is free software and is not affiliated with Siliconlabs.
+
 ## Contribution guidelines
 
 * Use `cargo fmt`
