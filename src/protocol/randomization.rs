@@ -1,5 +1,5 @@
 pub trait Mask {
-    /// Masks a byte stream with pseudo-random numbers.
+    /// Masks bytes with pseudo-random numbers.
     fn mask(&mut self);
 }
 
