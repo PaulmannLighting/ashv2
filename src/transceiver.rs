@@ -732,7 +732,7 @@ where
 {
     /// Reset buffers and state.
     fn reset(&mut self) {
-        self.channels.reset();
+        self.channels.close();
         self.buffers.clear();
         self.state.reset(Status::Failed);
     }
