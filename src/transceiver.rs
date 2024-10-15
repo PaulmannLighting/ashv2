@@ -419,7 +419,9 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
-        self.write_frame(transmission.data_for_transmit()?)?;
+        let data = transmission.data_for_transmit()?;
+        trace!("Unmasked {:#04X}", data.unmasked());
+        self.write_frame(data)?;
         self.buffers
             .transmissions
             .insert(0, transmission)
@@ -608,10 +610,11 @@ where
             self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {
             warn!("Received retransmission of frame: {data}");
+            self.ack()?;
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
         } else {
-            debug!("Received out-of-sequence data frame: {data}");
+            error!("Received out-of-sequence data frame: {data}");
             self.enter_reject()?;
         }
 
