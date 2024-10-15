@@ -62,6 +62,15 @@ impl Channels {
     pub fn close(&mut self) {
         self.response.take();
 
+        if let Ok(waker) = self.waker.try_recv() {
+            waker.wake();
+        }
+    }
+
+    /// Reset the response channel and consume all remaining wakers.
+    pub fn reset(&mut self) {
+        self.close();
+
         // Wake up all remaining wakers.
         while let Ok(waker) = self.waker.try_recv() {
             waker.wake();

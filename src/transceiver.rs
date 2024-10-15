@@ -732,7 +732,7 @@ where
 {
     /// Reset buffers and state.
     fn reset(&mut self) {
-        self.channels.close();
+        self.channels.reset();
         self.buffers.clear();
         self.state.reset(Status::Failed);
     }
@@ -743,7 +743,6 @@ where
 
         if self.state.within_transaction() {
             error!("Aborting current transaction due to error.");
-            self.channels.close();
         }
 
         self.reset();
