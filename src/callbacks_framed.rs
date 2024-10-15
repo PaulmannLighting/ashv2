@@ -3,7 +3,7 @@ use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::{Context, Poll, Waker};
-use tokio::io::{AsyncRead, ReadBuf};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
@@ -50,5 +50,32 @@ impl AsyncRead for CallbacksFramed {
                 ))),
             },
         }
+    }
+}
+
+impl AsyncWrite for CallbacksFramed {
+    fn poll_write(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+        _buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        Poll::Ready(Err(Error::new(
+            ErrorKind::Unsupported,
+            "Write not supported.",
+        )))
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Poll::Ready(Err(Error::new(
+            ErrorKind::Unsupported,
+            "Write not supported.",
+        )))
+    }
+
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        Poll::Ready(Err(Error::new(
+            ErrorKind::Unsupported,
+            "Write not supported.",
+        )))
     }
 }
