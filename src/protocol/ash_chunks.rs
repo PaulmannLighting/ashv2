@@ -22,7 +22,7 @@ impl AshChunks for [u8] {
 
         if self.len() <= Data::MAX_PAYLOAD_SIZE
             || self.len() % Data::MAX_PAYLOAD_SIZE == 0
-            || self.len() % Data::MAX_PAYLOAD_SIZE > Data::MIN_PAYLOAD_SIZE
+            || self.len() % Data::MAX_PAYLOAD_SIZE >= Data::MIN_PAYLOAD_SIZE
         {
             return Ok(self.chunks(Data::MAX_PAYLOAD_SIZE));
         }
