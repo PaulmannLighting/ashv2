@@ -1,5 +1,5 @@
 use crate::{Payload, Request};
-use std::io::ErrorKind;
+use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::{Context, Poll, Waker};
@@ -10,20 +10,26 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 pub struct AshFramed<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     waker: SyncSender<Waker>,
+    channel_size: usize,
     receiver: Option<Receiver<Payload>>,
-    buffer: Vec<u8>,
+    buffer: heapless::Vec<u8, BUF_SIZE>,
     result: Option<std::io::Result<Box<[u8]>>>,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     /// Create a new `AshFramed` instance.
     #[must_use]
-    pub const fn new(sender: SyncSender<Request>, waker: SyncSender<Waker>) -> Self {
+    pub const fn new(
+        sender: SyncSender<Request>,
+        waker: SyncSender<Waker>,
+        channel_size: usize,
+    ) -> Self {
         Self {
             sender,
             waker,
+            channel_size,
             receiver: None,
-            buffer: Vec::new(),
+            buffer: heapless::Vec::new(),
             result: None,
         }
     }
@@ -54,7 +60,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
         let len = buf.len();
-        let (response_tx, response_rx) = sync_channel(BUF_SIZE);
+        let (response_tx, response_rx) = sync_channel(self.channel_size);
         let request = Request::new(buf.as_ref().into(), response_tx);
 
         match self.sender.try_send(request) {
@@ -91,7 +97,9 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
 
         match receiver.try_recv() {
             Ok(data) => {
-                self.buffer.extend_from_slice(&data);
+                self.buffer
+                    .extend_from_slice(&data)
+                    .map_err(|()| Error::new(ErrorKind::OutOfMemory, "Buffer full."))?;
                 self.reschedule(cx.waker().clone())
             }
             Err(error) => match error {
