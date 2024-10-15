@@ -199,11 +199,6 @@ where
 
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks(&mut chunks)? {
-            // Handle responses to sent chunks.
-            while let Some(packet) = self.receive()? {
-                self.handle_packet(packet)?;
-            }
-
             // Retransmit timed out data.
             //
             // We do this here to avoid going into an infinite loop
@@ -215,11 +210,6 @@ where
                     self.handle_packet(packet)?;
                 }
             }
-        }
-
-        // Handle any remaining responses.
-        while let Some(packet) = self.receive()? {
-            self.handle_packet(packet)?;
         }
 
         // Wait for retransmits to finish.
@@ -249,6 +239,11 @@ where
         while !self.buffers.transmissions.is_full() {
             if let Some(chunk) = chunks.next() {
                 self.send_chunk(chunk)?;
+
+                // Handle responses to sent chunk.
+                while let Some(packet) = self.receive()? {
+                    self.handle_packet(packet)?;
+                }
             } else {
                 return Ok(false);
             }
