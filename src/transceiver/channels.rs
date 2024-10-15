@@ -1,10 +1,12 @@
-use crate::packet::Data;
-use crate::request::Request;
-use crate::Payload;
-use log::error;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::Waker;
+
+use log::error;
+
+use crate::packet::Data;
+use crate::request::Request;
+use crate::Payload;
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
