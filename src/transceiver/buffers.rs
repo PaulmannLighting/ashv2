@@ -1,4 +1,4 @@
-use super::constants::TX_K;
+use super::constants::SLIDING_WINDOW_SIZE;
 use super::transmission::Transmission;
 use crate::types::FrameBuffer;
 
@@ -6,7 +6,7 @@ use crate::types::FrameBuffer;
 #[derive(Debug, Default)]
 pub struct Buffers {
     pub frame: FrameBuffer,
-    pub transmissions: heapless::Vec<Transmission, TX_K>,
+    pub transmissions: heapless::Vec<Transmission, SLIDING_WINDOW_SIZE>,
 }
 
 impl Buffers {
