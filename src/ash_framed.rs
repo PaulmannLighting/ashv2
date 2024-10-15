@@ -43,7 +43,7 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     fn reschedule(&mut self, waker: Waker) -> Poll<std::io::Result<()>> {
         if let Err(error) = self.waker.try_send(waker) {
             self.buffer.clear();
-            try_send_error_to_poll_result(&error)
+            Poll::Ready(Err(try_send_error_to_io_error(&error)))
         } else {
             Poll::Pending
         }
@@ -65,7 +65,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
                 self.receiver.replace(response_rx);
                 Poll::Ready(Ok(len))
             }
-            Err(error) => try_send_error_to_poll_result(&error),
+            Err(error) => Poll::Ready(Err(try_send_error_to_io_error(&error))),
         }
     }
 
@@ -108,9 +108,10 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
     }
 }
 
-fn try_send_error_to_poll_result<T, E>(error: &TrySendError<E>) -> Poll<std::io::Result<T>> {
+/// Convert a [`TrySendError`] into an [`Error`] result.
+fn try_send_error_to_io_error<T>(error: &TrySendError<T>) -> Error {
     match error {
-        TrySendError::Full(_) => Poll::Ready(Err(ErrorKind::WouldBlock.into())),
-        TrySendError::Disconnected(_) => Poll::Ready(Err(ErrorKind::BrokenPipe.into())),
+        TrySendError::Full(_) => ErrorKind::WouldBlock.into(),
+        TrySendError::Disconnected(_) => ErrorKind::BrokenPipe.into(),
     }
 }
