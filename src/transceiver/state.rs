@@ -29,12 +29,12 @@ impl State {
         }
     }
 
-    /// Returns the current status of the ASHv2 connection.
+    /// Returns the current status of the `ASHv2` connection.
     pub const fn status(&self) -> Status {
         self.status
     }
 
-    /// Sets the current status of the ASHv2 connection.
+    /// Sets the current status of the `ASHv2` connection.
     pub fn set_status(&mut self, status: Status) {
         self.status = status;
     }
