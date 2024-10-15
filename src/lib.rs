@@ -7,6 +7,7 @@
 
 pub use ash_framed::AshFramed;
 pub use baud_rate::BaudRate;
+pub use callbacks_framed::CallbacksFramed;
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
@@ -15,6 +16,7 @@ pub use utils::{make_pair, HexSlice};
 
 mod ash_framed;
 mod baud_rate;
+mod callbacks_framed;
 mod code;
 mod crc;
 mod frame;
