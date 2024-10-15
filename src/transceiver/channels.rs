@@ -58,11 +58,6 @@ impl Channels {
         }
     }
 
-    /// Reset the response channel.
-    pub fn reset(&mut self) {
-        self.response.take();
-    }
-
     /// Close the response channel.
     pub fn close(&mut self) {
         self.response.take();
