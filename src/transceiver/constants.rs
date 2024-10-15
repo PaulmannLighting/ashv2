@@ -5,6 +5,8 @@ pub const MAX_STARTUP_ATTEMPTS: usize = 5;
 pub const ACK_TIMEOUTS: usize = 4;
 #[cfg(any())]
 pub const TX_K: usize = 5;
+/// A sliding windows size > 1 may lead to "ERROR: Assert"
+/// errors on the NCP when sending fragmented messages.
 pub const SLIDING_WINDOW_SIZE: usize = 1;
 pub const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
 pub const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
