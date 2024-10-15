@@ -16,6 +16,10 @@ use std::thread::spawn;
 use tokio_stream::StreamExt;
 use tokio_util::codec::Framed;
 
+/// Contrived maximum frame size.
+const MAX_FRAME_SIZE: usize = 512;
+const CHANNEL_SIZE: usize = 4;
+
 #[derive(Debug, Parser)]
 struct Args {
     #[arg(index = 1)]
@@ -36,7 +40,7 @@ async fn main() {
 }
 
 async fn run(serial_port: impl SerialPort + 'static, keep_listening: bool) {
-    let (mut ash, transceiver) = make_pair::<32, _>(serial_port, None);
+    let (mut ash, transceiver) = make_pair::<MAX_FRAME_SIZE, _>(serial_port, CHANNEL_SIZE, None);
     let running = Arc::new(AtomicBool::new(true));
     let transceiver_thread = spawn(|| transceiver.run(running));
     let mut framed = Framed::new(&mut ash, RawCodec);
