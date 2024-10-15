@@ -20,16 +20,11 @@ impl AshChunks for [u8] {
             ));
         }
 
-        if self.len() <= Data::MAX_PAYLOAD_SIZE || self.len() % Data::MAX_PAYLOAD_SIZE == 0 {
+        if self.len() <= Data::MAX_PAYLOAD_SIZE
+            || self.len() % Data::MAX_PAYLOAD_SIZE == 0
+            || self.len() % Data::MAX_PAYLOAD_SIZE > Data::MIN_PAYLOAD_SIZE
+        {
             return Ok(self.chunks(Data::MAX_PAYLOAD_SIZE));
-        }
-
-        for frame_size in (Data::MIN_PAYLOAD_SIZE..=Data::MAX_PAYLOAD_SIZE).rev() {
-            let remainder = self.len() % frame_size;
-
-            if remainder == 0 || remainder >= Data::MIN_PAYLOAD_SIZE {
-                return Ok(self.chunks(frame_size));
-            }
         }
 
         Err(Error::new(
