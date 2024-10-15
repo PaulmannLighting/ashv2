@@ -38,13 +38,13 @@ use transmission::Transmission;
 /// The [`AshFramed`](crate::AshFramed) struct implements a stream
 /// to communicate with the NCP via the transceiver.
 #[derive(Debug)]
-pub struct Transceiver<T, const SLIDING_WINDOW_SIZE: usize = { constants::SLIDING_WINDOW_SIZE }>
+pub struct Transceiver<T>
 where
     T: SerialPort,
 {
     serial_port: T,
     channels: Channels,
-    buffers: Buffers<SLIDING_WINDOW_SIZE>,
+    buffers: Buffers,
     state: State,
 }
 
