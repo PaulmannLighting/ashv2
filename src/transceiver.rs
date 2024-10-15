@@ -609,12 +609,12 @@ where
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {
-            warn!("Received retransmission of frame: {data}");
+            info!("Received retransmission of frame: {data}");
             self.ack()?;
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
         } else {
-            error!("Received out-of-sequence data frame: {data}");
+            warn!("Received out-of-sequence data frame: {data}");
             self.enter_reject()?;
         }
 
