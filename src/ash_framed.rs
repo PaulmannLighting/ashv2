@@ -13,7 +13,6 @@ pub struct AshFramed<const BUF_SIZE: usize> {
     channel_size: usize,
     receiver: Option<Receiver<Payload>>,
     buffer: heapless::Vec<u8, BUF_SIZE>,
-    result: Option<std::io::Result<Box<[u8]>>>,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
@@ -30,14 +29,12 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
             channel_size,
             receiver: None,
             buffer: heapless::Vec::new(),
-            result: None,
         }
     }
 
     fn reset(&mut self) {
         self.receiver = None;
         self.buffer.clear();
-        self.result = None;
     }
 
     fn reschedule(&mut self, waker: Waker) -> Poll<std::io::Result<()>> {
