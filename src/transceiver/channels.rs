@@ -1,7 +1,7 @@
 use crate::packet::Data;
 use crate::request::Request;
-use crate::{HexSlice, Payload};
-use log::{error, trace};
+use crate::Payload;
+use log::error;
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::Waker;
