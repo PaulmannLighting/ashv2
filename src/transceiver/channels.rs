@@ -1,7 +1,7 @@
 use crate::packet::Data;
 use crate::request::Request;
-use crate::Payload;
-use log::error;
+use crate::{HexSlice, Payload};
+use log::{error, trace};
 use std::io::{Error, ErrorKind};
 use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::Waker;
@@ -93,8 +93,8 @@ impl Channels {
                     error!("Callback channel is congested. Dropping callback frame.");
                 }
                 TrySendError::Disconnected(_) => {
-                    self.callback.take();
                     error!("Callback channel has disconnected. Closing callback channel forever.",);
+                    self.callback.take();
                 }
             }
         }
