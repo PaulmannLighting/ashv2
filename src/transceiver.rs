@@ -67,7 +67,7 @@ where
         serial_port: T,
         requests: Receiver<Request>,
         waker: Receiver<Waker>,
-        callback: Option<(SyncSender<Payload>, Receiver<Waker>)>,
+        callback: Option<SyncSender<Payload>>,
     ) -> Self {
         Self {
             serial_port,

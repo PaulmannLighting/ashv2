@@ -12,7 +12,7 @@ use crate::Payload;
 pub struct Channels {
     requests: Receiver<Request>,
     waker: Receiver<Waker>,
-    callback: Option<(SyncSender<Payload>, Receiver<Waker>)>,
+    callback: Option<SyncSender<Payload>>,
     response: Option<SyncSender<Payload>>,
 }
 
@@ -21,7 +21,7 @@ impl Channels {
     pub const fn new(
         requests: Receiver<Request>,
         waker: Receiver<Waker>,
-        callback: Option<(SyncSender<Payload>, Receiver<Waker>)>,
+        callback: Option<SyncSender<Payload>>,
     ) -> Self {
         Self {
             requests,
@@ -52,8 +52,8 @@ impl Channels {
     pub fn respond(&mut self, payload: Payload) {
         if let Some(response) = self.response.clone() {
             self.send_response(&response, payload);
-        } else if let Some((callback, waker)) = self.callback.take() {
-            self.send_callback(callback, waker, payload);
+        } else if let Some(callback) = self.callback.clone() {
+            self.send_callback(&callback, payload);
         } else {
             error!("Neither response channel not callback channel are available. Discarding data.");
         }
@@ -87,12 +87,7 @@ impl Channels {
         }
     }
 
-    fn send_callback(
-        &mut self,
-        callback: SyncSender<Payload>,
-        waker: Receiver<Waker>,
-        payload: Payload,
-    ) {
+    fn send_callback(&mut self, callback: &SyncSender<Payload>, payload: Payload) {
         if let Err(error) = callback.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
@@ -103,10 +98,6 @@ impl Channels {
                     self.callback.take();
                 }
             }
-        } else if let Ok(waker) = waker.try_recv() {
-            waker.wake();
         }
-
-        self.callback.replace((callback, waker));
     }
 }
