@@ -5,7 +5,7 @@ use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::{Context, Poll, Waker};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-/// A framed asynchronous `ASHv2` host.
+/// A framed asynchronous iterator over received callback frames.
 #[derive(Debug)]
 pub struct CallbacksFramed {
     waker: SyncSender<Waker>,
@@ -13,7 +13,7 @@ pub struct CallbacksFramed {
 }
 
 impl CallbacksFramed {
-    /// Create a new `AshFramed` instance.
+    /// Create a new `CallbacksFramed` instance.
     #[must_use]
     pub const fn new(waker: SyncSender<Waker>, receiver: Receiver<Payload>) -> Self {
         Self { waker, receiver }
