@@ -463,7 +463,6 @@ where
         let serial_port = &mut self.serial_port;
         let mut error = false;
 
-        trace!("Waiting for incoming data...");
         for byte in serial_port.bytes() {
             match byte? {
                 CANCEL => {
@@ -499,6 +498,8 @@ where
                     warn!("NCP requested to stop transmission. Ignoring.");
                 }
                 WAKE => {
+                    trace!("Received WAKE byte.");
+
                     if buffer.is_empty() {
                         debug!("NCP tried to wake us up.");
                     } else if buffer.push(WAKE).is_err() {
@@ -506,6 +507,8 @@ where
                     }
                 }
                 byte => {
+                    trace!("Received data byte: {byte:#04X}");
+
                     if buffer.push(byte).is_err() {
                         return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
                     }
