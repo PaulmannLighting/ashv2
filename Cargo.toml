@@ -12,8 +12,6 @@ edition = "2021"
 exclude = [".gitignore"]
 publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 bitflags = "2.6"
 clap = { version = "4.5", optional = true }
