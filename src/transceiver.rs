@@ -202,16 +202,17 @@ where
 
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks(&mut chunks)? {
-            // Retransmit timed out data.
-            //
-            // We do this here to avoid going into an infinite loop
-            // if the NCP does not respond to out pushed chunks.
             while self.buffers.transmissions.is_full() {
-                self.retransmit_timed_out_data()?;
-
+                // Handle potential incoming ACKs and DATA packets.
                 while let Some(packet) = self.receive()? {
                     self.handle_packet(packet)?;
                 }
+
+                // Retransmit timed out data.
+                //
+                // We do this here to avoid going into an infinite loop
+                // if the NCP does not respond to out pushed chunks.
+                self.retransmit_timed_out_data()?;
             }
         }
 
@@ -242,11 +243,6 @@ where
         while !self.buffers.transmissions.is_full() {
             if let Some(chunk) = chunks.next() {
                 self.send_chunk(chunk)?;
-
-                // Handle responses to sent chunk.
-                while let Some(packet) = self.receive()? {
-                    self.handle_packet(packet)?;
-                }
             } else {
                 return Ok(false);
             }
