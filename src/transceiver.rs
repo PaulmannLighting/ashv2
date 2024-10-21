@@ -463,6 +463,7 @@ where
         let serial_port = &mut self.serial_port;
         let mut error = false;
 
+        trace!("Waiting for incoming data...");
         for byte in serial_port.bytes() {
             match byte? {
                 CANCEL => {
