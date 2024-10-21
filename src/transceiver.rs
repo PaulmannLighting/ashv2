@@ -544,7 +544,8 @@ where
             .push(FLAG)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Could not append flag byte."))?;
         trace!("Writing bytes: {:#04X}", HexSlice::new(buffer));
-        self.serial_port.write_all(buffer)
+        self.serial_port.write_all(buffer)?;
+        self.serial_port.flush()
     }
 }
 
