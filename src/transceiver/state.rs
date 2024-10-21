@@ -1,8 +1,10 @@
+use std::time::{Duration, SystemTime};
+
+use log::trace;
+
 use crate::status::Status;
 use crate::transceiver::constants::{T_RX_ACK_INIT, T_RX_ACK_MAX, T_RX_ACK_MIN};
 use crate::utils::WrappingU3;
-use log::trace;
-use std::time::{Duration, SystemTime};
 
 /// The state of the transceiver.
 #[derive(Debug)]

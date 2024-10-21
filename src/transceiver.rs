@@ -1,22 +1,3 @@
-mod buffers;
-mod channels;
-mod constants;
-
-mod state;
-mod transmission;
-
-use crate::frame::Frame;
-use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
-use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
-use crate::status::Status;
-use crate::utils::WrappingU3;
-use crate::{HexSlice, Payload, Request};
-use buffers::Buffers;
-use channels::Channels;
-use constants::T_RSTACK_MAX;
-use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
-use state::State;
 use std::fmt::{LowerHex, UpperHex};
 use std::io::{Error, ErrorKind, Read};
 use std::slice::Chunks;
@@ -27,7 +8,29 @@ use std::sync::{
 };
 use std::task::Waker;
 use std::time::SystemTime;
+
+use log::{debug, error, info, trace, warn};
+use serialport::SerialPort;
+
+use crate::frame::Frame;
+use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
+use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::status::Status;
+use crate::utils::WrappingU3;
+use crate::{HexSlice, Payload, Request};
+
+use buffers::Buffers;
+use channels::Channels;
+use constants::T_RSTACK_MAX;
+use state::State;
 use transmission::Transmission;
+
+mod buffers;
+mod channels;
+mod constants;
+
+mod state;
+mod transmission;
 
 /// `ASHv2` transceiver.
 ///

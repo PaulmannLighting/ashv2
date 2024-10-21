@@ -1,5 +1,6 @@
-use crate::Payload;
 use std::sync::mpsc::SyncSender;
+
+use crate::Payload;
 
 /// A request sent by [`AshFramed`](crate::AshFramed) to the [`Transceiver`](crate::Transceiver).
 #[derive(Debug)]

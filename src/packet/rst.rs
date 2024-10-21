@@ -1,8 +1,9 @@
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
+use std::io::ErrorKind;
+
 use crate::frame::Frame;
 use crate::types::FrameBuffer;
 use crate::HexSlice;
-use std::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
 
 pub const RST: Rst = Rst::new();
 

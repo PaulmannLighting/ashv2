@@ -1,10 +1,11 @@
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
+use std::io::ErrorKind;
+
 use crate::code::Code;
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::types::FrameBuffer;
 use crate::HexSlice;
-use std::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {

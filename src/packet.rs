@@ -1,11 +1,12 @@
+use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
+use std::io::ErrorKind;
+
 pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::{Rst, RST};
 pub use rst_ack::RstAck;
-use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
 
 mod ack;
 mod data;

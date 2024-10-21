@@ -1,20 +1,22 @@
 //! Test `ASHv2` connection.
 
-mod commands;
-mod raw_codec;
-
-use ashv2::{make_pair, open, BaudRate, HexSlice};
-use clap::Parser;
-use commands::COMMANDS;
-use futures::SinkExt;
-use log::{error, info};
-use raw_codec::RawCodec;
-use serialport::{FlowControl, SerialPort};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::thread::spawn;
+
+use ashv2::{make_pair, open, BaudRate, HexSlice};
+use clap::Parser;
+use futures::SinkExt;
+use log::{error, info};
+use serialport::{FlowControl, SerialPort};
 use tokio_stream::StreamExt;
 use tokio_util::codec::Framed;
+
+use commands::COMMANDS;
+use raw_codec::RawCodec;
+
+mod commands;
+mod raw_codec;
 
 /// Contrived maximum frame size.
 const MAX_FRAME_SIZE: usize = 512;

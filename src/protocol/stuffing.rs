@@ -1,5 +1,6 @@
-use crate::protocol::{CANCEL, ESCAPE, FLAG, SUBSTITUTE, X_OFF, X_ON};
 use std::io::{Error, ErrorKind, Result};
+
+use crate::protocol::{CANCEL, ESCAPE, FLAG, SUBSTITUTE, X_OFF, X_ON};
 
 const RESERVED_BYTES: [u8; 6] = [FLAG, ESCAPE, X_ON, X_OFF, SUBSTITUTE, CANCEL];
 const COMPLEMENT_BIT: u8 = 1 << 5;

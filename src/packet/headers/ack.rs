@@ -1,5 +1,6 @@
-use crate::utils::WrappingU3;
 use bitflags::bitflags;
+
+use crate::utils::WrappingU3;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Ack(u8);

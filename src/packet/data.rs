@@ -1,11 +1,12 @@
+use std::fmt::{Display, Formatter, LowerHex, UpperHex};
+use std::io::ErrorKind;
+
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::types::FrameBuffer;
 use crate::utils::{HexSlice, WrappingU3};
-use std::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
 
 type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
 

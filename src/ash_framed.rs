@@ -1,9 +1,11 @@
-use crate::{Payload, Request};
 use std::io::{Error, ErrorKind};
 use std::pin::Pin;
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::task::{Context, Poll, Waker};
+
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+
+use crate::{Payload, Request};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]

@@ -1,5 +1,6 @@
-use crate::utils::WrappingU3;
 use bitflags::bitflags;
+
+use crate::utils::WrappingU3;
 
 const FRAME_NUM_OFFSET: u8 = 4;
 

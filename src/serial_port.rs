@@ -1,5 +1,6 @@
-use serialport::{FlowControl, SerialPort};
 use std::borrow::Cow;
+
+use serialport::{FlowControl, SerialPort};
 
 use crate::BaudRate;
 
