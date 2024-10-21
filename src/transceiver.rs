@@ -202,8 +202,8 @@ where
 
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks(&mut chunks)? {
-            // Wait for queue tu fully clear before sending more data.
-            while !self.buffers.transmissions.is_empty() {
+            // Wait for space in the queue to become available before transmitting more data.
+            while self.buffers.transmissions.is_full() {
                 // Handle potential incoming ACKs and DATA packets.
                 while let Some(packet) = self.receive()? {
                     self.handle_packet(packet)?;
