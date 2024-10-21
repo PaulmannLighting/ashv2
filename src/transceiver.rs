@@ -600,7 +600,13 @@ where
         } else if data.frame_num() == self.state.ack_number() {
             self.leave_reject();
             self.state.set_last_received_frame_num(data.frame_num());
-            self.ack()?;
+
+            if self.state.frame_number() == data.ack_num() {
+                self.ack()?;
+            } else {
+                debug!("Waiting for further data before acknowledging.");
+            }
+
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {

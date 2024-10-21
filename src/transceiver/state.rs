@@ -87,6 +87,11 @@ impl State {
         trace!("Updated T_RX_ACK to {:?}", self.t_rx_ack);
     }
 
+    /// Returns the current frame number.
+    pub const fn frame_number(&self) -> WrappingU3 {
+        self.frame_number
+    }
+
     /// Returns the next frame number.
     pub fn next_frame_number(&mut self) -> WrappingU3 {
         let frame_number = self.frame_number;
