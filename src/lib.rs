@@ -10,7 +10,7 @@ pub use frames::Frames;
 pub use serial_port::open;
 pub use stream::Stream;
 pub use transceiver::Transceiver;
-pub use types::{FrameBuffer, Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use utils::{make_pair, HexSlice};
 
 mod baud_rate;
