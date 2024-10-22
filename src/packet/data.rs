@@ -7,8 +7,7 @@ use crate::packet::headers;
 use crate::protocol::Mask;
 use crate::types::FrameBuffer;
 use crate::utils::{HexSlice, WrappingU3};
-
-type Payload = heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>;
+use crate::Payload;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
