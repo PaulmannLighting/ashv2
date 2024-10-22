@@ -241,9 +241,12 @@ where
     ///
     /// Returns `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
+        let mut offset = WrappingU3::default();
+
         while !self.buffers.transmissions.is_full() {
             if let Some(chunk) = chunks.next() {
-                self.send_chunk(chunk)?;
+                self.send_chunk(chunk, offset)?;
+                offset += 1;
             } else {
                 return Ok(false);
             }
@@ -253,7 +256,7 @@ where
     }
 
     /// Sends a chunk of data.
-    fn send_chunk(&mut self, chunk: &[u8]) -> std::io::Result<()> {
+    fn send_chunk(&mut self, chunk: &[u8], offset: WrappingU3) -> std::io::Result<()> {
         let payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }> =
             chunk.try_into().map_err(|()| {
                 Error::new(
@@ -264,7 +267,7 @@ where
         let data = Data::new(
             self.state.next_frame_number(),
             payload,
-            self.state.ack_number(),
+            self.state.ack_number() + offset,
         );
         self.transmit(data.into())
     }
@@ -600,13 +603,7 @@ where
         } else if data.frame_num() == self.state.ack_number() {
             self.leave_reject();
             self.state.set_last_received_frame_num(data.frame_num());
-
-            if self.state.frame_number() == data.ack_num() {
-                self.ack()?;
-            } else {
-                debug!("Waiting for further data before acknowledging.");
-            }
-
+            self.ack()?;
             self.ack_sent_packets(data.ack_num());
             self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {
