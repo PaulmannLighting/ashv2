@@ -4,14 +4,14 @@ use crate::types::FrameBuffer;
 /// A trait for iterating over `ASHv2` encoded frames.
 pub trait Frames: Iterator<Item = u8> {
     /// Returns an iterator over the payload frames.
-    fn buffer_next<'buf>(&mut self, buffer: &'buf mut FrameBuffer) -> Option<&'buf [u8]> {
+    fn buffer_next(&mut self, buffer: &mut FrameBuffer) -> Option<()> {
         buffer.clear();
 
         loop {
             match self.next()? {
                 FLAG => {
                     buffer.unstuff();
-                    return Some(&*buffer);
+                    return Some(());
                 }
                 other => {
                     buffer.push(other).ok()?;
@@ -70,7 +70,9 @@ mod tests {
 
         let mut buffer = FrameBuffer::new();
 
-        assert_eq!(stream.buffer_next(&mut buffer), Some(frame1));
-        assert_eq!(stream.buffer_next(&mut buffer), Some(frame2));
+        stream.buffer_next(&mut buffer).unwrap();
+        assert_eq!(&buffer, frame1);
+        stream.buffer_next(&mut buffer).unwrap();
+        assert_eq!(&buffer, frame2);
     }
 }
