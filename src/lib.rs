@@ -7,7 +7,6 @@
 
 pub use baud_rate::BaudRate;
 pub use frames::Frames;
-pub use request::Request;
 pub use serial_port::open;
 pub use stream::Stream;
 pub use transceiver::Transceiver;

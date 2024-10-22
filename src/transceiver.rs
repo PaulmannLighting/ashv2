@@ -15,9 +15,10 @@ use serialport::SerialPort;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::request::Request;
 use crate::status::Status;
 use crate::utils::WrappingU3;
-use crate::{HexSlice, Payload, Request};
+use crate::{HexSlice, Payload};
 
 use buffers::Buffers;
 use channels::Channels;
