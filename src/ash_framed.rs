@@ -1,71 +1,91 @@
-use std::io::{Error, ErrorKind};
-use std::pin::Pin;
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError, TrySendError};
-use std::task::{Context, Poll, Waker};
-
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-
+use crate::packet::Data;
+use crate::response::Response;
+use crate::shared_state::SharedState;
+use crate::types::FrameBuffer;
+use crate::write_frame::WriteFrame;
 use crate::{Payload, Request};
+use futures::pin_mut;
+use serialport::SerialPort;
+use std::io::{Error, ErrorKind};
+use std::pin::{pin, Pin};
+use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::task::{Context, Poll, Waker};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
-pub struct AshFramed<const BUF_SIZE: usize> {
-    sender: SyncSender<Request>,
-    waker: SyncSender<Waker>,
+pub struct AshFramed<T>
+where
+    T: SerialPort,
+{
+    serial_port: T,
     channel_size: usize,
-    receiver: Option<Receiver<Payload>>,
-    buffer: heapless::Vec<u8, BUF_SIZE>,
+    state: Arc<RwLock<SharedState>>,
+    receiver: Option<Receiver<Response>>,
+    responses: Arc<Mutex<Option<Sender<Response>>>>,
+    frame_buffer: FrameBuffer,
 }
 
-impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
+impl<T> AshFramed<T>
+where
+    T: SerialPort,
+{
     /// Create a new `AshFramed` instance.
     #[must_use]
-    pub const fn new(
-        sender: SyncSender<Request>,
-        waker: SyncSender<Waker>,
-        channel_size: usize,
-    ) -> Self {
+    pub fn new(serial_port: T, channel_size: usize) -> Self {
+        let state = Arc::new(RwLock::new(SharedState::new()));
         Self {
-            sender,
-            waker,
+            serial_port,
             channel_size,
+            state,
             receiver: None,
-            buffer: heapless::Vec::new(),
+            responses: Arc::new(Mutex::new(None)),
+            frame_buffer: FrameBuffer::new(),
         }
+    }
+
+    fn state(&self) -> RwLockReadGuard<'_, SharedState> {
+        self.state.read().expect("RW lock poisoned.")
+    }
+
+    fn state_mut(&self) -> RwLockWriteGuard<'_, SharedState> {
+        self.state.write().expect("RW lock poisoned.")
+    }
+
+    fn next_data_frame(&mut self, buf: &[u8]) -> std::io::Result<Data> {
+        let frame_number = self.state_mut().next_frame_number();
+        let ack_number = self.state().ack_number();
+        let mut buffer = Payload::new();
+        buffer
+            .extend_from_slice(buf)
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Buffer overflow"))?;
+        let data = Data::new(frame_number, buffer, ack_number);
+        Ok(data)
     }
 
     fn reset(&mut self) {
         self.receiver = None;
-        self.buffer.clear();
-    }
-
-    fn reschedule(&mut self, waker: Waker) -> Poll<std::io::Result<()>> {
-        if let Err(error) = self.waker.try_send(waker) {
-            self.buffer.clear();
-            Poll::Ready(Err(try_send_error_to_io_error(&error)))
-        } else {
-            Poll::Pending
-        }
+        self.frame_buffer.clear();
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
+impl<T> AsyncWrite for AshFramed<T>
+where
+    T: SerialPort,
+{
     fn poll_write(
-        mut self: Pin<&mut Self>,
+        mut self: Pin<&mut AshFramed<T>>,
         _cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
-        let len = buf.len();
-        let (response_tx, response_rx) = sync_channel(self.channel_size);
-        let request = Request::new(buf.as_ref().into(), response_tx);
-
-        match self.sender.try_send(request) {
-            Ok(()) => {
-                self.receiver.replace(response_rx);
-                Poll::Ready(Ok(len))
-            }
-            Err(error) => Poll::Ready(Err(try_send_error_to_io_error(&error))),
-        }
+        let (response_tx, response_rx) = channel(self.channel_size);
+        self.responses.lock().unwrap().replace(response_tx);
+        pin_mut!(self).receiver.replace(response_rx);
+        let data = self.next_data_frame(buf)?;
+        self.serial_port
+            .write_frame(&data, &mut self.frame_buffer)?;
+        Poll::Ready(Ok(buf.len()))
     }
 
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
@@ -78,39 +98,28 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
+impl<T> AsyncRead for AshFramed<T>
+where
+    T: SerialPort,
+{
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        let Some(receiver) = &self.receiver else {
+        let Some(receiver) = &mut self.receiver else {
             return self.reschedule(cx.waker().clone());
         };
 
-        match receiver.try_recv() {
-            Ok(data) => {
-                self.buffer
-                    .extend_from_slice(&data)
-                    .map_err(|()| Error::new(ErrorKind::OutOfMemory, "Buffer full."))?;
-                self.reschedule(cx.waker().clone())
+        if let Poll::Ready(data) = receiver.recv().poll(cx) {
+            if let Some(data) = data {
+                buf.put_slice(&data);
+                Poll::Ready(Ok(()))
+            } else {
+                Poll::Ready(Ok(()))
             }
-            Err(error) => match error {
-                TryRecvError::Empty => self.reschedule(cx.waker().clone()),
-                TryRecvError::Disconnected => {
-                    buf.put_slice(&self.buffer);
-                    self.buffer.clear();
-                    Poll::Ready(Ok(()))
-                }
-            },
+        } else {
+            Poll::Pending
         }
-    }
-}
-
-/// Convert a [`TrySendError`] into an [`Error`] result.
-fn try_send_error_to_io_error<T>(error: &TrySendError<T>) -> Error {
-    match error {
-        TrySendError::Full(_) => ErrorKind::WouldBlock.into(),
-        TrySendError::Disconnected(_) => ErrorKind::BrokenPipe.into(),
     }
 }

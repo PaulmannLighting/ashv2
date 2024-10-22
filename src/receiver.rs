@@ -1,9 +1,6 @@
 use std::fmt::{LowerHex, UpperHex};
 use std::io::{Error, ErrorKind, Read};
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard,
-};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::SystemTime;
 
 use log::{debug, error, info, trace, warn};
@@ -17,6 +14,7 @@ use crate::response::Response;
 use crate::shared_state::SharedState;
 use crate::status::Status;
 use crate::types::FrameBuffer;
+use crate::write_frame::WriteFrame;
 use crate::{HexSlice, Payload};
 
 /// `ASHv2` transceiver.
@@ -72,12 +70,12 @@ where
     /// Run the transceiver.
     ///
     /// This should be called in a separate thread.
-    pub async fn run(mut self, running: Arc<AtomicBool>) {
-        while running.load(Relaxed) {
+    pub async fn run(mut self) {
+        loop {
             if let Err(error) = self.main().await {
                 error!("{error}");
 
-                if self.responses.lock().expect("mutex poisoned").is_some() {
+                if self.responses().is_some() {
                     error!("Aborting current transaction due to error.");
                 }
 
@@ -342,7 +340,7 @@ where
     }
 
     async fn try_respond(&self, response: Response) -> Option<Response> {
-        let mut lock = self.responses.lock().expect("mutex poisoned");
+        let mut lock = self.responses();
 
         if let Some(responses) = lock.as_ref() {
             if let Err(_) = responses.send(response).await {
@@ -362,10 +360,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn ack(&mut self) -> std::io::Result<()> {
-        let ack = Ack::new(
-            self.state().ack_number(),
-            self.responses.lock().expect("mutex poisoned").is_some(),
-        );
+        let ack = Ack::new(self.state().ack_number(), self.responses().is_some());
         self.send_ack(&ack)
     }
 
@@ -377,7 +372,7 @@ where
         }
 
         debug!("Sending ACK: {ack}");
-        self.write_frame(ack)
+        self.serial_port.write_frame(ack, &mut self.buffer)
     }
 
     /// Send a `NAK` frame with the current ACK number.
@@ -386,10 +381,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn nak(&mut self) -> std::io::Result<()> {
-        let nak = Nak::new(
-            self.state().ack_number(),
-            self.responses.lock().expect("mutex poisoned").is_some(),
-        );
+        let nak = Nak::new(self.state().ack_number(), self.responses().is_some());
         self.send_nak(&nak)
     }
 
@@ -401,7 +393,7 @@ where
         }
 
         debug!("Sending NAK: {nak}");
-        self.write_frame(nak)
+        self.serial_port.write_frame(nak, &mut self.buffer)
     }
 
     /// Send a RST frame.
@@ -410,36 +402,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn rst(&mut self) -> std::io::Result<()> {
-        self.write_frame(&RST)
-    }
-
-    /// Writes an ASH [`Frame`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port write operation failed.
-    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
-    where
-        F: Frame + LowerHex + UpperHex,
-    {
-        debug!("Writing frame: {frame}");
-        trace!("Frame: {frame:#04X}");
-        self.buffer.clear();
-        frame.buffer(&mut self.buffer).map_err(|()| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "Could not append frame bytes to buffer.",
-            )
-        })?;
-        trace!("Frame bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer.stuff()?;
-        trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer
-            .push(FLAG)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Could not append flag byte."))?;
-        trace!("Writing bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.serial_port.write_all(&self.buffer)?;
-        self.serial_port.flush()
+        self.serial_port.write_frame(&RST, &mut self.buffer)
     }
 
     fn state(&self) -> RwLockReadGuard<'_, SharedState> {
@@ -450,9 +413,13 @@ where
         self.state.write().expect("RW lock poisoned")
     }
 
+    fn responses(&self) -> MutexGuard<'_, Option<Sender<Response>>> {
+        self.responses.lock().expect("mutex poisoned")
+    }
+
     /// Reset buffers and state.
     fn reset(&mut self) {
-        self.responses.lock().expect("mutex poisoned").take();
+        self.responses().take();
         self.buffer.clear();
         self.state_mut().reset(Status::Failed);
     }

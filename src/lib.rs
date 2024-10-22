@@ -30,5 +30,6 @@ mod status;
 mod transceiver;
 mod types;
 mod utils;
+mod write_frame;
 
 const VERSION: u8 = 0x02;
