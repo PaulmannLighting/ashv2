@@ -31,13 +31,14 @@ where
     type Item = Payload;
 
     fn next(&mut self) -> Option<Self::Item> {
+        self.buffer.clear();
+
         loop {
             match self.iterator.next()? {
                 FLAG => {
                     self.buffer.unstuff();
                     let mut payload = Payload::new();
                     payload.extend_from_slice(&self.buffer).ok()?;
-                    self.buffer.clear();
                     return Some(payload);
                 }
                 other => {
