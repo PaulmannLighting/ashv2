@@ -13,6 +13,8 @@ pub trait Frames: Iterator<Item = u8> {
     }
 }
 
+impl<T> Frames for T where T: Iterator<Item = u8> {}
+
 pub struct PayloadIterator<T>
 where
     T: Iterator<Item = u8>,
