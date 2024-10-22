@@ -41,17 +41,17 @@ mod transmission;
 /// The [`AshFramed`](crate::AshFramed) struct implements a stream
 /// to communicate with the NCP via the transceiver.
 #[derive(Debug)]
-pub struct Transceiver<T, const SLIDING_WINDOW_SIZE: usize = { constants::SLIDING_WINDOW_SIZE }>
+pub struct Transceiver<T>
 where
     T: SerialPort,
 {
     serial_port: T,
     channels: Channels,
-    buffers: Buffers<SLIDING_WINDOW_SIZE>,
+    buffers: Buffers,
     state: State,
 }
 
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -117,7 +117,7 @@ where
 }
 
 /// Establish an `ASHv2` connection with the NCP.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -188,7 +188,7 @@ where
 ///
 /// Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
 /// Otherwise, the transactions waits for the NCP to acknowledge the sent data.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -293,7 +293,7 @@ where
 ///
 ///   * have been `NAK`ed by the NCP or
 ///   * not been acknowledged by the NCP in time.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -360,7 +360,7 @@ where
 /// `ASHv2` frame I/O implementation.
 ///
 /// This module contains the implementation of the `ASHv2` frame I/O operations.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -555,7 +555,7 @@ where
 /// Packet handling implementation for the transceiver.
 ///
 /// This module contains methods to handle incoming packets sent by the NCP.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -677,7 +677,7 @@ where
 }
 
 /// Handle callbacks actively sent by the NCP outside of transactions.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -704,7 +704,7 @@ where
 ///   * Is out of sequence.
 ///   * Was valid, but had to be discarded due to lack of memory to store it.
 ///
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
@@ -729,7 +729,7 @@ where
 }
 
 /// Reset and error handling implementation.
-impl<const SLIDING_WINDOW_SIZE: usize, T> Transceiver<T, SLIDING_WINDOW_SIZE>
+impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
