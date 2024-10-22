@@ -13,7 +13,7 @@ pub trait AshChunks {
 
 impl AshChunks for [u8] {
     fn ash_chunks(&self) -> std::io::Result<Chunks<'_, u8>> {
-        if self.len() < MAX_PAYLOAD_SIZE {
+        if self.len() < MIN_PAYLOAD_SIZE {
             return Err(Error::new(
                 ErrorKind::UnexpectedEof,
                 "Not enough data to fill a chunk.",
