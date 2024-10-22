@@ -9,9 +9,9 @@ use crate::protocol::{Stuffing, FLAG};
 use crate::types::FrameBuffer;
 use crate::{Payload, Request};
 
-/// A framed asynchronous `ASHv2` host.
+/// A stream and sink for asynchronous `ASHv2` hosts.
 #[derive(Debug)]
-pub struct AshFramed<const BUF_SIZE: usize> {
+pub struct Stream<const BUF_SIZE: usize> {
     sender: SyncSender<Request>,
     waker: SyncSender<Waker>,
     channel_size: usize,
@@ -20,7 +20,7 @@ pub struct AshFramed<const BUF_SIZE: usize> {
     frame: FrameBuffer,
 }
 
-impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> Stream<BUF_SIZE> {
     /// Create a new `AshFramed` instance.
     #[must_use]
     pub const fn new(
@@ -71,7 +71,7 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncWrite for Stream<BUF_SIZE> {
     fn poll_write(
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
@@ -100,7 +100,7 @@ impl<const BUF_SIZE: usize> AsyncWrite for AshFramed<BUF_SIZE> {
     }
 }
 
-impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
+impl<const BUF_SIZE: usize> AsyncRead for Stream<BUF_SIZE> {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,

@@ -5,16 +5,15 @@
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
 
-pub use ash_framed::AshFramed;
 pub use baud_rate::BaudRate;
 pub use frames::Frames;
 pub use request::Request;
 pub use serial_port::open;
+pub use stream::Stream;
 pub use transceiver::Transceiver;
 pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use utils::{make_pair, HexSlice};
 
-mod ash_framed;
 mod baud_rate;
 mod code;
 mod crc;
@@ -25,6 +24,7 @@ mod protocol;
 mod request;
 mod serial_port;
 mod status;
+mod stream;
 mod transceiver;
 mod types;
 mod utils;
