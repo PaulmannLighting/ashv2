@@ -5,9 +5,9 @@ use std::task::{Context, Poll, Waker};
 
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::protocol::Stuffing;
+use crate::protocol::{Stuffing, FLAG};
 use crate::types::FrameBuffer;
-use crate::{Payload, Request, FLAG};
+use crate::{Payload, Request};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]

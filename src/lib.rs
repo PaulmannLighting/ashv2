@@ -7,7 +7,7 @@
 
 pub use ash_framed::AshFramed;
 pub use baud_rate::BaudRate;
-pub use protocol::{Stuffing, FLAG};
+pub use frames::Frames;
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
@@ -19,6 +19,7 @@ mod baud_rate;
 mod code;
 mod crc;
 mod frame;
+mod frames;
 mod packet;
 mod protocol;
 mod request;
