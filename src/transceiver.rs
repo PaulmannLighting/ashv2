@@ -17,17 +17,16 @@ use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::status::Status;
 use crate::utils::WrappingU3;
-use crate::{HexSlice, Payload, Request};
+use crate::{constants, HexSlice, Payload, Request};
 
+use crate::constants::T_RSTACK_MAX;
 use buffers::Buffers;
 use channels::Channels;
-use constants::T_RSTACK_MAX;
 use state::State;
 use transmission::Transmission;
 
 mod buffers;
 mod channels;
-mod constants;
 
 mod state;
 mod transmission;
