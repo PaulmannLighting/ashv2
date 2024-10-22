@@ -257,13 +257,12 @@ where
 
     /// Sends a chunk of data.
     fn send_chunk(&mut self, chunk: &[u8], offset: WrappingU3) -> std::io::Result<()> {
-        let payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }> =
-            chunk.try_into().map_err(|()| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    "Could not append chunk to frame buffer",
-                )
-            })?;
+        let payload: Payload = chunk.try_into().map_err(|()| {
+            Error::new(
+                ErrorKind::OutOfMemory,
+                "Could not append chunk to frame buffer",
+            )
+        })?;
         let data = Data::new(
             self.state.next_frame_number(),
             payload,
@@ -620,7 +619,7 @@ where
     }
 
     /// Extends the response buffer with the given data.
-    fn handle_payload(&mut self, mut payload: heapless::Vec<u8, { Data::MAX_PAYLOAD_SIZE }>) {
+    fn handle_payload(&mut self, mut payload: Payload) {
         payload.mask();
         self.channels.respond(payload);
     }
