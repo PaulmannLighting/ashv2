@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 
-use crate::packet::Data;
+use crate::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 
 pub trait AshChunks {
     /// Return an iterator over chunks that fit into ASH data frames.
@@ -13,18 +13,18 @@ pub trait AshChunks {
 
 impl AshChunks for [u8] {
     fn ash_chunks(&self) -> std::io::Result<Chunks<'_, u8>> {
-        if self.len() < Data::MIN_PAYLOAD_SIZE {
+        if self.len() < MAX_PAYLOAD_SIZE {
             return Err(Error::new(
                 ErrorKind::UnexpectedEof,
                 "Not enough data to fill a chunk.",
             ));
         }
 
-        if self.len() <= Data::MAX_PAYLOAD_SIZE
-            || self.len() % Data::MAX_PAYLOAD_SIZE == 0
-            || self.len() % Data::MAX_PAYLOAD_SIZE >= Data::MIN_PAYLOAD_SIZE
+        if self.len() <= MAX_PAYLOAD_SIZE
+            || self.len() % MAX_PAYLOAD_SIZE == 0
+            || self.len() % MAX_PAYLOAD_SIZE >= MIN_PAYLOAD_SIZE
         {
-            return Ok(self.chunks(Data::MAX_PAYLOAD_SIZE));
+            return Ok(self.chunks(MAX_PAYLOAD_SIZE));
         }
 
         Err(Error::new(
