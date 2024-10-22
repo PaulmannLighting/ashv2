@@ -5,7 +5,9 @@ use std::task::{Context, Poll, Waker};
 
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::{Payload, Request};
+use crate::protocol::Stuffing;
+use crate::types::FrameBuffer;
+use crate::{Payload, Request, FLAG};
 
 /// A framed asynchronous `ASHv2` host.
 #[derive(Debug)]
@@ -15,6 +17,7 @@ pub struct AshFramed<const BUF_SIZE: usize> {
     channel_size: usize,
     receiver: Option<Receiver<Payload>>,
     buffer: heapless::Vec<u8, BUF_SIZE>,
+    frame: FrameBuffer,
 }
 
 impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
@@ -31,7 +34,26 @@ impl<const BUF_SIZE: usize> AshFramed<BUF_SIZE> {
             channel_size,
             receiver: None,
             buffer: heapless::Vec::new(),
+            frame: FrameBuffer::new(),
         }
+    }
+
+    /// Buffer a frame.
+    ///
+    /// Stuff the frame and append the flag byte.
+    fn buffer_frame(&mut self, data: &[u8]) -> Result<(), Error> {
+        self.frame.clear();
+        self.frame
+            .extend_from_slice(data)
+            .map_err(|()| Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."))?;
+        self.frame.stuff()?;
+        self.frame
+            .push(FLAG)
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."))?;
+        self.buffer
+            .extend_from_slice(&self.frame)
+            .map_err(|()| Error::new(ErrorKind::OutOfMemory, "Buffer full."))?;
+        Ok(())
     }
 
     fn reset(&mut self) {
@@ -90,9 +112,7 @@ impl<const BUF_SIZE: usize> AsyncRead for AshFramed<BUF_SIZE> {
 
         match receiver.try_recv() {
             Ok(data) => {
-                self.buffer
-                    .extend_from_slice(&data)
-                    .map_err(|()| Error::new(ErrorKind::OutOfMemory, "Buffer full."))?;
+                self.buffer_frame(&data)?;
                 self.reschedule(cx.waker().clone())
             }
             Err(error) => match error {

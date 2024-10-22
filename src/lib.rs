@@ -7,6 +7,7 @@
 
 pub use ash_framed::AshFramed;
 pub use baud_rate::BaudRate;
+pub use protocol::{Stuffing, FLAG};
 pub use request::Request;
 pub use serial_port::open;
 pub use transceiver::Transceiver;

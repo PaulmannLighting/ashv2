@@ -6,6 +6,7 @@ mod ash_chunks;
 mod randomization;
 mod stuffing;
 
+/// Flag byte to initiate the end of a frame.
 pub const FLAG: u8 = 0x7E;
 pub const ESCAPE: u8 = 0x7D;
 pub const X_ON: u8 = 0x11;

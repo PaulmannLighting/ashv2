@@ -8,6 +8,10 @@ const COMPLEMENT_BIT: u8 = 1 << 5;
 /// Stuff and un-stuff bytes.
 pub trait Stuffing {
     /// Stuffs bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the escape byte could not be inserted, i.e. on potential buffer overflows.
     fn stuff(&mut self) -> Result<()>;
 
     /// Unstuffs bytes.
