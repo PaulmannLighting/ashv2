@@ -242,6 +242,8 @@ where
     ///
     /// Returns `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
+        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
+        // fragmented messages if each DATA packet's ACK number is not increased.
         let mut offset = WrappingU3::default();
 
         while !self.buffers.transmissions.is_full() {

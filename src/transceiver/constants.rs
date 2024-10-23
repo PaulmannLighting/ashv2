@@ -4,8 +4,8 @@ use std::time::Duration;
 pub const MAX_STARTUP_ATTEMPTS: usize = 5;
 pub const ACK_TIMEOUTS: usize = 4;
 
-/// A sliding windows size > 1 may lead to "ERROR: Assert" errors on the NCP when sending
-/// fragmented messages if each DATA packet's ACK number is not increased.
+/// The amount of maximum unacknowledged frames that the NCP (or Host) can hold.
+/// Also amounts to the so-called *sliding window size*.
 pub const TX_K: usize = 5;
 
 pub const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
