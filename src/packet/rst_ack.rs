@@ -46,10 +46,6 @@ impl Display for RstAck {
 }
 
 impl Frame for RstAck {
-    fn header(&self) -> u8 {
-        self.header
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -146,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(RST_ACK.header(), 0xC1);
+        assert_eq!(RST_ACK.header, 0xC1);
     }
 
     #[test]

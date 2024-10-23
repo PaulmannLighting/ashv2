@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
+use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::types::FrameBuffer;
 use crate::HexSlice;
@@ -36,12 +37,12 @@ impl Display for Rst {
 }
 
 impl Frame for Rst {
-    fn header(&self) -> u8 {
-        self.header
-    }
-
     fn crc(&self) -> u16 {
         self.crc
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        CRC.checksum(&[self.header])
     }
 
     fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
@@ -107,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(RST.header(), 0xC0);
+        assert_eq!(RST.header, 0xC0);
     }
 
     #[test]

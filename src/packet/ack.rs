@@ -53,12 +53,12 @@ impl Display for Ack {
 }
 
 impl Frame for Ack {
-    fn header(&self) -> u8 {
-        self.header.bits()
-    }
-
     fn crc(&self) -> u16 {
         self.crc
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        CRC.checksum(&[self.header.bits()])
     }
 
     fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
@@ -142,8 +142,8 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(ACK1.header(), 0x81);
-        assert_eq!(ACK2.header(), 0x8E);
+        assert_eq!(ACK1.header, headers::Ack::from_bits_retain(0x81));
+        assert_eq!(ACK2.header, headers::Ack::from_bits_retain(0x8E));
     }
 
     #[test]

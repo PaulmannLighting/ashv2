@@ -88,10 +88,6 @@ impl Display for Data {
 }
 
 impl Frame for Data {
-    fn header(&self) -> u8 {
-        self.header.bits()
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -160,15 +156,12 @@ impl TryFrom<&[u8]> for Data {
     }
 }
 
+#[inline]
 fn calculate_crc(header: u8, payload: &Payload) -> u16 {
-    let mut bytes = heapless::Vec::<u8, { Data::MAX_PAYLOAD_SIZE + 1 }>::new();
-    bytes
-        .push(header)
-        .expect("Buffer should have sufficient size for header.");
-    bytes
-        .extend_from_slice(payload)
-        .expect("Buffer should have sufficient size for payload.");
-    CRC.checksum(&bytes)
+    let mut digest = CRC.digest();
+    digest.update(&[header]);
+    digest.update(payload);
+    digest.finalize()
 }
 
 #[allow(clippy::unwrap_used)]

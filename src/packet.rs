@@ -116,7 +116,6 @@ mod tests {
                 assert!(rst_ack.is_ash_v2());
                 assert_eq!(rst_ack.version(), 2);
                 assert_eq!(rst_ack.code(), Ok(Code::PowerOn));
-                assert_eq!(rst_ack.header(), 0xC1);
                 assert_eq!(rst_ack.crc(), 0x9B7B);
             }
             packet => panic!("Expected RstAck, got {packet:?}"),
@@ -129,7 +128,6 @@ mod tests {
 
         match Packet::try_from(&ERROR[..ERROR.len() - 1]).unwrap() {
             Packet::Error(error) => {
-                assert_eq!(error.header(), 0xC2);
                 assert_eq!(error.version(), 2);
                 assert_eq!(error.code(), Err(0x52));
                 assert_eq!(error.crc(), 0x98DE);
@@ -146,7 +144,6 @@ mod tests {
 
         match Packet::try_from(&DATA[..DATA.len() - 1]).unwrap() {
             Packet::Data(data) => {
-                assert_eq!(data.header(), 0x53);
                 assert_eq!(data.crc(), 0x6316);
                 assert!(data.is_crc_valid());
                 assert_eq!(data.into_payload().as_slice(), &DATA[1..DATA.len() - 3]);
@@ -163,7 +160,6 @@ mod tests {
             Packet::Ack(ack) => {
                 assert!(!ack.not_ready());
                 assert_eq!(ack.ack_num(), 1);
-                assert_eq!(ack.header(), 0x81);
                 assert_eq!(ack.crc(), 0x6059);
                 assert!(ack.is_crc_valid());
             }
@@ -176,7 +172,6 @@ mod tests {
             Packet::Ack(ack) => {
                 assert!(ack.not_ready());
                 assert_eq!(ack.ack_num(), 0x06);
-                assert_eq!(ack.header(), 0x8E);
                 assert_eq!(ack.crc(), 0x91B6);
                 assert!(ack.is_crc_valid());
             }
@@ -192,7 +187,6 @@ mod tests {
             Packet::Nak(nak) => {
                 assert!(!nak.not_ready());
                 assert_eq!(nak.ack_num(), 0x06);
-                assert_eq!(nak.header(), 0xA6);
                 assert_eq!(nak.crc(), 0x34DC);
                 assert!(nak.is_crc_valid());
             }
@@ -205,7 +199,6 @@ mod tests {
             Packet::Nak(nak) => {
                 assert!(nak.not_ready());
                 assert_eq!(nak.ack_num(), 0x05);
-                assert_eq!(nak.header(), 0xAD);
                 assert_eq!(nak.crc(), 0x85B7);
                 assert!(nak.is_crc_valid());
             }

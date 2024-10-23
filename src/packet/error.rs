@@ -46,10 +46,6 @@ impl Display for Error {
 }
 
 impl Frame for Error {
-    fn header(&self) -> u8 {
-        self.header
-    }
-
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -146,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(ERROR.header(), 0xC2);
+        assert_eq!(ERROR.header, 0xC2);
     }
 
     #[test]

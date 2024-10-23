@@ -53,12 +53,12 @@ impl Display for Nak {
 }
 
 impl Frame for Nak {
-    fn header(&self) -> u8 {
-        self.header.bits()
-    }
-
     fn crc(&self) -> u16 {
         self.crc
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        CRC.checksum(&[self.header.bits()])
     }
 
     fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
@@ -141,8 +141,8 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(NAK1.header(), 0xA6);
-        assert_eq!(NAK2.header(), 0xAD);
+        assert_eq!(NAK1.header, headers::Nak::from_bits_retain(0xA6));
+        assert_eq!(NAK2.header, headers::Nak::from_bits_retain(0xAD));
     }
 
     #[test]
