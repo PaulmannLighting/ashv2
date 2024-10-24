@@ -2,8 +2,8 @@ use std::time::{Duration, SystemTime};
 
 use log::trace;
 
+use crate::constants::{T_RX_ACK_INIT, T_RX_ACK_MAX, T_RX_ACK_MIN};
 use crate::status::Status;
-use crate::transceiver::constants::{T_RX_ACK_INIT, T_RX_ACK_MAX, T_RX_ACK_MIN};
 use crate::utils::WrappingU3;
 
 /// The state of the transceiver.

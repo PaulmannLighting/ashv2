@@ -1,5 +1,5 @@
 use super::transmission::Transmission;
-use crate::transceiver::constants::TX_K;
+use crate::constants::TX_K;
 use crate::types::FrameBuffer;
 
 /// Buffers used by the transceiver.

@@ -4,33 +4,25 @@ use std::slice::Chunks;
 use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
     mpsc::{Receiver, SyncSender},
-    Arc,
+    Arc, RwLock, RwLockWriteGuard,
 };
 use std::task::Waker;
 use std::time::SystemTime;
 
-use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
-
+use crate::constants::T_RSTACK_MAX;
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
 use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::request::Request;
+use crate::response::Response;
 use crate::status::Status;
+use crate::types::FrameBuffer;
 use crate::utils::WrappingU3;
+use crate::write_frame::WriteFrame;
 use crate::{HexSlice, Payload};
-
-use crate::constants::T_RSTACK_MAX;
-use buffers::Buffers;
-use channels::Channels;
-use state::State;
-use transmission::Transmission;
-
-mod buffers;
-mod channels;
-
-mod state;
-mod transmission;
+use log::{debug, error, info, trace, warn};
+use serialport::SerialPort;
+use tokio::sync::mpsc::Sender;
 
 /// `ASHv2` transceiver.
 ///
@@ -46,9 +38,11 @@ where
     T: SerialPort,
 {
     serial_port: T,
-    channels: Channels,
-    buffers: Buffers,
-    state: State,
+    response: Sender<Response>,
+    status: Arc<RwLock<Status>>,
+    n_rdy: Arc<AtomicBool>,
+    last_received_frame_num: Arc<RwLock<Option<WrappingU3>>>,
+    buffer: FrameBuffer,
 }
 
 impl<T> Transceiver<T>
@@ -68,15 +62,18 @@ where
     #[must_use]
     pub fn new(
         serial_port: T,
-        requests: Receiver<Request>,
-        waker: Receiver<Waker>,
-        callback: Option<SyncSender<Payload>>,
+        response: Sender<Response>,
+        status: Arc<RwLock<Status>>,
+        n_rdy: Arc<AtomicBool>,
+        last_received_frame_num: Arc<RwLock<Option<WrappingU3>>>,
     ) -> Self {
         Self {
             serial_port,
-            channels: Channels::new(requests, waker, callback),
-            buffers: Buffers::default(),
-            state: State::new(),
+            response,
+            status,
+            n_rdy,
+            last_received_frame_num,
+            buffer: FrameBuffer::new(),
         }
     }
 
@@ -92,26 +89,35 @@ where
         }
     }
 
+    fn status(&self) -> Status {
+        *self.status.read().expect("RW lock poisoned")
+    }
+
+    fn set_status(&self, status: Status) {
+        *self.status.write().expect("RW lock poisoned") = status;
+    }
+
+    fn ack_number(&self) -> WrappingU3 {
+        self.last_received_frame_num
+            .read()
+            .expect("RW lock poisoned")
+            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1)
+    }
+
     /// Main loop of the transceiver.
     ///
     /// This method checks whether the transceiver is connected and establishes a connection if not.
     /// Otherwise, it will communicate with the NCP via the `ASHv2` protocol.
     fn main(&mut self) -> std::io::Result<()> {
-        match self.state.status() {
+        match self.status() {
             Status::Disconnected | Status::Failed => Ok(self.connect()?),
-            Status::Connected => self.communicate(),
-        }
-    }
-
-    /// Communicate with the NCP.
-    ///
-    /// If there is an incoming transaction, handle it.
-    /// Otherwise, handle callbacks.
-    fn communicate(&mut self) -> std::io::Result<()> {
-        if let Some(bytes) = self.channels.receive()? {
-            self.transaction(bytes.ash_chunks()?)
-        } else {
-            self.handle_callbacks()
+            Status::Connected => {
+                if let Some(packet) = self.receive()? {
+                    self.handle_packet(packet)
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 }
@@ -156,7 +162,7 @@ where
                         ));
                     }
 
-                    self.state.set_status(Status::Connected);
+                    self.set_status(Status::Connected);
                     info!(
                         "ASHv2 connection established after {attempts} attempt{}.",
                         if attempts > 1 { "s" } else { "" }
@@ -179,182 +185,6 @@ where
                 }
             }
         }
-    }
-}
-
-/// Transaction management for incoming commands.
-///
-/// This module handles incoming commands within transactions.
-///
-/// Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
-/// Otherwise, the transactions waits for the NCP to acknowledge the sent data.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Start a transaction of incoming data.
-    fn transaction(&mut self, mut chunks: Chunks<'_, u8>) -> std::io::Result<()> {
-        debug!("Starting transaction.");
-        self.state.set_within_transaction(true);
-
-        // Make sure that we do not receive any callbacks during the transaction.
-        self.clear_callbacks()?;
-
-        // Send chunks of data as long as there are chunks left to send.
-        while self.send_chunks(&mut chunks)? {
-            // Wait for space in the queue to become available before transmitting more data.
-            while self.buffers.transmissions.is_full() {
-                // Handle potential incoming ACKs and DATA packets.
-                while let Some(packet) = self.receive()? {
-                    self.handle_packet(packet)?;
-                }
-
-                // Retransmit timed out data.
-                //
-                // We do this here to avoid going into an infinite loop
-                // if the NCP does not respond to out pushed chunks.
-                self.retransmit_timed_out_data()?;
-            }
-        }
-
-        // Wait for retransmits to finish.
-        while !self.buffers.transmissions.is_empty() {
-            self.retransmit_timed_out_data()?;
-
-            while let Some(packet) = self.receive()? {
-                self.handle_packet(packet)?;
-            }
-        }
-
-        debug!("Transaction completed.");
-        self.state.set_within_transaction(false);
-
-        // Send ACK without `nRDY` set, to re-enable callbacks.
-        self.ack()?;
-
-        // Close response channel.
-        self.channels.close();
-        Ok(())
-    }
-
-    /// Sends chunks as long as the retransmit queue is not full.
-    ///
-    /// Returns `true` if there are more chunks to send, otherwise `false`.
-    fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
-        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
-        // fragmented messages if each DATA packet's ACK number is not increased.
-        let mut offset = WrappingU3::default();
-
-        while !self.buffers.transmissions.is_full() {
-            if let Some(chunk) = chunks.next() {
-                self.send_chunk(chunk, offset)?;
-                offset += 1;
-            } else {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
-    }
-
-    /// Sends a chunk of data.
-    fn send_chunk(&mut self, chunk: &[u8], offset: WrappingU3) -> std::io::Result<()> {
-        let payload: Payload = chunk.try_into().map_err(|()| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "Could not append chunk to frame buffer",
-            )
-        })?;
-        let data = Data::new(
-            self.state.next_frame_number(),
-            payload,
-            self.state.ack_number() + offset,
-        );
-        self.transmit(data.into())
-    }
-
-    /// Clear any callbacks received before the transaction.
-    fn clear_callbacks(&mut self) -> std::io::Result<()> {
-        // Disable callbacks by sending an ACK with `nRDY` set.
-        self.ack()?;
-
-        while let Some(packet) = self.receive()? {
-            self.handle_packet(packet)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// Handling of sent `DATA` frames.
-///
-/// This module handles acknowledgement and retransmission of sent `DATA` frames.
-///
-/// `ASH` retransmits `DATA` frames if they
-///
-///   * have been `NAK`ed by the NCP or
-///   * not been acknowledged by the NCP in time.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
-    fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
-        while let Some(transmission) = self
-            .buffers
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.frame_num() + 1 == ack_num)
-            .map(|index| self.buffers.transmissions.remove(index))
-        {
-            if let Ok(duration) = transmission.elapsed() {
-                trace!(
-                    "ACKed packet {} after {duration:?}",
-                    transmission.into_data()
-                );
-                self.state.update_t_rx_ack(Some(duration));
-            } else {
-                trace!("ACKed packet {}", transmission.into_data());
-            }
-        }
-    }
-
-    /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_packets(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
-        trace!("Handling NAK: {nak_num}");
-
-        if let Some(transmission) = self
-            .buffers
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.frame_num() == nak_num)
-            .map(|index| self.buffers.transmissions.remove(index))
-        {
-            debug!("Retransmitting NAK'ed packet #{}", transmission.frame_num());
-            self.transmit(transmission)?;
-        }
-
-        Ok(())
-    }
-
-    /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
-    fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
-        while let Some(transmission) = self
-            .buffers
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack()))
-            .map(|index| self.buffers.transmissions.remove(index))
-        {
-            debug!(
-                "Retransmitting timed-out packet #{}",
-                transmission.frame_num()
-            );
-            self.state.update_t_rx_ack(None);
-            self.transmit(transmission)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -391,7 +221,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn ack(&mut self) -> std::io::Result<()> {
-        self.send_ack(&Ack::new(self.state.ack_number(), self.state.n_rdy()))
+        self.send_ack(&Ack::new(self.ack_number(), self.n_rdy.load(Relaxed)))
     }
 
     /// Send a `NAK` frame with the current ACK number.
@@ -400,7 +230,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn nak(&mut self) -> std::io::Result<()> {
-        self.send_nak(&Nak::new(self.state.ack_number(), self.state.n_rdy()))
+        self.send_nak(&Nak::new(self.ack_number(), self.n_rdy.load(Relaxed)))
     }
 
     /// Send a RST frame.
@@ -409,22 +239,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn rst(&mut self) -> std::io::Result<()> {
-        self.write_frame(&RST)
-    }
-
-    /// Send a `DATA` frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
-    fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
-        let data = transmission.data_for_transmit()?;
-        trace!("Unmasked {:#04X}", data.unmasked());
-        self.write_frame(data)?;
-        self.buffers
-            .transmissions
-            .insert(0, transmission)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
+        self.serial_port.write_frame(&RST, &mut self.buffer)
     }
 
     /// Send a raw `ACK` frame.
@@ -434,7 +249,7 @@ where
         }
 
         debug!("Sending ACK: {ack}");
-        self.write_frame(ack)
+        self.serial_port.write_frame(ack, &mut self.buffer)
     }
 
     /// Send a raw `NAK` frame.
@@ -520,36 +335,6 @@ where
             ErrorKind::UnexpectedEof,
             "Byte stream terminated unexpectedly.",
         ))
-    }
-
-    /// Writes an ASH [`Frame`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port write operation failed.
-    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
-    where
-        F: Frame + LowerHex + UpperHex,
-    {
-        let buffer = &mut self.buffers.frame;
-        debug!("Writing frame: {frame}");
-        trace!("Frame: {frame:#04X}");
-        buffer.clear();
-        frame.buffer(buffer).map_err(|()| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "Could not append frame bytes to buffer.",
-            )
-        })?;
-        trace!("Frame bytes: {:#04X}", HexSlice::new(buffer));
-        buffer.stuff()?;
-        trace!("Stuffed bytes: {:#04X}", HexSlice::new(buffer));
-        buffer
-            .push(FLAG)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Could not append flag byte."))?;
-        trace!("Writing bytes: {:#04X}", HexSlice::new(buffer));
-        self.serial_port.write_all(buffer)?;
-        self.serial_port.flush()
     }
 }
 
