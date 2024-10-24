@@ -42,7 +42,7 @@ where
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     pub fn read_packet(&mut self) -> std::io::Result<Packet> {
-        Packet::try_from(self.read_frame()?)
+        self.read_frame()?.try_into()
     }
 
     /// Reads an ASH frame into the buffer.
