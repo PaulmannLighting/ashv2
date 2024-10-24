@@ -1,5 +1,5 @@
 use crate::protocol::{Stuffing, FLAG};
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::types::Payload;
 
 /// A trait for iterating over `ASHv2` encoded frames.
@@ -8,7 +8,7 @@ pub trait Frames: Iterator<Item = u8> {
     fn frames(&mut self) -> PayloadIterator<&mut Self> {
         PayloadIterator {
             iterator: self,
-            buffer: FrameBuffer::new(),
+            buffer: FrameVec::new(),
         }
     }
 }
@@ -21,7 +21,7 @@ where
     T: Iterator<Item = u8>,
 {
     iterator: T,
-    buffer: FrameBuffer,
+    buffer: FrameVec,
 }
 
 impl<T> Iterator for PayloadIterator<T>

@@ -7,7 +7,7 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use crate::protocol::{Stuffing, FLAG};
 use crate::request::Request;
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::Payload;
 
 /// A stream and sink for asynchronous `ASHv2` hosts.
@@ -18,7 +18,7 @@ pub struct Stream<const BUF_SIZE: usize> {
     channel_size: usize,
     receiver: Option<Receiver<Payload>>,
     buffer: heapless::Vec<u8, BUF_SIZE>,
-    frame: FrameBuffer,
+    frame: FrameVec,
 }
 
 impl<const BUF_SIZE: usize> Stream<BUF_SIZE> {
@@ -35,7 +35,7 @@ impl<const BUF_SIZE: usize> Stream<BUF_SIZE> {
             channel_size,
             receiver: None,
             buffer: heapless::Vec::new(),
-            frame: FrameBuffer::new(),
+            frame: FrameVec::new(),
         }
     }
 

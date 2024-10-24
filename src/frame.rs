@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 
 pub trait Frame: Debug + Display {
     /// Returns the CRC checksum.
@@ -15,5 +15,5 @@ pub trait Frame: Debug + Display {
     fn calculate_crc(&self) -> u16;
 
     /// Returns the frame as a byte slice.
-    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()>;
+    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()>;
 }

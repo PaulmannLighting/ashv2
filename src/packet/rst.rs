@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 
 use crate::crc::CRC;
 use crate::frame::Frame;
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::HexSlice;
 
 pub const RST: Rst = Rst::new();
@@ -45,7 +45,7 @@ impl Frame for Rst {
         CRC.checksum(&[self.header])
     }
 
-    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
         buffer.push(self.header).map_err(drop)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
     }

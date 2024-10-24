@@ -17,6 +17,7 @@ mod baud_rate;
 mod code;
 mod crc;
 mod frame;
+mod frame_buffer;
 mod frames;
 mod packet;
 mod protocol;

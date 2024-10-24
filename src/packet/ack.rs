@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::packet::headers;
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::utils::WrappingU3;
 use crate::HexSlice;
 
@@ -61,7 +61,7 @@ impl Frame for Ack {
         CRC.checksum(&[self.header.bits()])
     }
 
-    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
         buffer.push(self.header.bits()).map_err(drop)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
     }

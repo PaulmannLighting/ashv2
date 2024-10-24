@@ -1,5 +1,4 @@
-use std::fmt::{LowerHex, UpperHex};
-use std::io::{Error, ErrorKind, Read};
+use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
@@ -14,19 +13,18 @@ use serialport::SerialPort;
 
 use crate::frame::Frame;
 use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
-use crate::protocol::{AshChunks, Mask, Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::protocol::{AshChunks, Mask};
 use crate::request::Request;
 use crate::status::Status;
 use crate::utils::WrappingU3;
-use crate::{HexSlice, Payload};
+use crate::Payload;
 
-use buffers::Buffers;
+use crate::frame_buffer::FrameBuffer;
 use channels::Channels;
-use constants::T_RSTACK_MAX;
+use constants::{TX_K, T_RSTACK_MAX};
 use state::State;
 use transmission::Transmission;
 
-mod buffers;
 mod channels;
 mod constants;
 
@@ -46,10 +44,10 @@ pub struct Transceiver<T>
 where
     T: SerialPort,
 {
-    serial_port: T,
+    frame_buffer: FrameBuffer<T>,
     channels: Channels,
-    buffers: Buffers,
     state: State,
+    transmissions: heapless::Vec<Transmission, TX_K>,
 }
 
 impl<T> Transceiver<T>
@@ -67,17 +65,17 @@ where
     /// If no callback channel is provided, the transceiver will
     /// silently discard any callbacks actively sent from the NCP.
     #[must_use]
-    pub fn new(
+    pub const fn new(
         serial_port: T,
         requests: Receiver<Request>,
         waker: Receiver<Waker>,
         callback: Option<SyncSender<Payload>>,
     ) -> Self {
         Self {
-            serial_port,
+            frame_buffer: FrameBuffer::new(serial_port),
             channels: Channels::new(requests, waker, callback),
-            buffers: Buffers::default(),
             state: State::new(),
+            transmissions: heapless::Vec::new(),
         }
     }
 
@@ -204,7 +202,7 @@ where
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks(&mut chunks)? {
             // Wait for space in the queue to become available before transmitting more data.
-            while self.buffers.transmissions.is_full() {
+            while self.transmissions.is_full() {
                 // Handle potential incoming ACKs and DATA packets.
                 while let Some(packet) = self.receive()? {
                     self.handle_packet(packet)?;
@@ -219,7 +217,7 @@ where
         }
 
         // Wait for retransmits to finish.
-        while !self.buffers.transmissions.is_empty() {
+        while !self.transmissions.is_empty() {
             self.retransmit_timed_out_data()?;
 
             while let Some(packet) = self.receive()? {
@@ -246,7 +244,7 @@ where
         // fragmented messages if each DATA packet's ACK number is not increased.
         let mut offset = WrappingU3::default();
 
-        while !self.buffers.transmissions.is_full() {
+        while !self.transmissions.is_full() {
             if let Some(chunk) = chunks.next() {
                 self.send_chunk(chunk, offset)?;
                 offset += 1;
@@ -302,11 +300,10 @@ where
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
     fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
         while let Some(transmission) = self
-            .buffers
             .transmissions
             .iter()
             .position(|transmission| transmission.frame_num() + 1 == ack_num)
-            .map(|index| self.buffers.transmissions.remove(index))
+            .map(|index| self.transmissions.remove(index))
         {
             if let Ok(duration) = transmission.elapsed() {
                 trace!(
@@ -325,11 +322,10 @@ where
         trace!("Handling NAK: {nak_num}");
 
         if let Some(transmission) = self
-            .buffers
             .transmissions
             .iter()
             .position(|transmission| transmission.frame_num() == nak_num)
-            .map(|index| self.buffers.transmissions.remove(index))
+            .map(|index| self.transmissions.remove(index))
         {
             debug!("Retransmitting NAK'ed packet #{}", transmission.frame_num());
             self.transmit(transmission)?;
@@ -341,11 +337,10 @@ where
     /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
     fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
         while let Some(transmission) = self
-            .buffers
             .transmissions
             .iter()
             .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack()))
-            .map(|index| self.buffers.transmissions.remove(index))
+            .map(|index| self.transmissions.remove(index))
         {
             debug!(
                 "Retransmitting timed-out packet #{}",
@@ -374,7 +369,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn receive(&mut self) -> std::io::Result<Option<Packet>> {
-        match self.read_packet() {
+        match self.frame_buffer.read_packet() {
             Ok(packet) => Ok(Some(packet)),
             Err(error) => {
                 if error.kind() == ErrorKind::TimedOut {
@@ -410,7 +405,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn rst(&mut self) -> std::io::Result<()> {
-        self.write_frame(&RST)
+        self.frame_buffer.write_frame(&RST)
     }
 
     /// Send a `DATA` frame.
@@ -421,9 +416,8 @@ where
     fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
         let data = transmission.data_for_transmit()?;
         trace!("Unmasked {:#04X}", data.unmasked());
-        self.write_frame(data)?;
-        self.buffers
-            .transmissions
+        self.frame_buffer.write_frame(data)?;
+        self.transmissions
             .insert(0, transmission)
             .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
     }
@@ -431,118 +425,13 @@ where
     /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
         debug!("Sending ACK: {ack}");
-        self.write_frame(ack)
+        self.frame_buffer.write_frame(ack)
     }
 
     /// Send a raw `NAK` frame.
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         debug!("Sending NAK: {nak}");
-        self.write_frame(nak)
-    }
-
-    /// Read an ASH [`Packet`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    fn read_packet(&mut self) -> std::io::Result<Packet> {
-        self.buffer_frame()?;
-        Packet::try_from(self.buffers.frame.as_slice())
-    }
-
-    /// Reads an ASH frame into the transceiver's frame buffer.
-    ///
-    /// # Errors
-    /// Returns an [`Error`] if any I/O or protocol error occurs.
-    fn buffer_frame(&mut self) -> std::io::Result<()> {
-        let buffer = &mut self.buffers.frame;
-        buffer.clear();
-        let serial_port = &mut self.serial_port;
-        let mut error = false;
-
-        for byte in serial_port.bytes() {
-            match byte? {
-                CANCEL => {
-                    trace!("Resetting buffer due to cancel byte.");
-                    buffer.clear();
-                    error = false;
-                }
-                FLAG => {
-                    trace!("Received flag byte.");
-
-                    if !error && !buffer.is_empty() {
-                        debug!("Received frame.");
-                        trace!("Buffer: {:#04X}", HexSlice::new(buffer));
-                        buffer.unstuff();
-                        trace!("Unstuffed buffer: {:#04X}", HexSlice::new(buffer));
-                        return Ok(());
-                    }
-
-                    trace!("Resetting buffer due to error or empty buffer.");
-                    trace!("Error condition was: {error}");
-                    trace!("Buffer: {:#04X}", HexSlice::new(buffer));
-                    buffer.clear();
-                    error = false;
-                }
-                SUBSTITUTE => {
-                    trace!("Received SUBSTITUTE byte. Setting error condition.");
-                    error = true;
-                }
-                X_ON => {
-                    warn!("NCP requested to resume transmission. Ignoring.");
-                }
-                X_OFF => {
-                    warn!("NCP requested to stop transmission. Ignoring.");
-                }
-                WAKE => {
-                    if buffer.is_empty() {
-                        debug!("NCP tried to wake us up.");
-                    } else if buffer.push(WAKE).is_err() {
-                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
-                    }
-                }
-                byte => {
-                    if buffer.push(byte).is_err() {
-                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
-                    }
-                }
-            }
-        }
-
-        Err(Error::new(
-            ErrorKind::UnexpectedEof,
-            "Byte stream terminated unexpectedly.",
-        ))
-    }
-
-    /// Writes an ASH [`Frame`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port write operation failed.
-    fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
-    where
-        F: Frame + LowerHex + UpperHex,
-    {
-        let buffer = &mut self.buffers.frame;
-        debug!("Writing frame: {frame}");
-        trace!("Frame: {frame:#04X}");
-        buffer.clear();
-        frame.buffer(buffer).map_err(|()| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "Could not append frame bytes to buffer.",
-            )
-        })?;
-        trace!("Frame bytes: {:#04X}", HexSlice::new(buffer));
-        buffer.stuff()?;
-        trace!("Stuffed bytes: {:#04X}", HexSlice::new(buffer));
-        buffer
-            .push(FLAG)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Could not append flag byte."))?;
-        trace!("Writing bytes: {:#04X}", HexSlice::new(buffer));
-        self.serial_port.write_all(buffer)?;
-        self.serial_port.flush()
+        self.frame_buffer.write_frame(nak)
     }
 }
 
@@ -730,8 +619,8 @@ where
     /// Reset buffers and state.
     fn reset(&mut self) {
         self.channels.close();
-        self.buffers.clear();
         self.state.reset(Status::Failed);
+        self.transmissions.clear();
     }
 
     /// Handle I/O errors.

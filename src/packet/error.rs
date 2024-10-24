@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use crate::code::Code;
 use crate::crc::CRC;
 use crate::frame::Frame;
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::HexSlice;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -54,7 +54,7 @@ impl Frame for Error {
         CRC.checksum(&[self.header, self.version, self.code])
     }
 
-    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
         buffer.push(self.header).map_err(drop)?;
         buffer.push(self.version).map_err(drop)?;
         buffer.push(self.code).map_err(drop)?;

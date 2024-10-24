@@ -5,7 +5,7 @@ use crate::crc::CRC;
 use crate::frame::Frame;
 use crate::packet::headers;
 use crate::protocol::Mask;
-use crate::types::FrameBuffer;
+use crate::types::FrameVec;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::Payload;
 
@@ -96,7 +96,7 @@ impl Frame for Data {
         calculate_crc(self.header.bits(), &self.payload)
     }
 
-    fn buffer(&self, buffer: &mut FrameBuffer) -> Result<(), ()> {
+    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
         buffer.push(self.header.bits()).map_err(drop)?;
         buffer.extend_from_slice(&self.payload)?;
         buffer.extend_from_slice(&self.crc.to_be_bytes())
@@ -172,7 +172,7 @@ mod tests {
     use crate::frame::Frame;
     use crate::packet::headers;
     use crate::protocol::Mask;
-    use crate::types::FrameBuffer;
+    use crate::types::FrameVec;
 
     #[test]
     fn test_frame_num() {
@@ -353,7 +353,7 @@ mod tests {
         let mut unmasked_payload: Vec<u8> = data.clone().into_payload().to_vec();
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
-        let mut byte_representation = FrameBuffer::new();
+        let mut byte_representation = FrameVec::new();
         data.buffer(&mut byte_representation)
             .expect("Buffer should be large enough.");
         assert_eq!(&byte_representation, &[0, 67, 33, 168, 80, 155, 152]);
