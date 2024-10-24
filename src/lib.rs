@@ -14,6 +14,7 @@ pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use utils::{make_pair, HexSlice};
 
 mod baud_rate;
+mod buffered_frame_rw;
 mod code;
 mod constants;
 mod crc;
@@ -21,6 +22,7 @@ mod frame;
 mod frames;
 mod packet;
 mod protocol;
+mod read_frame;
 mod receiver;
 mod request;
 mod response;

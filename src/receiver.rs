@@ -244,22 +244,14 @@ where
 
     /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
-        if ack.not_ready() {
-            self.state.set_last_n_rdy_transmission(SystemTime::now());
-        }
-
         debug!("Sending ACK: {ack}");
         self.serial_port.write_frame(ack, &mut self.buffer)
     }
 
     /// Send a raw `NAK` frame.
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
-        if nak.not_ready() {
-            self.state.set_last_n_rdy_transmission(SystemTime::now());
-        }
-
         debug!("Sending NAK: {nak}");
-        self.write_frame(nak)
+        self.serial_port.write_frame(nak, &mut self.buffer)
     }
 
     /// Read an ASH [`Packet`].
@@ -269,73 +261,14 @@ where
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     fn read_packet(&mut self) -> std::io::Result<Packet> {
         self.buffer_frame()?;
-        Packet::try_from(self.buffers.frame.as_slice())
+        Packet::try_from(self.buffer.as_slice())
     }
 
     /// Reads an ASH frame into the transceiver's frame buffer.
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
-    fn buffer_frame(&mut self) -> std::io::Result<()> {
-        let buffer = &mut self.buffers.frame;
-        buffer.clear();
-        let serial_port = &mut self.serial_port;
-        let mut error = false;
-
-        for byte in serial_port.bytes() {
-            match byte? {
-                CANCEL => {
-                    trace!("Resetting buffer due to cancel byte.");
-                    buffer.clear();
-                    error = false;
-                }
-                FLAG => {
-                    trace!("Received flag byte.");
-
-                    if !error && !buffer.is_empty() {
-                        debug!("Received frame.");
-                        trace!("Buffer: {:#04X}", HexSlice::new(buffer));
-                        buffer.unstuff();
-                        trace!("Unstuffed buffer: {:#04X}", HexSlice::new(buffer));
-                        return Ok(());
-                    }
-
-                    trace!("Resetting buffer due to error or empty buffer.");
-                    trace!("Error condition was: {error}");
-                    trace!("Buffer: {:#04X}", HexSlice::new(buffer));
-                    buffer.clear();
-                    error = false;
-                }
-                SUBSTITUTE => {
-                    trace!("Received SUBSTITUTE byte. Setting error condition.");
-                    error = true;
-                }
-                X_ON => {
-                    warn!("NCP requested to resume transmission. Ignoring.");
-                }
-                X_OFF => {
-                    warn!("NCP requested to stop transmission. Ignoring.");
-                }
-                WAKE => {
-                    if buffer.is_empty() {
-                        debug!("NCP tried to wake us up.");
-                    } else if buffer.push(WAKE).is_err() {
-                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
-                    }
-                }
-                byte => {
-                    if buffer.push(byte).is_err() {
-                        return Err(Error::new(ErrorKind::OutOfMemory, "Frame buffer overflow."));
-                    }
-                }
-            }
-        }
-
-        Err(Error::new(
-            ErrorKind::UnexpectedEof,
-            "Byte stream terminated unexpectedly.",
-        ))
-    }
+    fn buffer_frame(&mut self) -> std::io::Result<()> {}
 }
 
 /// Packet handling implementation for the transceiver.
