@@ -430,20 +430,12 @@ where
 
     /// Send a raw `ACK` frame.
     fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
-        if ack.not_ready() {
-            self.state.set_last_n_rdy_transmission(SystemTime::now());
-        }
-
         debug!("Sending ACK: {ack}");
         self.write_frame(ack)
     }
 
     /// Send a raw `NAK` frame.
     fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
-        if nak.not_ready() {
-            self.state.set_last_n_rdy_transmission(SystemTime::now());
-        }
-
         debug!("Sending NAK: {nak}");
         self.write_frame(nak)
     }

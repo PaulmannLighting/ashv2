@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use log::trace;
 
@@ -10,7 +10,6 @@ use crate::utils::WrappingU3;
 #[derive(Debug)]
 pub struct State {
     status: Status,
-    last_n_rdy_transmission: Option<SystemTime>,
     frame_number: WrappingU3,
     last_received_frame_num: Option<WrappingU3>,
     reject: bool,
@@ -22,7 +21,6 @@ impl State {
     pub const fn new() -> Self {
         Self {
             status: Status::Disconnected,
-            last_n_rdy_transmission: None,
             frame_number: WrappingU3::from_u8_lossy(0),
             last_received_frame_num: None,
             reject: false,
@@ -39,11 +37,6 @@ impl State {
     /// Sets the current status of the `ASHv2` connection.
     pub fn set_status(&mut self, status: Status) {
         self.status = status;
-    }
-
-    /// Sets the last time a `nRDY` was sent to the NCP.
-    pub fn set_last_n_rdy_transmission(&mut self, time: SystemTime) {
-        self.last_n_rdy_transmission = Some(time);
     }
 
     /// Sets the last received frame number.
@@ -110,7 +103,6 @@ impl State {
     /// Resets the transceiver state.
     pub fn reset(&mut self, status: Status) {
         self.status = status;
-        self.last_n_rdy_transmission = None;
         self.frame_number = WrappingU3::from_u8_lossy(0);
         self.last_received_frame_num = None;
         self.reject = false;
