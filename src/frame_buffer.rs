@@ -36,7 +36,7 @@ impl<T> FrameBuffer<T>
 where
     T: Read,
 {
-    /// Read an ASH [`Packet`].
+    /// Read an `ASHv2` [`Packet`].
     ///
     /// # Errors
     ///
@@ -45,7 +45,7 @@ where
         self.read_frame()?.try_into()
     }
 
-    /// Reads an ASH frame into the buffer.
+    /// Reads an `ASHv2` frame into the buffer.
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
@@ -114,11 +114,11 @@ impl<T> FrameBuffer<T>
 where
     T: Write,
 {
-    /// Writes an ASH [`Frame`].
+    /// Writes an `ASHv2` [`Frame`].
     ///
     /// # Errors
     ///
-    /// Returns an [Error] if the serial port write operation failed.
+    /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
     pub fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
         F: Frame + LowerHex + UpperHex,
