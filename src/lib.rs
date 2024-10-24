@@ -4,6 +4,7 @@
 //! You can find the protocol's definition on [siliconlabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-gateway-protocol-reference.pdf).
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
+#![deny(unsafe_code)]
 
 pub use baud_rate::BaudRate;
 pub use frames::Frames;
