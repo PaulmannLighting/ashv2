@@ -9,6 +9,7 @@ use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::types::FrameVec;
 use crate::HexSlice;
 
+/// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
 pub struct FrameBuffer<T> {
     inner: T,
@@ -30,6 +31,7 @@ impl<T> FrameBuffer<T> {
     }
 }
 
+/// The `FrameBuffer` can read  `ASHv2` frames if `T` implements [`Read`].
 impl<T> FrameBuffer<T>
 where
     T: Read,
@@ -107,6 +109,7 @@ where
     }
 }
 
+/// The `FrameBuffer` can write `ASHv2` frames if `T` implements [`Write`].
 impl<T> FrameBuffer<T>
 where
     T: Write,
