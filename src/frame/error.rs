@@ -2,10 +2,10 @@ use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 use crate::code::Code;
-use crate::crc::CRC;
-use crate::frame::Frame;
+use crate::crc::{Validate, CRC};
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
-use crate::HexSlice;
+use crate::utils::HexSlice;
 
 /// Error frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -53,7 +53,7 @@ impl Display for Error {
     }
 }
 
-impl Frame for Error {
+impl Validate for Error {
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -61,7 +61,9 @@ impl Frame for Error {
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header, self.version, self.code])
     }
+}
 
+impl ToBuffer for Error {
     fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
         buffer.push(self.header).map_err(|_| {
             std::io::Error::new(
@@ -144,7 +146,7 @@ impl LowerHex for Error {
 #[cfg(test)]
 mod tests {
     use crate::code::Code;
-    use crate::frame::Frame;
+    use crate::crc::Validate;
 
     use super::Error;
 

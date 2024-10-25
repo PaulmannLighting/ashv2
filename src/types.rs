@@ -1,4 +1,4 @@
-use crate::packet::Data;
+use crate::frame::Data;
 
 /// In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
 pub const MAX_FRAME_SIZE: usize = Data::BUFFER_SIZE * 2 + 1;

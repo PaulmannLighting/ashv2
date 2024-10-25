@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind};
 use std::time::{Duration, SystemTime, SystemTimeError};
 
-use crate::packet::Data;
+use crate::frame::Data;
 use crate::transceiver::constants::ACK_TIMEOUTS;
 use crate::utils::WrappingU3;
 
@@ -67,7 +67,7 @@ impl From<Data> for Transmission {
 
 #[cfg(test)]
 mod tests {
-    use crate::packet::Data;
+    use crate::frame::Data;
     use crate::transceiver::transmission::Transmission;
     use crate::utils::WrappingU3;
 

@@ -1,13 +1,13 @@
-use std::fmt::{LowerHex, UpperHex};
+use std::fmt::{Display, UpperHex};
 use std::io::{Error, ErrorKind, Read, Write};
 
 use log::{debug, trace, warn};
 
 use crate::frame::Frame;
-use crate::packet::Packet;
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
-use crate::HexSlice;
+use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
@@ -37,20 +37,20 @@ impl<T> FrameBuffer<T>
 where
     T: Read,
 {
-    /// Read an `ASHv2` [`Packet`].
+    /// Read an `ASHv2` [`Frame`].
     ///
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub fn read_packet(&mut self) -> std::io::Result<Packet> {
-        self.read_frame()?.try_into()
+    pub fn read_frame(&mut self) -> std::io::Result<Frame> {
+        self.read_raw_frame()?.try_into()
     }
 
     /// Reads an `ASHv2` frame into the buffer.
     ///
     /// # Errors
     /// Returns an [`Error`] if any I/O or protocol error occurs.
-    pub fn read_frame(&mut self) -> std::io::Result<&[u8]> {
+    pub fn read_raw_frame(&mut self) -> std::io::Result<&[u8]> {
         self.buffer.clear();
         let mut error = false;
 
@@ -115,14 +115,14 @@ impl<T> FrameBuffer<T>
 where
     T: Write,
 {
-    /// Writes an `ASHv2` [`Frame`].
+    /// Writes an `ASHv2` [`Validate`].
     ///
     /// # Errors
     ///
     /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
     pub fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
     where
-        F: Frame + LowerHex + UpperHex,
+        F: ToBuffer + Display + UpperHex,
     {
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");

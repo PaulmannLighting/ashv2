@@ -38,7 +38,7 @@ impl AshChunks for [u8] {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use crate::packet::Data;
+    use crate::frame::Data;
 
     use super::AshChunks;
 

@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::CRC;
-use crate::frame::Frame;
+use crate::crc::{Validate, CRC};
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
-use crate::HexSlice;
+use crate::utils::HexSlice;
 
 pub const RST: Rst = Rst::new();
 
@@ -24,7 +24,7 @@ impl Rst {
     /// The size of the `RST` frame in bytes.
     pub const SIZE: usize = 3;
 
-    /// Creates a new RST packet.
+    /// Creates a new RST frame.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -46,7 +46,7 @@ impl Display for Rst {
     }
 }
 
-impl Frame for Rst {
+impl Validate for Rst {
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -54,7 +54,9 @@ impl Frame for Rst {
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header])
     }
+}
 
+impl ToBuffer for Rst {
     fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
         buffer.push(self.header).map_err(|_| {
             std::io::Error::new(
@@ -111,7 +113,7 @@ impl LowerHex for Rst {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame::Frame;
+    use crate::crc::Validate;
 
     use super::Rst;
 

@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::CRC;
-use crate::frame::Frame;
-use crate::packet::headers;
+use crate::crc::{Validate, CRC};
+use crate::frame::headers;
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
+use crate::utils::HexSlice;
 use crate::utils::WrappingU3;
-use crate::HexSlice;
 
 /// Acknowledgement (`ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -19,7 +19,7 @@ impl Ack {
     /// The size of the `ACK` frame in bytes.
     pub const SIZE: usize = 3;
 
-    /// Creates a new ACK packet.
+    /// Creates a new ACK frame.
     #[must_use]
     pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
         let header = headers::Ack::new(ack_num, n_rdy);
@@ -54,7 +54,7 @@ impl Display for Ack {
     }
 }
 
-impl Frame for Ack {
+impl Validate for Ack {
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -62,7 +62,9 @@ impl Frame for Ack {
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header.bits()])
     }
+}
 
+impl ToBuffer for Ack {
     fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
         buffer.push(self.header.bits()).map_err(|_| {
             std::io::Error::new(
@@ -120,8 +122,8 @@ impl LowerHex for Ack {
 #[cfg(test)]
 mod tests {
     use super::Ack;
-    use crate::frame::Frame;
-    use crate::packet::headers;
+    use crate::crc::Validate;
+    use crate::frame::headers;
     use crate::utils::WrappingU3;
 
     const ACK1: Ack = Ack {

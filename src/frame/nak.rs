@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::CRC;
-use crate::frame::Frame;
-use crate::packet::headers;
+use crate::crc::{Validate, CRC};
+use crate::frame::headers;
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
+use crate::utils::HexSlice;
 use crate::utils::WrappingU3;
-use crate::HexSlice;
 
 /// Negative Acknowledgement (`NAK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -19,7 +19,7 @@ impl Nak {
     /// The size of the `NAK` frame in bytes.
     pub const SIZE: usize = 3;
 
-    /// Creates a new NAK packet.
+    /// Creates a new NAK frame.
     #[must_use]
     pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
         let header = headers::Nak::new(ack_num, n_rdy);
@@ -54,7 +54,7 @@ impl Display for Nak {
     }
 }
 
-impl Frame for Nak {
+impl Validate for Nak {
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -62,7 +62,9 @@ impl Frame for Nak {
     fn calculate_crc(&self) -> u16 {
         CRC.checksum(&[self.header.bits()])
     }
+}
 
+impl ToBuffer for Nak {
     fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
         buffer.push(self.header.bits()).map_err(|_| {
             std::io::Error::new(
@@ -120,8 +122,8 @@ impl LowerHex for Nak {
 #[cfg(test)]
 mod tests {
     use super::Nak;
-    use crate::frame::Frame;
-    use crate::packet::headers;
+    use crate::crc::Validate;
+    use crate::frame::headers;
 
     const NAK1: Nak = Nak {
         header: headers::Nak::from_bits_retain(0xA6),

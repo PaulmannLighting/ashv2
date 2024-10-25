@@ -1,13 +1,13 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::CRC;
-use crate::frame::Frame;
-use crate::packet::headers;
+use crate::crc::{Validate, CRC};
+use crate::frame::headers;
 use crate::protocol::Mask;
+use crate::to_buffer::ToBuffer;
 use crate::types::FrameVec;
+use crate::types::Payload;
 use crate::utils::{HexSlice, WrappingU3};
-use crate::Payload;
 
 /// A data frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,7 +31,7 @@ impl Data {
     /// The size of a data frame buffer.
     pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;
 
-    /// Creates a new data packet.
+    /// Creates a new data frame.
     #[must_use]
     pub fn new(frame_num: WrappingU3, mut payload: Payload, ack_num: WrappingU3) -> Self {
         let header = headers::Data::new(frame_num, false, ack_num);
@@ -69,7 +69,7 @@ impl Data {
         self.crc = self.calculate_crc();
     }
 
-    /// Consumes the `Data` packet and returns its payload.
+    /// Consumes the `Data` frame and returns its payload.
     #[must_use]
     pub fn into_payload(self) -> Payload {
         self.payload
@@ -96,7 +96,7 @@ impl Display for Data {
     }
 }
 
-impl Frame for Data {
+impl Validate for Data {
     fn crc(&self) -> u16 {
         self.crc
     }
@@ -104,7 +104,9 @@ impl Frame for Data {
     fn calculate_crc(&self) -> u16 {
         calculate_crc(self.header.bits(), &self.payload)
     }
+}
 
+impl ToBuffer for Data {
     fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
         buffer.push(self.header.bits()).map_err(|_| {
             std::io::Error::new(
@@ -194,10 +196,10 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::Data;
-    use crate::crc::CRC;
-    use crate::frame::Frame;
-    use crate::packet::headers;
+    use crate::crc::{Validate, CRC};
+    use crate::frame::headers;
     use crate::protocol::Mask;
+    use crate::to_buffer::ToBuffer;
     use crate::types::FrameVec;
 
     #[test]

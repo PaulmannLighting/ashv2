@@ -11,8 +11,8 @@ use std::time::SystemTime;
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 
-use crate::frame::Frame;
-use crate::packet::{Ack, Data, Nak, Packet, RstAck, RST};
+use crate::crc::Validate;
+use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
 use crate::protocol::{AshChunks, Mask};
 use crate::request::Request;
 use crate::status::Status;
@@ -147,7 +147,7 @@ where
             };
 
             match packet {
-                Packet::RstAck(rst_ack) => {
+                Frame::RstAck(rst_ack) => {
                     if !rst_ack.is_ash_v2() {
                         return Err(Error::new(
                             ErrorKind::Unsupported,
@@ -241,7 +241,7 @@ where
     /// Returns `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
-        // fragmented messages if each DATA packet's ACK number is not increased.
+        // fragmented messages if each DATA frame's ACK number is not increased.
         let mut offset = WrappingU3::default();
 
         while !self.transmissions.is_full() {
@@ -307,12 +307,12 @@ where
         {
             if let Ok(duration) = transmission.elapsed() {
                 trace!(
-                    "ACKed packet {} after {duration:?}",
+                    "ACKed frame {} after {duration:?}",
                     transmission.into_data()
                 );
                 self.state.update_t_rx_ack(Some(duration));
             } else {
-                trace!("ACKed packet {}", transmission.into_data());
+                trace!("ACKed frame {}", transmission.into_data());
             }
         }
     }
@@ -327,7 +327,7 @@ where
             .position(|transmission| transmission.frame_num() == nak_num)
             .map(|index| self.transmissions.remove(index))
         {
-            debug!("Retransmitting NAK'ed packet #{}", transmission.frame_num());
+            debug!("Retransmitting NAK'ed frame #{}", transmission.frame_num());
             self.transmit(transmission)?;
         }
 
@@ -343,7 +343,7 @@ where
             .map(|index| self.transmissions.remove(index))
         {
             debug!(
-                "Retransmitting timed-out packet #{}",
+                "Retransmitting timed-out frame #{}",
                 transmission.frame_num()
             );
             self.state.update_t_rx_ack(None);
@@ -361,15 +361,15 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Receives a packet from the serial port.
+    /// Receives a frame from the serial port.
     ///
-    /// Returns `Ok(None)` if no packet was received within the timeout.
+    /// Returns `Ok(None)` if no frame was received within the timeout.
     ///
     /// # Errors
     ///
     /// Returns an [Error] if the serial port read operation failed.
-    fn receive(&mut self) -> std::io::Result<Option<Packet>> {
-        match self.frame_buffer.read_packet() {
+    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
+        match self.frame_buffer.read_frame() {
             Ok(packet) => Ok(Some(packet)),
             Err(error) => {
                 if error.kind() == ErrorKind::TimedOut {
@@ -442,23 +442,23 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Handle an incoming packet.
+    /// Handle an incoming frame.
     ///
     /// # Errors
     ///
-    /// Returns a [Error] if the packet handling failed.
-    fn handle_packet(&mut self, packet: Packet) -> std::io::Result<()> {
+    /// Returns a [Error] if the frame handling failed.
+    fn handle_packet(&mut self, packet: Frame) -> std::io::Result<()> {
         debug!("Handling: {packet}");
         trace!("{packet:#04X}");
 
         if self.state.status() == Status::Connected {
             match packet {
-                Packet::Ack(ref ack) => self.handle_ack(ack),
-                Packet::Data(data) => self.handle_data(data)?,
-                Packet::Error(ref error) => return Err(Self::handle_error(error)),
-                Packet::Nak(ref nak) => self.handle_nak(nak)?,
-                Packet::RstAck(ref rst_ack) => return Err(Self::handle_rst_ack(rst_ack)),
-                Packet::Rst(_) => warn!("Received unexpected RST from NCP."),
+                Frame::Ack(ref ack) => self.handle_ack(ack),
+                Frame::Data(data) => self.handle_data(data)?,
+                Frame::Error(ref error) => return Err(Self::handle_error(error)),
+                Frame::Nak(ref nak) => self.handle_nak(nak)?,
+                Frame::RstAck(ref rst_ack) => return Err(Self::handle_rst_ack(rst_ack)),
+                Frame::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
         } else {
             warn!("Not connected. Dropping frame: {packet}");
@@ -467,7 +467,7 @@ where
         Ok(())
     }
 
-    /// Handle an incoming `ACK` packet.
+    /// Handle an incoming `ACK` frame.
     fn handle_ack(&mut self, ack: &Ack) {
         if !ack.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
@@ -476,7 +476,7 @@ where
         self.ack_sent_packets(ack.ack_num());
     }
 
-    /// Handle an incoming `DATA` packet.
+    /// Handle an incoming `DATA` frame.
     fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
         trace!("Unmasked data: {:#04X}", data.unmasked());
 
@@ -508,8 +508,8 @@ where
         self.channels.respond(payload);
     }
 
-    /// Handle an incoming `ERROR` packet.
-    fn handle_error(error: &crate::packet::Error) -> Error {
+    /// Handle an incoming `ERROR` frame.
+    fn handle_error(error: &crate::frame::Error) -> Error {
         if !error.is_ash_v2() {
             error!("{error} is not ASHv2: {:#04X}", error.version());
         }
@@ -526,7 +526,7 @@ where
         Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
     }
 
-    /// Handle an incoming `NAK` packet.
+    /// Handle an incoming `NAK` frame.
     fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
@@ -535,7 +535,7 @@ where
         self.nak_sent_packets(nak.ack_num())
     }
 
-    /// Handle an incoming `RSTACK` packet.
+    /// Handle an incoming `RSTACK` frame.
     fn handle_rst_ack(rst_ack: &RstAck) -> Error {
         error!("Received unexpected RSTACK: {rst_ack}");
 
