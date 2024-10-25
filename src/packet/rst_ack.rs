@@ -7,6 +7,7 @@ use crate::frame::Frame;
 use crate::types::FrameVec;
 use crate::{HexSlice, VERSION};
 
+/// A reset acknowledgment (`RST_ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RstAck {
     header: u8,
@@ -16,7 +17,10 @@ pub struct RstAck {
 }
 
 impl RstAck {
+    /// Constant header value for `RST_ACK` frames.
     pub const HEADER: u8 = 0xC1;
+
+    /// The size of the `RST_ACK` frame in bytes.
     pub const SIZE: usize = 5;
 
     /// Returns the protocol version.
@@ -34,6 +38,10 @@ impl RstAck {
     }
 
     /// Returns the reset code.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the reset code is invalid.
     pub fn code(&self) -> Result<Code, u8> {
         Code::try_from(self.reset_code)
     }
@@ -54,11 +62,33 @@ impl Frame for RstAck {
         CRC.checksum(&[self.header, self.version, self.reset_code])
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header).map_err(drop)?;
-        buffer.push(self.version).map_err(drop)?;
-        buffer.push(self.reset_code).map_err(drop)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "RST_ACK: Could not write header to buffer",
+            )
+        })?;
+        buffer.push(self.version).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "RST_ACK: Could not write version to buffer",
+            )
+        })?;
+        buffer.push(self.reset_code).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "RST_ACK: Could not write reset code to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(
+                    ErrorKind::OutOfMemory,
+                    "RST_ACK: Could not write CRC to buffer",
+                )
+            })
     }
 }
 

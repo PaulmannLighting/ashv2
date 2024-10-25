@@ -31,6 +31,7 @@ tokio-stream = "0.1"
 
 [features]
 clap = ["dep:clap"]
+devel = []
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

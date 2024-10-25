@@ -14,6 +14,20 @@ pub use transceiver::Transceiver;
 pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 pub use utils::{make_pair, HexSlice};
 
+#[cfg(feature = "devel")]
+pub use {
+    code::Code,
+    crc::CRC,
+    frame::Frame,
+    frame_buffer::FrameBuffer,
+    packet::{headers, Ack, Data, Error, Nak, Packet, Rst, RstAck},
+    protocol::{AshChunks, Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
+    request::Request,
+    status::Status,
+    types::{FrameVec, MAX_FRAME_SIZE},
+    utils::WrappingU3,
+};
+
 mod baud_rate;
 mod code;
 mod crc;

@@ -8,6 +8,7 @@ use crate::types::FrameVec;
 use crate::utils::WrappingU3;
 use crate::HexSlice;
 
+/// Acknowledgement (`ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
     header: headers::Ack,
@@ -15,12 +16,13 @@ pub struct Ack {
 }
 
 impl Ack {
+    /// The size of the `ACK` frame in bytes.
     pub const SIZE: usize = 3;
 
     /// Creates a new ACK packet.
     #[must_use]
     pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let header = headers::Ack::new(ack_num, n_rdy, false);
+        let header = headers::Ack::new(ack_num, n_rdy);
 
         Self {
             header,
@@ -61,9 +63,18 @@ impl Frame for Ack {
         CRC.checksum(&[self.header.bits()])
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header.bits()).map_err(drop)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header.bits()).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "ACK: Could not write header to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(ErrorKind::OutOfMemory, "ACK: Could not write CRC to buffer")
+            })
     }
 }
 

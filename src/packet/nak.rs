@@ -8,6 +8,7 @@ use crate::types::FrameVec;
 use crate::utils::WrappingU3;
 use crate::HexSlice;
 
+/// Negative Acknowledgement (`NAK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
     header: headers::Nak,
@@ -15,12 +16,13 @@ pub struct Nak {
 }
 
 impl Nak {
+    /// The size of the `NAK` frame in bytes.
     pub const SIZE: usize = 3;
 
     /// Creates a new NAK packet.
     #[must_use]
     pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let header = headers::Nak::new(ack_num, n_rdy, false);
+        let header = headers::Nak::new(ack_num, n_rdy);
 
         Self {
             header,
@@ -61,9 +63,18 @@ impl Frame for Nak {
         CRC.checksum(&[self.header.bits()])
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header.bits()).map_err(drop)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header.bits()).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "NAK: Could not write header to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(ErrorKind::OutOfMemory, "NAK: Could not write CRC to buffer")
+            })
     }
 }
 

@@ -4,13 +4,17 @@ use crate::utils::WrappingU3;
 
 const FRAME_NUM_OFFSET: u8 = 4;
 
+/// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Data(u8);
 
 bitflags! {
     impl Data: u8 {
+        /// The frame number mask.
         const FRAME_NUM = 0b0111_0000;
+        /// The retransmit flag.
         const RETRANSMIT = 0b0000_1000;
+        /// The acknowledgement number mask.
         const ACK_NUM = 0b0000_0111;
     }
 }
@@ -33,6 +37,7 @@ impl Data {
     }
 
     /// Returns the ACK number.
+    #[must_use]
     pub const fn ack_num(self) -> WrappingU3 {
         WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
     }

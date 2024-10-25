@@ -9,6 +9,7 @@ use crate::types::FrameVec;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::Payload;
 
+/// A data frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Data {
     header: headers::Data,
@@ -20,8 +21,14 @@ impl Data {
     const HEADER_SIZE: usize = 1;
     const CRC_CHECKSUM_SIZE: usize = 2;
     const METADATA_SIZE: usize = Self::HEADER_SIZE + Self::CRC_CHECKSUM_SIZE;
+
+    /// The minimum size of a data frame payload.
     pub const MIN_PAYLOAD_SIZE: usize = 3;
+
+    /// The maximum size of a data frame payload.
     pub const MAX_PAYLOAD_SIZE: usize = 128;
+
+    /// The size of a data frame buffer.
     pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;
 
     /// Creates a new data packet.
@@ -63,11 +70,13 @@ impl Data {
     }
 
     /// Consumes the `Data` packet and returns its payload.
+    #[must_use]
     pub fn into_payload(self) -> Payload {
         self.payload
     }
 
     /// Returns a copy of the data frame with the payload unmasked.
+    #[must_use]
     pub fn unmasked(&self) -> Self {
         let mut unmasked = self.clone();
         unmasked.payload.mask();
@@ -96,10 +105,27 @@ impl Frame for Data {
         calculate_crc(self.header.bits(), &self.payload)
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header.bits()).map_err(drop)?;
-        buffer.extend_from_slice(&self.payload)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header.bits()).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "DATA: Could not write header to buffer",
+            )
+        })?;
+        buffer.extend_from_slice(&self.payload).map_err(|()| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "DATA: Could not write payload to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(
+                    ErrorKind::OutOfMemory,
+                    "DATA: Could not write CRC to buffer",
+                )
+            })
     }
 }
 

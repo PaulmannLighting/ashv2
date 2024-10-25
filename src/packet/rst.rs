@@ -17,7 +17,11 @@ pub struct Rst {
 
 impl Rst {
     const CRC: u16 = 0x38BC;
+
+    /// Constant header value for `RST` frames.
     pub const HEADER: u8 = 0xC0;
+
+    /// The size of the `RST` frame in bytes.
     pub const SIZE: usize = 3;
 
     /// Creates a new RST packet.
@@ -27,6 +31,12 @@ impl Rst {
             header: Self::HEADER,
             crc: Self::CRC,
         }
+    }
+}
+
+impl Default for Rst {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -45,9 +55,18 @@ impl Frame for Rst {
         CRC.checksum(&[self.header])
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header).map_err(drop)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "RST: Could not write header to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(ErrorKind::OutOfMemory, "RST: Could not write CRC to buffer")
+            })
     }
 }
 

@@ -17,6 +17,7 @@ pub struct FrameBuffer<T> {
 }
 
 impl<T> FrameBuffer<T> {
+    /// Creates a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
     pub const fn new(inner: T) -> Self {
         Self {
@@ -126,9 +127,7 @@ where
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
         self.buffer.clear();
-        frame
-            .buffer(&mut self.buffer)
-            .map_err(|()| Self::buffer_overflow())?;
+        frame.buffer(&mut self.buffer)?;
         trace!("Frame bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.buffer.stuff()?;
         trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));

@@ -10,8 +10,9 @@ pub struct Request {
 }
 
 impl Request {
+    /// Creates a new request.
     #[must_use]
-    pub(crate) const fn new(payload: Box<[u8]>, response: SyncSender<Payload>) -> Self {
+    pub const fn new(payload: Box<[u8]>, response: SyncSender<Payload>) -> Self {
         Self { payload, response }
     }
 }

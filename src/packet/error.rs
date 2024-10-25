@@ -7,6 +7,7 @@ use crate::frame::Frame;
 use crate::types::FrameVec;
 use crate::HexSlice;
 
+/// Error frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
     header: u8,
@@ -16,7 +17,10 @@ pub struct Error {
 }
 
 impl Error {
+    /// Constant header value for `ERROR` frames.
     pub const HEADER: u8 = 0xC2;
+
+    /// The size of the `ERROR` frame in bytes.
     pub const SIZE: usize = 5;
 
     /// Returns the protocol version.
@@ -34,6 +38,10 @@ impl Error {
     }
 
     /// Returns the error code.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the error code is invalid.
     pub fn code(&self) -> Result<Code, u8> {
         Code::try_from(self.code)
     }
@@ -54,11 +62,33 @@ impl Frame for Error {
         CRC.checksum(&[self.header, self.version, self.code])
     }
 
-    fn buffer(&self, buffer: &mut FrameVec) -> Result<(), ()> {
-        buffer.push(self.header).map_err(drop)?;
-        buffer.push(self.version).map_err(drop)?;
-        buffer.push(self.code).map_err(drop)?;
-        buffer.extend_from_slice(&self.crc.to_be_bytes())
+    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+        buffer.push(self.header).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "ERROR: Could not write header to buffer",
+            )
+        })?;
+        buffer.push(self.version).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "ERROR: Could not write version to buffer",
+            )
+        })?;
+        buffer.push(self.code).map_err(|_| {
+            std::io::Error::new(
+                ErrorKind::OutOfMemory,
+                "ERROR: Could not write code to buffer",
+            )
+        })?;
+        buffer
+            .extend_from_slice(&self.crc.to_be_bytes())
+            .map_err(|()| {
+                std::io::Error::new(
+                    ErrorKind::OutOfMemory,
+                    "ERROR: Could not write CRC to buffer",
+                )
+            })
     }
 }
 

@@ -11,25 +11,26 @@ pub use rst_ack::RstAck;
 mod ack;
 mod data;
 mod error;
-mod headers;
+pub mod headers;
 mod nak;
 mod rst;
 mod rst_ack;
 
+/// Available frame types
 #[allow(variant_size_differences)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Packet {
-    /// ACK frame
+    /// `ACK` frame
     Ack(Ack),
-    /// Data frame
+    /// `DATA` frame
     Data(Data),
-    /// Error frame
+    /// `ERROR` frame
     Error(Error),
-    /// NAK frame
+    /// `NAK` frame
     Nak(Nak),
-    /// RST frame
+    /// `RST` frame
     Rst(Rst),
-    /// RST ACK frame
+    /// `RST_ACK` frame
     RstAck(RstAck),
 }
 

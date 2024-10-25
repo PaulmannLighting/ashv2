@@ -3,6 +3,7 @@ use std::slice::Chunks;
 
 use crate::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
 
+/// Trait for types that can be split into chunks that fit into ASH data frames.
 pub trait AshChunks {
     /// Return an iterator over chunks that fit into ASH data frames.
     ///
