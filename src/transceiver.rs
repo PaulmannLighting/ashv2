@@ -1,21 +1,20 @@
 use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
-use std::sync::{
-    atomic::{AtomicBool, Ordering::Relaxed},
-    Arc,
-};
+use std::thread::{spawn, JoinHandle};
 use std::time::SystemTime;
+
+use log::{debug, error, info, trace, warn};
+use serialport::SerialPort;
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::crc::Validate;
 use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
 use crate::frame_buffer::FrameBuffer;
 use crate::protocol::{AshChunks, Mask};
+use crate::request::Request;
 use crate::status::Status;
 use crate::types::Payload;
 use crate::utils::WrappingU3;
-use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
-use tokio::sync::mpsc::{Receiver, Sender};
 
 use channels::Channels;
 use constants::{TX_K, T_RSTACK_MAX};
@@ -45,6 +44,7 @@ where
     channels: Channels,
     state: State,
     transmissions: heapless::Vec<Transmission, TX_K>,
+    running: bool,
 }
 
 impl<T> Transceiver<T>
@@ -64,7 +64,7 @@ where
     #[must_use]
     pub const fn new(
         serial_port: T,
-        requests: Receiver<Box<[u8]>>,
+        requests: Receiver<Request>,
         response: Sender<Payload>,
     ) -> Self {
         Self {
@@ -72,15 +72,34 @@ where
             channels: Channels::new(requests, response),
             state: State::new(),
             transmissions: heapless::Vec::new(),
+            running: true,
         }
+    }
+
+    /// Spawn a new transceiver.
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple of the request sender, response receiver, and the transceiver thread handle.
+    pub fn spawn<const BUF_SIZE: usize>(
+        serial_port: T,
+        channel_size: usize,
+    ) -> (Sender<Request>, Receiver<Payload>, JoinHandle<()>)
+    where
+        T: 'static,
+    {
+        let (request_tx, request_rx) = channel(channel_size);
+        let (response_tx, response_rx) = channel(channel_size);
+        let transceiver = Self::new(serial_port, request_rx, response_tx);
+        (request_tx, response_rx, spawn(|| transceiver.run()))
     }
 
     /// Run the transceiver.
     ///
     /// This should be called in a separate thread.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn run(mut self, running: Arc<AtomicBool>) {
-        while running.load(Relaxed) {
+    pub fn run(mut self) {
+        while self.running {
             if let Err(error) = self.main() {
                 self.handle_io_error(&error);
             }
@@ -103,8 +122,14 @@ where
     /// If there is an incoming transaction, handle it.
     /// Otherwise, handle callbacks.
     fn communicate(&mut self) -> std::io::Result<()> {
-        if let Some(bytes) = self.channels.receive()? {
-            self.transaction(bytes.ash_chunks()?)
+        if let Some(request) = self.channels.receive()? {
+            match request {
+                Request::Data(bytes) => self.transaction(bytes.ash_chunks()?),
+                Request::Shutdown => {
+                    self.running = false;
+                    Ok(())
+                }
+            }
         } else {
             self.handle_callbacks()
         }

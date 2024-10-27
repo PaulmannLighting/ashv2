@@ -21,6 +21,7 @@ pub use {
     frame::{headers, Ack, Data, Error, Frame, Nak, Rst, RstAck},
     frame_buffer::FrameBuffer,
     protocol::{AshChunks, Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
+    request::Request,
     status::Status,
     to_buffer::ToBuffer,
     types::{FrameVec, MAX_FRAME_SIZE},
@@ -36,6 +37,7 @@ mod frame;
 mod frame_buffer;
 mod frames;
 mod protocol;
+mod request;
 mod serial_port;
 mod status;
 mod stream;

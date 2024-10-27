@@ -4,10 +4,7 @@ use tokio::sync::mpsc::channel;
 use crate::{Stream, Transceiver};
 
 /// Create a pair of an [`AshFramed`] and a [`Transceiver`].
-pub fn make_pair<const BUF_SIZE: usize, T>(
-    serial_port: T,
-    channel_size: usize,
-) -> (Stream<BUF_SIZE>, Transceiver<T>)
+pub fn make_pair<T>(serial_port: T, channel_size: usize) -> (Stream, Transceiver<T>)
 where
     T: SerialPort,
 {
