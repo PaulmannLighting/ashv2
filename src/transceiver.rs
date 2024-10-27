@@ -2,24 +2,21 @@ use std::io::{Error, ErrorKind};
 use std::slice::Chunks;
 use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
-    mpsc::{Receiver, SyncSender},
     Arc,
 };
-use std::task::Waker;
 use std::time::SystemTime;
-
-use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
 
 use crate::crc::Validate;
 use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
-use crate::protocol::{AshChunks, Mask};
-use crate::request::Request;
-use crate::status::Status;
-use crate::utils::WrappingU3;
-use crate::Payload;
-
 use crate::frame_buffer::FrameBuffer;
+use crate::protocol::{AshChunks, Mask};
+use crate::status::Status;
+use crate::types::Payload;
+use crate::utils::WrappingU3;
+use log::{debug, error, info, trace, warn};
+use serialport::SerialPort;
+use tokio::sync::mpsc::{Receiver, Sender};
+
 use channels::Channels;
 use constants::{TX_K, T_RSTACK_MAX};
 use state::State;
@@ -67,13 +64,12 @@ where
     #[must_use]
     pub const fn new(
         serial_port: T,
-        requests: Receiver<Request>,
-        waker: Receiver<Waker>,
-        callback: Option<SyncSender<Payload>>,
+        requests: Receiver<Box<[u8]>>,
+        response: Sender<Payload>,
     ) -> Self {
         Self {
             frame_buffer: FrameBuffer::new(serial_port),
-            channels: Channels::new(requests, waker, callback),
+            channels: Channels::new(requests, response),
             state: State::new(),
             transmissions: heapless::Vec::new(),
         }
@@ -230,9 +226,6 @@ where
 
         // Send ACK without `nRDY` set, to re-enable callbacks.
         self.ack()?;
-
-        // Close response channel.
-        self.channels.close();
         Ok(())
     }
 
@@ -503,7 +496,7 @@ where
     }
 
     /// Extends the response buffer with the given data.
-    fn handle_payload(&mut self, mut payload: Payload) {
+    fn handle_payload(&self, mut payload: Payload) {
         payload.mask();
         self.channels.respond(payload);
     }
@@ -618,7 +611,6 @@ where
 {
     /// Reset buffers and state.
     fn reset(&mut self) {
-        self.channels.close();
         self.state.reset(Status::Failed);
         self.transmissions.clear();
     }

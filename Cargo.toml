@@ -19,7 +19,7 @@ crc = "3.2"
 heapless = "0.8"
 log = "0.4"
 serialport = { version = "4.6", default-features = false }
-tokio = { version = "1.40", default-features = false }
+tokio = { version = "1.40", default-features = false, features = ["sync"] }
 
 [dev-dependencies]
 clap = { version = "4.5", features = ["derive"] }

@@ -1,43 +1,28 @@
 use std::io::{Error, ErrorKind};
-use std::sync::mpsc::{Receiver, SyncSender, TryRecvError, TrySendError};
-use std::task::Waker;
 
 use log::error;
+use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
+use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::request::Request;
 use crate::Payload;
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
-    requests: Receiver<Request>,
-    waker: Receiver<Waker>,
-    callback: Option<SyncSender<Payload>>,
-    response: Option<SyncSender<Payload>>,
+    requests: Receiver<Box<[u8]>>,
+    response: Sender<Payload>,
 }
 
 impl Channels {
     /// Create a new set of communication channels.
-    pub const fn new(
-        requests: Receiver<Request>,
-        waker: Receiver<Waker>,
-        callback: Option<SyncSender<Payload>>,
-    ) -> Self {
-        Self {
-            requests,
-            waker,
-            callback,
-            response: None,
-        }
+    pub const fn new(requests: Receiver<Box<[u8]>>, response: Sender<Payload>) -> Self {
+        Self { requests, response }
     }
 
     /// Receive a request from the host.
     pub fn receive(&mut self) -> std::io::Result<Option<Box<[u8]>>> {
         match self.requests.try_recv() {
-            Ok(request) => {
-                self.response.replace(request.response);
-                Ok(Some(request.payload))
-            }
+            Ok(payload) => Ok(Some(payload)),
             Err(error) => match error {
                 TryRecvError::Empty => Ok(None),
                 TryRecvError::Disconnected => Err(Error::new(
@@ -49,53 +34,15 @@ impl Channels {
     }
 
     /// Respond to the host.
-    pub fn respond(&mut self, payload: Payload) {
-        if let Some(response) = self.response.clone() {
-            self.send_response(&response, payload);
-        } else if let Some(callback) = self.callback.clone() {
-            self.send_callback(&callback, payload);
-        } else {
-            error!("Neither response channel not callback channel are available. Discarding data.");
-        }
-    }
-
-    /// Closes the response channel and consume all remaining wakers.
-    pub fn close(&mut self) {
-        self.response.take();
-
-        // Wake up all remaining wakers.
-        while let Ok(waker) = self.waker.try_recv() {
-            waker.wake();
-        }
-    }
-
-    fn send_response(&mut self, response: &SyncSender<Payload>, payload: Payload) {
-        if let Err(error) = response.try_send(payload) {
+    pub fn respond(&self, payload: Payload) {
+        if let Err(error) = self.response.try_send(payload) {
             match error {
                 TrySendError::Full(_) => {
                     error!("Response channel is congested. Dropping response frame.");
                 }
-                TrySendError::Disconnected(_) => {
-                    self.response.take();
+                TrySendError::Closed(_) => {
+                    // TODO: Maybe panic here?
                     error!("Response channel has disconnected. Closing response channel.");
-                }
-            }
-        }
-
-        if let Ok(waker) = self.waker.recv() {
-            waker.wake();
-        }
-    }
-
-    fn send_callback(&mut self, callback: &SyncSender<Payload>, payload: Payload) {
-        if let Err(error) = callback.try_send(payload) {
-            match error {
-                TrySendError::Full(_) => {
-                    error!("Callback channel is congested. Dropping callback frame.");
-                }
-                TrySendError::Disconnected(_) => {
-                    error!("Callback channel has disconnected. Closing callback channel forever.",);
-                    self.callback.take();
                 }
             }
         }
