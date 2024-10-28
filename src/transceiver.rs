@@ -1,4 +1,7 @@
 use std::io::{Error, ErrorKind};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use std::thread::{spawn, JoinHandle};
 use std::time::SystemTime;
 
@@ -42,7 +45,6 @@ where
     channels: Channels,
     state: State,
     transmissions: heapless::Vec<Transmission, TX_K>,
-    running: bool,
 }
 
 impl<T> Transceiver<T>
@@ -70,7 +72,6 @@ where
             channels: Channels::new(requests, response),
             state: State::new(),
             transmissions: heapless::Vec::new(),
-            running: true,
         }
     }
 
@@ -81,6 +82,7 @@ where
     /// Returns a tuple of the request sender, response receiver, and the transceiver thread handle.
     pub fn spawn(
         serial_port: T,
+        running: Arc<AtomicBool>,
         channel_size: usize,
     ) -> (Sender<Payload>, Receiver<Payload>, JoinHandle<()>)
     where
@@ -89,15 +91,15 @@ where
         let (request_tx, request_rx) = channel(channel_size);
         let (response_tx, response_rx) = channel(channel_size);
         let transceiver = Self::new(serial_port, request_rx, response_tx);
-        (request_tx, response_rx, spawn(|| transceiver.run()))
+        (request_tx, response_rx, spawn(|| transceiver.run(running)))
     }
 
     /// Run the transceiver.
     ///
     /// This should be called in a separate thread.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn run(mut self) {
-        while self.running {
+    pub fn run(mut self, running: Arc<AtomicBool>) {
+        while running.load(Relaxed) {
             if let Err(error) = self.main() {
                 self.handle_io_error(&error);
             }
