@@ -79,7 +79,7 @@ where
     /// # Returns
     ///
     /// Returns a tuple of the request sender, response receiver, and the transceiver thread handle.
-    pub fn spawn<const BUF_SIZE: usize>(
+    pub fn spawn(
         serial_port: T,
         channel_size: usize,
     ) -> (Sender<Payload>, Receiver<Payload>, JoinHandle<()>)
