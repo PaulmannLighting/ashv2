@@ -19,7 +19,7 @@ pub use {
     crc::{Validate, CRC},
     frame::{headers, Ack, Data, Error, Frame, Nak, Rst, RstAck},
     frame_buffer::FrameBuffer,
-    protocol::{AshChunks, Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
+    protocol::{Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
     status::Status,
     to_buffer::ToBuffer,
     types::{FrameVec, MAX_FRAME_SIZE},

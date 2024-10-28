@@ -9,18 +9,18 @@ use crate::Payload;
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
-    requests: Receiver<Box<[u8]>>,
+    requests: Receiver<Payload>,
     response: Sender<Payload>,
 }
 
 impl Channels {
     /// Create a new set of communication channels.
-    pub const fn new(requests: Receiver<Box<[u8]>>, response: Sender<Payload>) -> Self {
+    pub const fn new(requests: Receiver<Payload>, response: Sender<Payload>) -> Self {
         Self { requests, response }
     }
 
     /// Receive a request from the host.
-    pub fn receive(&mut self) -> std::io::Result<Option<Box<[u8]>>> {
+    pub fn receive(&mut self) -> std::io::Result<Option<Payload>> {
         match self.requests.try_recv() {
             Ok(request) => Ok(Some(request)),
             Err(error) => match error {

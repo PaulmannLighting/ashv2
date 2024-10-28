@@ -13,7 +13,6 @@ pub struct State {
     frame_number: WrappingU3,
     last_received_frame_num: Option<WrappingU3>,
     reject: bool,
-    within_transaction: bool,
     t_rx_ack: Duration,
 }
 
@@ -24,7 +23,6 @@ impl State {
             frame_number: WrappingU3::from_u8_lossy(0),
             last_received_frame_num: None,
             reject: false,
-            within_transaction: false,
             t_rx_ack: T_RX_ACK_INIT,
         }
     }
@@ -52,16 +50,6 @@ impl State {
     /// Sets whether the transceiver is rejecting frames.
     pub fn set_reject(&mut self, reject: bool) {
         self.reject = reject;
-    }
-
-    /// Returns whether the transceiver is within a transaction.
-    pub const fn within_transaction(&self) -> bool {
-        self.within_transaction
-    }
-
-    /// Sets whether the transceiver is within a transaction.
-    pub fn set_within_transaction(&mut self, within_transaction: bool) {
-        self.within_transaction = within_transaction;
     }
 
     /// Returns the `T_RX_ACK` timeout duration.
@@ -95,18 +83,12 @@ impl State {
             .map_or_else(WrappingU3::default, |ack_number| ack_number + 1)
     }
 
-    /// Returns whether the transceiver is not ready to receive callbacks.
-    pub const fn n_rdy(&self) -> bool {
-        self.within_transaction
-    }
-
     /// Resets the transceiver state.
     pub fn reset(&mut self, status: Status) {
         self.status = status;
         self.frame_number = WrappingU3::from_u8_lossy(0);
         self.last_received_frame_num = None;
         self.reject = false;
-        self.within_transaction = false;
         self.t_rx_ack = T_RX_ACK_INIT;
     }
 }

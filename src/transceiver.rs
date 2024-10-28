@@ -1,5 +1,4 @@
 use std::io::{Error, ErrorKind};
-use std::slice::Chunks;
 use std::thread::{spawn, JoinHandle};
 use std::time::SystemTime;
 
@@ -10,7 +9,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use crate::crc::Validate;
 use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
 use crate::frame_buffer::FrameBuffer;
-use crate::protocol::{AshChunks, Mask};
+use crate::protocol::Mask;
 use crate::status::Status;
 use crate::types::Payload;
 use crate::utils::WrappingU3;
@@ -63,7 +62,7 @@ where
     #[must_use]
     pub const fn new(
         serial_port: T,
-        requests: Receiver<Box<[u8]>>,
+        requests: Receiver<Payload>,
         response: Sender<Payload>,
     ) -> Self {
         Self {
@@ -83,7 +82,7 @@ where
     pub fn spawn<const BUF_SIZE: usize>(
         serial_port: T,
         channel_size: usize,
-    ) -> (Sender<Box<[u8]>>, Receiver<Payload>, JoinHandle<()>)
+    ) -> (Sender<Payload>, Receiver<Payload>, JoinHandle<()>)
     where
         T: 'static,
     {
@@ -121,11 +120,8 @@ where
     /// If there is an incoming transaction, handle it.
     /// Otherwise, handle callbacks.
     fn communicate(&mut self) -> std::io::Result<()> {
-        if let Some(bytes) = self.channels.receive()? {
-            self.transaction(bytes.ash_chunks()?)
-        } else {
-            self.handle_callbacks()
-        }
+        self.send_data()?;
+        self.handle_callbacks()
     }
 }
 
@@ -206,15 +202,14 @@ where
     T: SerialPort,
 {
     /// Start a transaction of incoming data.
-    fn transaction(&mut self, mut chunks: Chunks<'_, u8>) -> std::io::Result<()> {
+    fn send_data(&mut self) -> std::io::Result<()> {
         debug!("Starting transaction.");
-        self.state.set_within_transaction(true);
 
         // Make sure that we do not receive any callbacks during the transaction.
         self.clear_callbacks()?;
 
         // Send chunks of data as long as there are chunks left to send.
-        while self.send_chunks(&mut chunks)? {
+        while self.send_chunks()? {
             // Wait for space in the queue to become available before transmitting more data.
             while self.transmissions.is_full() {
                 // Handle potential incoming ACKs and DATA packets.
@@ -232,31 +227,26 @@ where
 
         // Wait for retransmits to finish.
         while !self.transmissions.is_empty() {
-            self.retransmit_timed_out_data()?;
-
             while let Some(packet) = self.receive()? {
                 self.handle_packet(packet)?;
             }
+
+            self.retransmit_timed_out_data()?;
         }
 
-        debug!("Transaction completed.");
-        self.state.set_within_transaction(false);
-
-        // Send ACK without `nRDY` set, to re-enable callbacks.
-        self.ack()?;
         Ok(())
     }
 
     /// Sends chunks as long as the retransmit queue is not full.
     ///
     /// Returns `true` if there are more chunks to send, otherwise `false`.
-    fn send_chunks(&mut self, chunks: &mut Chunks<'_, u8>) -> std::io::Result<bool> {
+    fn send_chunks(&mut self) -> std::io::Result<bool> {
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
         let mut offset = WrappingU3::default();
 
         while !self.transmissions.is_full() {
-            if let Some(chunk) = chunks.next() {
+            if let Some(chunk) = self.channels.receive()? {
                 self.send_chunk(chunk, offset)?;
                 offset += 1;
             } else {
@@ -268,16 +258,10 @@ where
     }
 
     /// Sends a chunk of data.
-    fn send_chunk(&mut self, chunk: &[u8], offset: WrappingU3) -> std::io::Result<()> {
-        let payload: Payload = chunk.try_into().map_err(|()| {
-            Error::new(
-                ErrorKind::OutOfMemory,
-                "Could not append chunk to frame buffer",
-            )
-        })?;
+    fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> std::io::Result<()> {
         let data = Data::new(
             self.state.next_frame_number(),
-            payload,
+            chunk,
             self.state.ack_number() + offset,
         );
         self.transmit(data.into())
@@ -398,7 +382,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn ack(&mut self) -> std::io::Result<()> {
-        self.send_ack(&Ack::new(self.state.ack_number(), self.state.n_rdy()))
+        self.send_ack(&Ack::new(self.state.ack_number(), false))
     }
 
     /// Send a `NAK` frame with the current ACK number.
@@ -407,7 +391,7 @@ where
     ///
     /// Returns an [Error] if the serial port read operation failed.
     fn nak(&mut self) -> std::io::Result<()> {
-        self.send_nak(&Nak::new(self.state.ack_number(), self.state.n_rdy()))
+        self.send_nak(&Nak::new(self.state.ack_number(), false))
     }
 
     /// Send a RST frame.
@@ -636,11 +620,6 @@ where
     /// Handle I/O errors.
     fn handle_io_error(&mut self, error: &Error) {
         error!("{error}");
-
-        if self.state.within_transaction() {
-            error!("Aborting current transaction due to error.");
-        }
-
         self.reset();
     }
 }
