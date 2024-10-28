@@ -203,11 +203,6 @@ where
 {
     /// Start a transaction of incoming data.
     fn send_data(&mut self) -> std::io::Result<()> {
-        debug!("Starting transaction.");
-
-        // Make sure that we do not receive any callbacks during the transaction.
-        self.clear_callbacks()?;
-
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks()? {
             // Wait for space in the queue to become available before transmitting more data.
@@ -265,18 +260,6 @@ where
             self.state.ack_number() + offset,
         );
         self.transmit(data.into())
-    }
-
-    /// Clear any callbacks received before the transaction.
-    fn clear_callbacks(&mut self) -> std::io::Result<()> {
-        // Disable callbacks by sending an ACK with `nRDY` set.
-        self.ack()?;
-
-        while let Some(packet) = self.receive()? {
-            self.handle_packet(packet)?;
-        }
-
-        Ok(())
     }
 }
 
