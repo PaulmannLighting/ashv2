@@ -11,7 +11,6 @@ use crate::crc::Validate;
 use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
 use crate::frame_buffer::FrameBuffer;
 use crate::protocol::{AshChunks, Mask};
-use crate::request::Request;
 use crate::status::Status;
 use crate::types::Payload;
 use crate::utils::WrappingU3;
@@ -64,7 +63,7 @@ where
     #[must_use]
     pub const fn new(
         serial_port: T,
-        requests: Receiver<Request>,
+        requests: Receiver<Box<[u8]>>,
         response: Sender<Payload>,
     ) -> Self {
         Self {
@@ -84,7 +83,7 @@ where
     pub fn spawn<const BUF_SIZE: usize>(
         serial_port: T,
         channel_size: usize,
-    ) -> (Sender<Request>, Receiver<Payload>, JoinHandle<()>)
+    ) -> (Sender<Box<[u8]>>, Receiver<Payload>, JoinHandle<()>)
     where
         T: 'static,
     {
@@ -122,14 +121,8 @@ where
     /// If there is an incoming transaction, handle it.
     /// Otherwise, handle callbacks.
     fn communicate(&mut self) -> std::io::Result<()> {
-        if let Some(request) = self.channels.receive()? {
-            match request {
-                Request::Data(bytes) => self.transaction(bytes.ash_chunks()?),
-                Request::Shutdown => {
-                    self.running = false;
-                    Ok(())
-                }
-            }
+        if let Some(bytes) = self.channels.receive()? {
+            self.transaction(bytes.ash_chunks()?)
         } else {
             self.handle_callbacks()
         }

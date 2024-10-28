@@ -4,24 +4,23 @@ use log::error;
 use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::request::Request;
 use crate::Payload;
 
 /// Communication channels of the transceiver.
 #[derive(Debug)]
 pub struct Channels {
-    requests: Receiver<Request>,
+    requests: Receiver<Box<[u8]>>,
     response: Sender<Payload>,
 }
 
 impl Channels {
     /// Create a new set of communication channels.
-    pub const fn new(requests: Receiver<Request>, response: Sender<Payload>) -> Self {
+    pub const fn new(requests: Receiver<Box<[u8]>>, response: Sender<Payload>) -> Self {
         Self { requests, response }
     }
 
     /// Receive a request from the host.
-    pub fn receive(&mut self) -> std::io::Result<Option<Request>> {
+    pub fn receive(&mut self) -> std::io::Result<Option<Box<[u8]>>> {
         match self.requests.try_recv() {
             Ok(request) => Ok(Some(request)),
             Err(error) => match error {
