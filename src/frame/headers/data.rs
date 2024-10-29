@@ -22,12 +22,15 @@ bitflags! {
 impl Data {
     /// Creates a new data header.
     #[must_use]
-    pub fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
-        let mut ack = Self::empty();
-        ack |= Self::FRAME_NUM & Self::from_bits_retain(frame_num.as_u8() << FRAME_NUM_OFFSET);
-        ack.set(Self::RETRANSMIT, retransmit);
-        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num.as_u8());
-        ack
+    pub const fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
+        let mut raw = Self::FRAME_NUM.bits() & (frame_num.as_u8() << FRAME_NUM_OFFSET)
+            | Self::ACK_NUM.bits() & ack_num.as_u8();
+
+        if retransmit {
+            raw |= Self::RETRANSMIT.bits();
+        }
+
+        Self(raw)
     }
 
     /// Returns the frame number.

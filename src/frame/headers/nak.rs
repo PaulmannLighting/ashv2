@@ -20,16 +20,39 @@ bitflags! {
 impl Nak {
     /// Creates a new NAK header.
     #[must_use]
-    pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let mut ack = Self::DEFAULT;
-        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num.as_u8());
-        ack.set(Self::NOT_READY, n_rdy);
-        ack
+    pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+        let mut raw = Self::DEFAULT.bits() | (Self::ACK_NUM.bits() & ack_num.as_u8());
+
+        if n_rdy {
+            raw |= Self::NOT_READY.bits();
+        }
+
+        Self(raw)
     }
 
     /// Returns the ACK number.
     #[must_use]
     pub const fn ack_num(self) -> WrappingU3 {
         WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Nak;
+    use crate::WrappingU3;
+
+    #[test]
+    fn test_new() {
+        let nak = Nak::new(WrappingU3::from_u8_lossy(3), false);
+        assert_eq!(nak.ack_num().as_u8(), 3);
+        assert!(!nak.contains(Nak::NOT_READY));
+    }
+
+    #[test]
+    fn test_new_nrdy() {
+        let nak = Nak::new(WrappingU3::from_u8_lossy(3), true);
+        assert_eq!(nak.ack_num().as_u8(), 3);
+        assert!(nak.contains(Nak::NOT_READY));
     }
 }

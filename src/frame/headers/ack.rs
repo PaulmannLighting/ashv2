@@ -20,11 +20,14 @@ bitflags! {
 impl Ack {
     /// Creates a new ACK header.
     #[must_use]
-    pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let mut ack = Self::DEFAULT;
-        ack |= Self::ACK_NUM & Self::from_bits_retain(ack_num.as_u8());
-        ack.set(Self::NOT_READY, n_rdy);
-        ack
+    pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+        let mut raw = Self::DEFAULT.bits() | Self::ACK_NUM.bits() & ack_num.as_u8();
+
+        if n_rdy {
+            raw |= Self::NOT_READY.bits();
+        }
+
+        Self(raw)
     }
 
     /// Returns the ACK number.
