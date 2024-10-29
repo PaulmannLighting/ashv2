@@ -26,7 +26,10 @@ impl Data {
     pub const MIN_PAYLOAD_SIZE: usize = 3;
 
     /// The maximum size of a data frame payload.
-    pub const MAX_PAYLOAD_SIZE: usize = 128;
+    ///
+    /// This is the tested limit on the `Siliconlabs MGM210P22A`, despite the documentation
+    /// stating that `128` bytes is the limit.
+    pub const MAX_PAYLOAD_SIZE: usize = 220;
 
     /// The size of a data frame buffer.
     pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;
