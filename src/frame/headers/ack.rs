@@ -36,3 +36,23 @@ impl Ack {
         WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Ack;
+    use crate::WrappingU3;
+
+    #[test]
+    fn test_new() {
+        let ack = Ack::new(WrappingU3::from_u8_lossy(3), false);
+        assert_eq!(ack.ack_num().as_u8(), 3);
+        assert!(!ack.contains(Ack::NOT_READY));
+    }
+
+    #[test]
+    fn test_new_nrdy() {
+        let ack = Ack::new(WrappingU3::from_u8_lossy(3), true);
+        assert_eq!(ack.ack_num().as_u8(), 3);
+        assert!(ack.contains(Ack::NOT_READY));
+    }
+}
