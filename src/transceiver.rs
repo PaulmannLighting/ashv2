@@ -65,7 +65,7 @@ where
     pub const fn new(
         serial_port: T,
         requests: Receiver<Payload>,
-        response: Sender<Payload>,
+        response: Sender<std::io::Result<Payload>>,
     ) -> Self {
         Self {
             frame_buffer: FrameBuffer::new(serial_port),
@@ -84,7 +84,11 @@ where
         serial_port: T,
         running: Arc<AtomicBool>,
         channel_size: usize,
-    ) -> (Sender<Payload>, Receiver<Payload>, JoinHandle<()>)
+    ) -> (
+        Sender<Payload>,
+        Receiver<std::io::Result<Payload>>,
+        JoinHandle<()>,
+    )
     where
         T: 'static,
     {
@@ -101,7 +105,7 @@ where
     pub fn run(mut self, running: Arc<AtomicBool>) {
         while running.load(Relaxed) {
             if let Err(error) = self.main() {
-                self.handle_io_error(&error);
+                self.handle_io_error(error);
             }
         }
     }
@@ -485,7 +489,7 @@ where
     /// Extends the response buffer with the given data.
     fn handle_payload(&self, mut payload: Payload) {
         payload.mask();
-        self.channels.respond(payload);
+        self.channels.respond(Ok(payload));
     }
 
     /// Handle an incoming `ERROR` frame.
@@ -603,8 +607,9 @@ where
     }
 
     /// Handle I/O errors.
-    fn handle_io_error(&mut self, error: &Error) {
+    fn handle_io_error(&mut self, error: Error) {
         error!("{error}");
+        self.channels.respond(Err(error));
         self.reset();
     }
 }

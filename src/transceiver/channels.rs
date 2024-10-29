@@ -10,12 +10,15 @@ use crate::Payload;
 #[derive(Debug)]
 pub struct Channels {
     requests: Receiver<Payload>,
-    response: Sender<Payload>,
+    response: Sender<std::io::Result<Payload>>,
 }
 
 impl Channels {
     /// Create a new set of communication channels.
-    pub const fn new(requests: Receiver<Payload>, response: Sender<Payload>) -> Self {
+    pub const fn new(
+        requests: Receiver<Payload>,
+        response: Sender<std::io::Result<Payload>>,
+    ) -> Self {
         Self { requests, response }
     }
 
@@ -34,8 +37,8 @@ impl Channels {
     }
 
     /// Respond to the host.
-    pub fn respond(&self, payload: Payload) {
-        if let Err(error) = self.response.try_send(payload) {
+    pub fn respond(&self, result: std::io::Result<Payload>) {
+        if let Err(error) = self.response.try_send(result) {
             match error {
                 TrySendError::Full(_) => {
                     error!("Response channel is congested. Dropping response frame.");
