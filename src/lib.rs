@@ -7,7 +7,6 @@
 #![deny(unsafe_code)]
 
 pub use baud_rate::BaudRate;
-pub use frames::Frames;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
 pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
@@ -33,7 +32,6 @@ mod code;
 mod crc;
 mod frame;
 mod frame_buffer;
-mod frames;
 mod protocol;
 mod serial_port;
 mod status;
