@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
+use num_traits::FromPrimitive;
+
 use crate::code::Code;
 use crate::crc::Validate;
 use crate::crc::CRC;
@@ -45,7 +47,7 @@ impl RstAck {
     ///
     /// Returns an error if the reset code is invalid.
     pub fn code(&self) -> Result<Code, u8> {
-        Code::try_from(self.reset_code)
+        Code::from_u8(self.reset_code).ok_or(self.reset_code)
     }
 }
 

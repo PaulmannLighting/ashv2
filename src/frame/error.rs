@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
+use num_traits::FromPrimitive;
+
 use crate::code::Code;
 use crate::crc::{Validate, CRC};
 use crate::to_buffer::ToBuffer;
@@ -43,7 +45,7 @@ impl Error {
     ///
     /// Returns an error if the error code is invalid.
     pub fn code(&self) -> Result<Code, u8> {
-        Code::try_from(self.code)
+        Code::from_u8(self.code).ok_or(self.code)
     }
 }
 

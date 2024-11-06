@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter};
 
+use num_derive::FromPrimitive;
+
 /// Reset and error codes.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, FromPrimitive)]
 #[repr(u8)]
 pub enum Code {
     /// Reset: Unknown reason
@@ -38,33 +40,6 @@ impl Display for Code {
                 write!(f, "Error: Exceeded maximum ACK timeout count")
             }
             Self::ChipSpecific => write!(f, "Chip-specific error reset code"),
-        }
-    }
-}
-
-impl From<Code> for u8 {
-    fn from(code: Code) -> Self {
-        code as Self
-    }
-}
-
-impl TryFrom<u8> for Code {
-    type Error = u8;
-
-    fn try_from(byte: u8) -> Result<Self, Self::Error> {
-        match byte {
-            byte if byte == Self::UnknownReason as u8 => Ok(Self::UnknownReason),
-            byte if byte == Self::External as u8 => Ok(Self::External),
-            byte if byte == Self::PowerOn as u8 => Ok(Self::PowerOn),
-            byte if byte == Self::Watchdog as u8 => Ok(Self::Watchdog),
-            byte if byte == Self::Assert as u8 => Ok(Self::Assert),
-            byte if byte == Self::Bootloader as u8 => Ok(Self::Bootloader),
-            byte if byte == Self::Software as u8 => Ok(Self::Software),
-            byte if byte == Self::ExceededMaximumAckTimeoutCount as u8 => {
-                Ok(Self::ExceededMaximumAckTimeoutCount)
-            }
-            byte if byte == Self::ChipSpecific as u8 => Ok(Self::ChipSpecific),
-            other => Err(other),
         }
     }
 }
