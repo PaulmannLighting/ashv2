@@ -17,13 +17,12 @@ mod rst;
 mod rst_ack;
 
 /// Available frame types
-#[allow(variant_size_differences)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Frame {
     /// `ACK` frame
     Ack(Ack),
     /// `DATA` frame
-    Data(Data),
+    Data(Box<Data>),
     /// `ERROR` frame
     Error(Error),
     /// `NAK` frame
@@ -58,7 +57,9 @@ impl TryFrom<&[u8]> for Frame {
             Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
             RstAck::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
             Error::HEADER => Error::try_from(buffer).map(Self::Error),
-            header if header & 0x80 == 0x00 => Data::try_from(buffer).map(Self::Data),
+            header if header & 0x80 == 0x00 => {
+                Data::try_from(buffer).map(|data| Self::Data(data.into()))
+            }
             header if header & 0x60 == 0x00 => Ack::try_from(buffer).map(Self::Ack),
             header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),
             header => Err(std::io::Error::new(
@@ -73,7 +74,7 @@ impl LowerHex for Frame {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ack(ack) => LowerHex::fmt(ack, f),
-            Self::Data(data) => LowerHex::fmt(data, f),
+            Self::Data(data) => LowerHex::fmt(data.as_ref(), f),
             Self::Error(error) => LowerHex::fmt(error, f),
             Self::Nak(nak) => LowerHex::fmt(nak, f),
             Self::Rst(rst) => LowerHex::fmt(rst, f),
@@ -86,7 +87,7 @@ impl UpperHex for Frame {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ack(ack) => UpperHex::fmt(ack, f),
-            Self::Data(data) => UpperHex::fmt(data, f),
+            Self::Data(data) => UpperHex::fmt(data.as_ref(), f),
             Self::Error(error) => UpperHex::fmt(error, f),
             Self::Nak(nak) => UpperHex::fmt(nak, f),
             Self::Rst(rst) => UpperHex::fmt(rst, f),

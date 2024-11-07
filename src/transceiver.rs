@@ -430,7 +430,7 @@ where
         if self.state.status() == Status::Connected {
             match frame {
                 Frame::Ack(ref ack) => self.handle_ack(ack),
-                Frame::Data(data) => self.handle_data(data)?,
+                Frame::Data(data) => self.handle_data(*data)?,
                 Frame::Error(ref error) => return Err(Self::handle_error(error)),
                 Frame::Nak(ref nak) => self.handle_nak(nak)?,
                 Frame::RstAck(ref rst_ack) => return Err(Self::handle_rst_ack(rst_ack)),
