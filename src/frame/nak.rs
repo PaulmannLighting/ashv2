@@ -21,7 +21,7 @@ impl Nak {
 
     /// Creates a new NAK frame.
     #[must_use]
-    pub fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+    pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
         let header = headers::Nak::new(ack_num, n_rdy);
 
         Self {
