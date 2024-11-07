@@ -147,9 +147,9 @@ where
             self.rst()?;
 
             debug!("Waiting for RSTACK...");
-            let packet = loop {
-                if let Some(packet) = self.receive()? {
-                    break packet;
+            let frame = loop {
+                if let Some(frame) = self.receive()? {
+                    break frame;
                 } else if let Ok(elapsed) = start.elapsed() {
                     // Retry sending `RST` if no `RSTACK` was received in time.
                     if elapsed > T_RSTACK_MAX {
@@ -162,7 +162,7 @@ where
                 }
             };
 
-            match packet {
+            match frame {
                 Frame::RstAck(rst_ack) => {
                     if !rst_ack.is_ash_v2() {
                         return Err(Error::new(
@@ -199,8 +199,6 @@ where
 
 /// Transaction management for incoming commands.
 ///
-/// This module handles incoming commands within transactions.
-///
 /// Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
 /// Otherwise, the transactions waits for the NCP to acknowledge the sent data.
 impl<T> Transceiver<T>
@@ -213,9 +211,9 @@ where
         while self.send_chunks()? {
             // Wait for space in the queue to become available before transmitting more data.
             while self.transmissions.is_full() {
-                // Handle potential incoming ACKs and DATA packets.
-                while let Some(packet) = self.receive()? {
-                    self.handle_packet(packet)?;
+                // Handle potential incoming ACKs and DATA frames.
+                while let Some(frame) = self.receive()? {
+                    self.handle_frame(frame)?;
                 }
 
                 // Retransmit timed out data.
@@ -228,8 +226,8 @@ where
 
         // Wait for retransmits to finish.
         while !self.transmissions.is_empty() {
-            while let Some(packet) = self.receive()? {
-                self.handle_packet(packet)?;
+            while let Some(frame) = self.receive()? {
+                self.handle_frame(frame)?;
             }
 
             self.retransmit_timed_out_data()?;
@@ -271,8 +269,6 @@ where
 
 /// Handling of sent `DATA` frames.
 ///
-/// This module handles acknowledgement and retransmission of sent `DATA` frames.
-///
 /// `ASH` retransmits `DATA` frames if they
 ///
 ///   * have been `NAK`ed by the NCP or
@@ -282,7 +278,7 @@ where
     T: SerialPort,
 {
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
-    fn ack_sent_packets(&mut self, ack_num: WrappingU3) {
+    fn ack_sent_frames(&mut self, ack_num: WrappingU3) {
         while let Some(transmission) = self
             .transmissions
             .iter()
@@ -302,7 +298,7 @@ where
     }
 
     /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_packets(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
+    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
         trace!("Handling NAK: {nak_num}");
 
         if let Some(transmission) = self
@@ -339,8 +335,6 @@ where
 }
 
 /// `ASHv2` frame I/O implementation.
-///
-/// This module contains the implementation of the `ASHv2` frame I/O operations.
 impl<T> Transceiver<T>
 where
     T: SerialPort,
@@ -354,7 +348,7 @@ where
     /// Returns an [Error] if the serial port read operation failed.
     fn receive(&mut self) -> std::io::Result<Option<Frame>> {
         match self.frame_buffer.read_frame() {
-            Ok(packet) => Ok(Some(packet)),
+            Ok(frame) => Ok(Some(frame)),
             Err(error) => {
                 if error.kind() == ErrorKind::TimedOut {
                     Ok(None)
@@ -419,9 +413,7 @@ where
     }
 }
 
-/// Packet handling implementation for the transceiver.
-///
-/// This module contains methods to handle incoming packets sent by the NCP.
+/// Handling of incoming frames.
 impl<T> Transceiver<T>
 where
     T: SerialPort,
@@ -431,12 +423,12 @@ where
     /// # Errors
     ///
     /// Returns a [Error] if the frame handling failed.
-    fn handle_packet(&mut self, packet: Frame) -> std::io::Result<()> {
-        debug!("Handling: {packet}");
-        trace!("{packet:#04X}");
+    fn handle_frame(&mut self, frame: Frame) -> std::io::Result<()> {
+        debug!("Handling: {frame}");
+        trace!("{frame:#04X}");
 
         if self.state.status() == Status::Connected {
-            match packet {
+            match frame {
                 Frame::Ack(ref ack) => self.handle_ack(ack),
                 Frame::Data(data) => self.handle_data(data)?,
                 Frame::Error(ref error) => return Err(Self::handle_error(error)),
@@ -445,7 +437,7 @@ where
                 Frame::Rst(_) => warn!("Received unexpected RST from NCP."),
             }
         } else {
-            warn!("Not connected. Dropping frame: {packet}");
+            warn!("Not connected. Dropping frame: {frame}");
         }
 
         Ok(())
@@ -457,7 +449,7 @@ where
             warn!("Received ACK with invalid CRC.");
         }
 
-        self.ack_sent_packets(ack.ack_num());
+        self.ack_sent_frames(ack.ack_num());
     }
 
     /// Handle an incoming `DATA` frame.
@@ -471,12 +463,12 @@ where
             self.leave_reject();
             self.state.set_last_received_frame_num(data.frame_num());
             self.ack()?;
-            self.ack_sent_packets(data.ack_num());
+            self.ack_sent_frames(data.ack_num());
             self.handle_payload(data.into_payload());
         } else if data.is_retransmission() {
             info!("Received retransmission of frame: {data}");
             self.ack()?;
-            self.ack_sent_packets(data.ack_num());
+            self.ack_sent_frames(data.ack_num());
             self.handle_payload(data.into_payload());
         } else {
             warn!("Received out-of-sequence data frame: {data}");
@@ -516,7 +508,7 @@ where
             warn!("Received ACK with invalid CRC.");
         }
 
-        self.nak_sent_packets(nak.ack_num())
+        self.nak_sent_frames(nak.ack_num())
     }
 
     /// Handle an incoming `RSTACK` frame.
@@ -551,7 +543,7 @@ where
     /// Handle callbacks actively sent by the NCP outside of transactions.
     fn handle_callbacks(&mut self) -> std::io::Result<()> {
         while let Some(callback) = self.receive()? {
-            self.handle_packet(callback)?;
+            self.handle_frame(callback)?;
         }
 
         Ok(())
