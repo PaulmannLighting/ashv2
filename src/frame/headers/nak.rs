@@ -40,7 +40,7 @@ impl Nak {
 #[cfg(test)]
 mod tests {
     use super::Nak;
-    use crate::WrappingU3;
+    use crate::utils::WrappingU3;
 
     #[test]
     fn test_new() {

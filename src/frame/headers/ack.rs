@@ -40,7 +40,7 @@ impl Ack {
 #[cfg(test)]
 mod tests {
     use super::Ack;
-    use crate::WrappingU3;
+    use crate::utils::WrappingU3;
 
     #[test]
     fn test_new() {
