@@ -24,7 +24,6 @@ use transmission::Transmission;
 
 mod channels;
 mod constants;
-
 mod state;
 mod transmission;
 
