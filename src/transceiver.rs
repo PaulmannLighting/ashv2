@@ -32,9 +32,6 @@ mod transmission;
 /// The transceiver is responsible for handling the communication between the host and the NCP.
 ///
 /// It is supposed to be run in a separate thread.
-///
-/// The [`AshFramed`](crate::AshFramed) struct implements a stream
-/// to communicate with the NCP via the transceiver.
 #[derive(Debug)]
 pub struct Transceiver<T>
 where
@@ -55,8 +52,8 @@ where
     /// # Parameters
     ///
     /// - `serial_port`: The serial port to communicate with the NCP.
-    /// - `requests`: The channel to receive requests from the host.
-    /// - `callback`: An optional channel to send callbacks from the NCP to.
+    /// - `requests`: The receiver of the channel for request frames sent to the NCP.
+    /// - `response`: The sender of the channel for response frames from the NCP.
     ///
     /// If no callback channel is provided, the transceiver will
     /// silently discard any callbacks actively sent from the NCP.
