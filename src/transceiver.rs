@@ -33,10 +33,7 @@ mod transmission;
 ///
 /// It is supposed to be run in a separate thread.
 #[derive(Debug)]
-pub struct Transceiver<T>
-where
-    T: SerialPort,
-{
+pub struct Transceiver<T> {
     frame_buffer: FrameBuffer<T>,
     channels: Channels,
     state: State,
