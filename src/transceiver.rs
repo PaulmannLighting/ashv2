@@ -51,9 +51,6 @@ where
     /// - `serial_port`: The serial port to communicate with the NCP.
     /// - `requests`: The receiver of the channel for request frames sent to the NCP.
     /// - `response`: The sender of the channel for response frames from the NCP.
-    ///
-    /// If no callback channel is provided, the transceiver will
-    /// silently discard any callbacks actively sent from the NCP.
     #[must_use]
     pub const fn new(
         serial_port: T,
