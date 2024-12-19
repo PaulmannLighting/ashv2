@@ -14,6 +14,24 @@ impl<'a> HexSlice<'a> {
     const fn max_index(&self) -> usize {
         self.0.len().saturating_sub(1)
     }
+
+    /// Formats the slice with a custom byte formatter.
+    fn format<F>(&self, f: &mut std::fmt::Formatter<'_>, byte_formatter: F) -> std::fmt::Result
+    where
+        F: Fn(&u8, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+    {
+        write!(f, "[")?;
+
+        for (index, byte) in self.0.iter().enumerate() {
+            byte_formatter(byte, f)?;
+
+            if index != self.max_index() {
+                write!(f, ", ")?;
+            }
+        }
+
+        write!(f, "]")
+    }
 }
 
 impl<'a> From<&'a [u8]> for HexSlice<'a> {
@@ -24,33 +42,13 @@ impl<'a> From<&'a [u8]> for HexSlice<'a> {
 
 impl UpperHex for HexSlice<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[")?;
-
-        for (index, byte) in self.0.iter().enumerate() {
-            UpperHex::fmt(byte, f)?;
-
-            if index != self.max_index() {
-                write!(f, ", ")?;
-            }
-        }
-
-        write!(f, "]")
+        self.format(f, UpperHex::fmt)
     }
 }
 
 impl LowerHex for HexSlice<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[")?;
-
-        for (index, byte) in self.0.iter().enumerate() {
-            LowerHex::fmt(byte, f)?;
-
-            if index != self.max_index() {
-                write!(f, ", ")?;
-            }
-        }
-
-        write!(f, "]")
+        self.format(f, LowerHex::fmt)
     }
 }
 
