@@ -1,4 +1,4 @@
-use std::fmt::{LowerHex, UpperHex};
+use std::fmt::{Formatter, LowerHex, Result, UpperHex};
 
 /// A wrapper around a slice of bytes to format it with hexadecimal bytes.
 pub struct HexSlice<'a>(&'a [u8]);
@@ -16,9 +16,9 @@ impl<'a> HexSlice<'a> {
     }
 
     /// Formats the slice with a custom byte formatter.
-    fn format<F>(&self, f: &mut std::fmt::Formatter<'_>, byte_formatter: F) -> std::fmt::Result
+    fn format<F>(&self, f: &mut Formatter<'_>, byte_formatter: F) -> Result
     where
-        F: Fn(&u8, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+        F: Fn(&u8, &mut Formatter<'_>) -> Result,
     {
         write!(f, "[")?;
 
@@ -41,13 +41,13 @@ impl<'a> From<&'a [u8]> for HexSlice<'a> {
 }
 
 impl UpperHex for HexSlice<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.format(f, UpperHex::fmt)
     }
 }
 
 impl LowerHex for HexSlice<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.format(f, LowerHex::fmt)
     }
 }
