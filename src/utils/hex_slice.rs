@@ -16,6 +16,12 @@ impl<'a> HexSlice<'a> {
     }
 }
 
+impl<'a> From<&'a [u8]> for HexSlice<'a> {
+    fn from(slice: &'a [u8]) -> Self {
+        Self::new(slice)
+    }
+}
+
 impl UpperHex for HexSlice<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[")?;
