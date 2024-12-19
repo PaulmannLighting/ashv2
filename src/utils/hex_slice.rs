@@ -59,6 +59,13 @@ mod tests {
     use super::HexSlice;
 
     #[test]
+    fn test_from() {
+        let slice: &[u8] = &[0x01, 0xAB, 0x03];
+        let hex_slice: HexSlice<'_> = slice.into();
+        assert_eq!(hex_slice.0, slice);
+    }
+
+    #[test]
     fn test_upper_hex() {
         let slice = HexSlice::new(&[0x01, 0xAB, 0x03]);
         assert_eq!(format!("{slice:#04X}"), "[0x01, 0xAB, 0x03]");
