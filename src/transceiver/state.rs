@@ -20,7 +20,7 @@ impl State {
     pub const fn new() -> Self {
         Self {
             status: Status::Disconnected,
-            frame_number: WrappingU3::from_u8_lossy(0),
+            frame_number: WrappingU3::ZERO,
             last_received_frame_num: None,
             reject: false,
             t_rx_ack: T_RX_ACK_INIT,
@@ -86,7 +86,7 @@ impl State {
     /// Resets the transceiver state.
     pub fn reset(&mut self, status: Status) {
         self.status = status;
-        self.frame_number = WrappingU3::from_u8_lossy(0);
+        self.frame_number = WrappingU3::ZERO;
         self.last_received_frame_num = None;
         self.reject = false;
         self.t_rx_ack = T_RX_ACK_INIT;
