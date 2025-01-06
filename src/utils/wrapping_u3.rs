@@ -11,6 +11,9 @@ const NON_ZERO_BIT: u8 = 0b0000_1000;
 pub struct WrappingU3(NonZero<u8>);
 
 impl WrappingU3 {
+    /// The zero value.
+    pub const ZERO: Self = Self::from_u8_lossy(0);
+
     /// Creates a new three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
@@ -57,7 +60,7 @@ impl AddAssign<u8> for WrappingU3 {
 
 impl Default for WrappingU3 {
     fn default() -> Self {
-        Self::from_u8_lossy(0)
+        Self::ZERO
     }
 }
 
@@ -103,6 +106,11 @@ mod tests {
             let number = WrappingU3::from_u8_lossy(n);
             assert_eq!(number.as_u8(), n % 8);
         }
+    }
+
+    #[test]
+    fn test_const_zero() {
+        assert_eq!(WrappingU3::ZERO.as_u8(), 0);
     }
 
     #[test]
