@@ -2,8 +2,6 @@ use bitflags::bitflags;
 
 use crate::utils::WrappingU3;
 
-const FRAME_NUM_OFFSET: u8 = 4;
-
 /// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Data(u8);
@@ -23,7 +21,8 @@ impl Data {
     /// Creates a new data header.
     #[must_use]
     pub const fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
-        let mut raw = Self::FRAME_NUM.bits() & (frame_num.as_u8() << FRAME_NUM_OFFSET)
+        let mut raw = Self::FRAME_NUM.bits()
+            & (frame_num.as_u8() << Self::FRAME_NUM.bits().trailing_zeros())
             | Self::ACK_NUM.bits() & ack_num.as_u8();
 
         if retransmit {
@@ -36,12 +35,24 @@ impl Data {
     /// Returns the frame number.
     #[must_use]
     pub const fn frame_num(self) -> WrappingU3 {
-        WrappingU3::from_u8_lossy((self.bits() & Self::FRAME_NUM.bits()) >> FRAME_NUM_OFFSET)
+        WrappingU3::from_u8_lossy(
+            (self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros(),
+        )
     }
 
     /// Returns the ACK number.
     #[must_use]
     pub const fn ack_num(self) -> WrappingU3 {
         WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Data;
+
+    #[test]
+    fn test_offset() {
+        assert_eq!(Data::FRAME_NUM.bits().trailing_zeros(), 4);
     }
 }
