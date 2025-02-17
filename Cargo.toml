@@ -13,7 +13,7 @@ exclude = [".gitignore"]
 publish = false
 
 [dependencies]
-bitflags = "2.6"
+bitflags = "2.8"
 clap = { version = "4.5", optional = true }
 crc = "3.2"
 heapless = "0.8"
