@@ -21,7 +21,7 @@ pub use {
     protocol::{Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
     status::Status,
     to_buffer::ToBuffer,
-    types::{FrameVec, MAX_FRAME_SIZE},
+    types::{RawFrame, MAX_FRAME_SIZE},
     utils::WrappingU3,
 };
 

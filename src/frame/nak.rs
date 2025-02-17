@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use crate::crc::{Validate, CRC};
 use crate::frame::headers;
 use crate::to_buffer::ToBuffer;
-use crate::types::FrameVec;
+use crate::types::RawFrame;
 use crate::utils::HexSlice;
 use crate::utils::WrappingU3;
 
@@ -65,7 +65,7 @@ impl Validate for Nak {
 }
 
 impl ToBuffer for Nak {
-    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
         buffer.push(self.header.bits()).map_err(|_| {
             std::io::Error::new(
                 ErrorKind::OutOfMemory,

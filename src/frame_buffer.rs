@@ -6,14 +6,14 @@ use log::{debug, trace, warn};
 use crate::frame::Frame;
 use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
 use crate::to_buffer::ToBuffer;
-use crate::types::FrameVec;
+use crate::types::RawFrame;
 use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
 pub struct FrameBuffer<T> {
     inner: T,
-    buffer: FrameVec,
+    buffer: RawFrame,
 }
 
 impl<T> FrameBuffer<T> {
@@ -22,7 +22,7 @@ impl<T> FrameBuffer<T> {
     pub const fn new(inner: T) -> Self {
         Self {
             inner,
-            buffer: FrameVec::new(),
+            buffer: RawFrame::new(),
         }
     }
 

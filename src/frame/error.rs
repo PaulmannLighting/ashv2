@@ -6,7 +6,7 @@ use num_traits::FromPrimitive;
 use crate::code::Code;
 use crate::crc::{Validate, CRC};
 use crate::to_buffer::ToBuffer;
-use crate::types::FrameVec;
+use crate::types::RawFrame;
 use crate::utils::HexSlice;
 
 /// Error frame.
@@ -66,7 +66,7 @@ impl Validate for Error {
 }
 
 impl ToBuffer for Error {
-    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
         buffer.push(self.header).map_err(|_| {
             std::io::Error::new(
                 ErrorKind::OutOfMemory,

@@ -5,8 +5,8 @@ use crate::crc::{Validate, CRC};
 use crate::frame::headers;
 use crate::protocol::Mask;
 use crate::to_buffer::ToBuffer;
-use crate::types::FrameVec;
 use crate::types::Payload;
+use crate::types::RawFrame;
 use crate::utils::{HexSlice, WrappingU3};
 
 /// A data frame.
@@ -110,7 +110,7 @@ impl Validate for Data {
 }
 
 impl ToBuffer for Data {
-    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
         buffer.push(self.header.bits()).map_err(|_| {
             std::io::Error::new(
                 ErrorKind::OutOfMemory,
@@ -206,7 +206,7 @@ mod tests {
     use crate::frame::headers;
     use crate::protocol::Mask;
     use crate::to_buffer::ToBuffer;
-    use crate::types::FrameVec;
+    use crate::types::RawFrame;
 
     #[test]
     fn test_frame_num() {
@@ -387,7 +387,7 @@ mod tests {
         let mut unmasked_payload: Vec<u8> = data.clone().into_payload().to_vec();
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
-        let mut byte_representation = FrameVec::new();
+        let mut byte_representation = RawFrame::new();
         data.buffer(&mut byte_representation)
             .expect("Buffer should be large enough.");
         assert_eq!(&byte_representation, &[0, 67, 33, 168, 80, 155, 152]);

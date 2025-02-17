@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 
 use crate::crc::{Validate, CRC};
 use crate::to_buffer::ToBuffer;
-use crate::types::FrameVec;
+use crate::types::RawFrame;
 use crate::utils::HexSlice;
 
 pub const RST: Rst = Rst::new();
@@ -57,7 +57,7 @@ impl Validate for Rst {
 }
 
 impl ToBuffer for Rst {
-    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()> {
+    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
         buffer.push(self.header).map_err(|_| {
             std::io::Error::new(
                 ErrorKind::OutOfMemory,

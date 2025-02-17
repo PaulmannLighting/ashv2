@@ -1,4 +1,4 @@
-use crate::types::FrameVec;
+use crate::types::RawFrame;
 
 /// A trait for objects that can be written to a frame buffer.
 pub trait ToBuffer {
@@ -7,5 +7,5 @@ pub trait ToBuffer {
     /// # Errors
     ///
     /// Returns an error if the frame buffer overflows.
-    fn buffer(&self, buffer: &mut FrameVec) -> std::io::Result<()>;
+    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()>;
 }
