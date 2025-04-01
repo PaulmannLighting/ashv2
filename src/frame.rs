@@ -1,7 +1,8 @@
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::Validate;
+use crate::crc::Validate;
+
 pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
