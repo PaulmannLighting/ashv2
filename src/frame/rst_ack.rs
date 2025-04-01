@@ -3,13 +3,13 @@ use std::io::ErrorKind;
 
 use num_traits::FromPrimitive;
 
+use crate::VERSION;
 use crate::code::Code;
-use crate::crc::Validate;
 use crate::crc::CRC;
+use crate::crc::Validate;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
-use crate::VERSION;
 
 /// A reset acknowledgment (`RST_ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]

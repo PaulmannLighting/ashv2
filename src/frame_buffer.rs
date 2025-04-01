@@ -4,7 +4,7 @@ use std::io::{Error, ErrorKind, Read, Write};
 use log::{debug, trace, warn};
 
 use crate::frame::Frame;
-use crate::protocol::{Stuffing, CANCEL, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON};
+use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON};
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;

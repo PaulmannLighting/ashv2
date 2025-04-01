@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use num_traits::FromPrimitive;
 
 use crate::code::Code;
-use crate::crc::{Validate, CRC};
+use crate::crc::{CRC, Validate};
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;

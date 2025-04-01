@@ -5,7 +5,7 @@ pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
-pub use rst::{Rst, RST};
+pub use rst::{RST, Rst};
 pub use rst_ack::RstAck;
 
 mod ack;

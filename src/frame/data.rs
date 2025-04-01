@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::{Validate, CRC};
+use crate::crc::{CRC, Validate};
 use crate::frame::headers;
 use crate::protocol::Mask;
 use crate::to_buffer::ToBuffer;
@@ -202,7 +202,7 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::Data;
-    use crate::crc::{Validate, CRC};
+    use crate::crc::{CRC, Validate};
     use crate::frame::headers;
     use crate::protocol::Mask;
     use crate::to_buffer::ToBuffer;

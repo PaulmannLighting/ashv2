@@ -1,16 +1,16 @@
 use std::io::{Error, ErrorKind};
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::sync::Arc;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{JoinHandle, spawn};
 use std::time::SystemTime;
 
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::crc::Validate;
-use crate::frame::{Ack, Data, Frame, Nak, RstAck, RST};
+use crate::frame::{Ack, Data, Frame, Nak, RST, RstAck};
 use crate::frame_buffer::FrameBuffer;
 use crate::protocol::Mask;
 use crate::status::Status;
@@ -18,7 +18,7 @@ use crate::types::Payload;
 use crate::utils::WrappingU3;
 
 use channels::Channels;
-use constants::{TX_K, T_RSTACK_MAX};
+use constants::{T_RSTACK_MAX, TX_K};
 use state::State;
 use transmission::Transmission;
 

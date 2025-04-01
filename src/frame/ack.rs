@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::{Validate, CRC};
+use crate::crc::{CRC, Validate};
 use crate::frame::headers;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;

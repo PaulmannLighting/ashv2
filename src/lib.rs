@@ -9,19 +9,19 @@
 pub use baud_rate::BaudRate;
 pub use serial_port::open;
 pub use transceiver::Transceiver;
-pub use types::{Payload, MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE};
+pub use types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
 pub use utils::HexSlice;
 
 #[cfg(feature = "devel")]
 pub use {
     code::Code,
-    crc::{Validate, CRC},
-    frame::{headers, Ack, Data, Error, Frame, Nak, Rst, RstAck},
+    crc::{CRC, Validate},
+    frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck, headers},
     frame_buffer::FrameBuffer,
-    protocol::{Mask, Stuffing, CANCEL, ESCAPE, FLAG, SUBSTITUTE, WAKE, X_OFF, X_ON},
+    protocol::{CANCEL, ESCAPE, FLAG, Mask, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON},
     status::Status,
     to_buffer::ToBuffer,
-    types::{RawFrame, MAX_FRAME_SIZE},
+    types::{MAX_FRAME_SIZE, RawFrame},
     utils::WrappingU3,
 };
 
