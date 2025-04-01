@@ -13,15 +13,15 @@ exclude = [".gitignore"]
 publish = false
 
 [dependencies]
-bitflags = "2.8"
+bitflags = "2.9"
 clap = { version = "4.5", optional = true }
 crc = "3.2"
 heapless = "0.8"
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
-serialport = { version = "4.6", default-features = false }
-tokio = { version = "1.41", default-features = false, features = ["sync"] }
+serialport = { version = "4.7", default-features = false }
+tokio = { version = "1.44", default-features = false, features = ["sync"] }
 
 [features]
 clap = ["dep:clap"]
