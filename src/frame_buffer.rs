@@ -3,6 +3,7 @@ use std::io::{Error, ErrorKind, Read, Write};
 
 use log::{debug, trace, warn};
 
+use crate::crc::Validate;
 use crate::frame::Frame;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON};
 use crate::to_buffer::ToBuffer;
@@ -43,7 +44,16 @@ where
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     pub fn read_frame(&mut self) -> std::io::Result<Frame> {
-        self.read_raw_frame()?.try_into()
+        let frame: Frame = self.read_raw_frame()?.try_into()?;
+
+        if frame.is_crc_valid() {
+            Ok(frame)
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidData,
+                "Frame is not CRC valid.",
+            ))
+        }
     }
 
     /// Reads an `ASHv2` frame into the buffer.

@@ -1,6 +1,7 @@
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
+use crate::Validate;
 pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
@@ -92,6 +93,30 @@ impl UpperHex for Frame {
             Self::Nak(nak) => UpperHex::fmt(nak, f),
             Self::Rst(rst) => UpperHex::fmt(rst, f),
             Self::RstAck(rst_ack) => UpperHex::fmt(rst_ack, f),
+        }
+    }
+}
+
+impl Validate for Frame {
+    fn crc(&self) -> u16 {
+        match self {
+            Self::Ack(ack) => ack.crc(),
+            Self::Data(data) => data.crc(),
+            Self::Error(error) => error.crc(),
+            Self::Nak(nak) => nak.crc(),
+            Self::Rst(rst) => rst.crc(),
+            Self::RstAck(rst_ack) => rst_ack.crc(),
+        }
+    }
+
+    fn calculate_crc(&self) -> u16 {
+        match self {
+            Self::Ack(ack) => ack.calculate_crc(),
+            Self::Data(data) => data.calculate_crc(),
+            Self::Error(error) => error.calculate_crc(),
+            Self::Nak(nak) => nak.calculate_crc(),
+            Self::Rst(rst) => rst.calculate_crc(),
+            Self::RstAck(rst_ack) => rst_ack.calculate_crc(),
         }
     }
 }
