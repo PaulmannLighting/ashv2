@@ -76,7 +76,13 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_slice() {
+    fn test_empty_slice_upper() {
+        let slice = HexSlice::new(&[]);
+        assert_eq!(format!("{slice:#04X}"), "[]");
+    }
+
+    #[test]
+    fn test_empty_slice_lower() {
         let slice = HexSlice::new(&[]);
         assert_eq!(format!("{slice:#04x}"), "[]");
     }
