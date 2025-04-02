@@ -10,11 +10,6 @@ impl<'a> HexSlice<'a> {
         Self(slice)
     }
 
-    /// Returns the maximum index of the slice.
-    const fn max_index(&self) -> usize {
-        self.0.len().saturating_sub(1)
-    }
-
     /// Formats the slice with a custom byte formatter.
     fn format<F>(&self, f: &mut Formatter<'_>, byte_formatter: F) -> Result
     where
@@ -22,12 +17,15 @@ impl<'a> HexSlice<'a> {
     {
         write!(f, "[")?;
 
-        for (index, byte) in self.0.iter().enumerate() {
-            byte_formatter(byte, f)?;
+        let mut bytes = self.0.iter();
 
-            if index != self.max_index() {
-                write!(f, ", ")?;
-            }
+        if let Some(first_byte) = bytes.next() {
+            byte_formatter(first_byte, f)?;
+        }
+
+        for byte in bytes {
+            write!(f, ", ")?;
+            byte_formatter(byte, f)?;
         }
 
         write!(f, "]")
