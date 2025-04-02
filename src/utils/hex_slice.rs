@@ -74,4 +74,22 @@ mod tests {
         let slice = HexSlice::new(&[0x01, 0xAB, 0x03]);
         assert_eq!(format!("{slice:#04x}"), "[0x01, 0xab, 0x03]");
     }
+
+    #[test]
+    fn test_empty_slice() {
+        let slice = HexSlice::new(&[]);
+        assert_eq!(format!("{slice:#04x}"), "[]");
+    }
+
+    #[test]
+    fn test_empty_slice_len_1_upper() {
+        let slice = HexSlice::new(&[0x1A]);
+        assert_eq!(format!("{slice:#04X}"), "[0x1A]");
+    }
+
+    #[test]
+    fn test_empty_slice_len_1_lower() {
+        let slice = HexSlice::new(&[0x1A]);
+        assert_eq!(format!("{slice:#04x}"), "[0x1a]");
+    }
 }
