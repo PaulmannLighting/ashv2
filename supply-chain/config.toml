@@ -1,0 +1,261 @@
+
+# cargo-vet config file
+
+[cargo-vet]
+version = "0.10"
+
+[[exemptions.addr2line]]
+version = "0.24.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.adler2]]
+version = "2.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.anstream]]
+version = "0.6.18"
+criteria = "safe-to-deploy"
+
+[[exemptions.anstyle]]
+version = "1.0.10"
+criteria = "safe-to-deploy"
+
+[[exemptions.anstyle-parse]]
+version = "0.2.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.anstyle-query]]
+version = "1.1.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.anstyle-wincon]]
+version = "3.0.7"
+criteria = "safe-to-deploy"
+
+[[exemptions.autocfg]]
+version = "1.4.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.backtrace]]
+version = "0.3.74"
+criteria = "safe-to-deploy"
+
+[[exemptions.bitflags]]
+version = "1.3.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.bitflags]]
+version = "2.9.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.byteorder]]
+version = "1.5.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.cfg-if]]
+version = "1.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.clap]]
+version = "4.5.34"
+criteria = "safe-to-deploy"
+
+[[exemptions.clap_builder]]
+version = "4.5.34"
+criteria = "safe-to-deploy"
+
+[[exemptions.clap_lex]]
+version = "0.7.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.colorchoice]]
+version = "1.0.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.core-foundation]]
+version = "0.10.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.core-foundation-sys]]
+version = "0.8.7"
+criteria = "safe-to-deploy"
+
+[[exemptions.crc]]
+version = "3.2.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.crc-catalog]]
+version = "2.4.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.gimli]]
+version = "0.31.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.hash32]]
+version = "0.3.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.heapless]]
+version = "0.8.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.io-kit-sys]]
+version = "0.4.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.is_terminal_polyfill]]
+version = "1.70.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.libc]]
+version = "0.2.171"
+criteria = "safe-to-deploy"
+
+[[exemptions.log]]
+version = "0.4.27"
+criteria = "safe-to-deploy"
+
+[[exemptions.mach2]]
+version = "0.4.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.memchr]]
+version = "2.7.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.miniz_oxide]]
+version = "0.8.5"
+criteria = "safe-to-deploy"
+
+[[exemptions.nix]]
+version = "0.26.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.num-derive]]
+version = "0.4.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.num-traits]]
+version = "0.2.19"
+criteria = "safe-to-deploy"
+
+[[exemptions.object]]
+version = "0.36.7"
+criteria = "safe-to-deploy"
+
+[[exemptions.once_cell]]
+version = "1.21.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.pin-project-lite]]
+version = "0.2.16"
+criteria = "safe-to-deploy"
+
+[[exemptions.proc-macro2]]
+version = "1.0.94"
+criteria = "safe-to-deploy"
+
+[[exemptions.quote]]
+version = "1.0.40"
+criteria = "safe-to-deploy"
+
+[[exemptions.rustc-demangle]]
+version = "0.1.24"
+criteria = "safe-to-deploy"
+
+[[exemptions.scopeguard]]
+version = "1.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.serialport]]
+version = "4.7.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.stable_deref_trait]]
+version = "1.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.strsim]]
+version = "0.11.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.syn]]
+version = "2.0.100"
+criteria = "safe-to-deploy"
+
+[[exemptions.thiserror]]
+version = "1.0.69"
+criteria = "safe-to-deploy"
+
+[[exemptions.thiserror-impl]]
+version = "1.0.69"
+criteria = "safe-to-deploy"
+
+[[exemptions.tokio]]
+version = "1.44.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.unescaper]]
+version = "0.1.5"
+criteria = "safe-to-deploy"
+
+[[exemptions.unicode-ident]]
+version = "1.0.18"
+criteria = "safe-to-deploy"
+
+[[exemptions.utf8parse]]
+version = "0.2.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.winapi]]
+version = "0.3.9"
+criteria = "safe-to-deploy"
+
+[[exemptions.winapi-i686-pc-windows-gnu]]
+version = "0.4.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.winapi-x86_64-pc-windows-gnu]]
+version = "0.4.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows-sys]]
+version = "0.59.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows-targets]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_aarch64_gnullvm]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_aarch64_msvc]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_i686_gnu]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_i686_gnullvm]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_i686_msvc]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_x86_64_gnu]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_x86_64_gnullvm]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
+
+[[exemptions.windows_x86_64_msvc]]
+version = "0.52.6"
+criteria = "safe-to-deploy"
