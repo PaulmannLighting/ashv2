@@ -33,12 +33,12 @@ impl State {
     }
 
     /// Sets the current status of the `ASHv2` connection.
-    pub fn set_status(&mut self, status: Status) {
+    pub const fn set_status(&mut self, status: Status) {
         self.status = status;
     }
 
     /// Sets the last received frame number.
-    pub fn set_last_received_frame_num(&mut self, frame_num: WrappingU3) {
+    pub const fn set_last_received_frame_num(&mut self, frame_num: WrappingU3) {
         self.last_received_frame_num.replace(frame_num);
     }
 
@@ -48,7 +48,7 @@ impl State {
     }
 
     /// Sets whether the transceiver is rejecting frames.
-    pub fn set_reject(&mut self, reject: bool) {
+    pub const fn set_reject(&mut self, reject: bool) {
         self.reject = reject;
     }
 
@@ -84,7 +84,7 @@ impl State {
     }
 
     /// Resets the transceiver state.
-    pub fn reset(&mut self, status: Status) {
+    pub const fn reset(&mut self, status: Status) {
         self.status = status;
         self.frame_number = WrappingU3::ZERO;
         self.last_received_frame_num = None;

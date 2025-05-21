@@ -180,7 +180,6 @@ where
                 }
                 other => {
                     warn!("Expected RSTACK but got: {other}");
-                    continue;
                 }
             }
         }

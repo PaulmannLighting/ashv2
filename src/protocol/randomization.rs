@@ -55,7 +55,7 @@ impl Iterator for MaskGenerator {
 
         if random & self.flag_bit != 0 {
             self.random ^= self.mask;
-        };
+        }
 
         Some(random)
     }
