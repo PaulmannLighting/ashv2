@@ -18,7 +18,7 @@ mod nak;
 mod rst;
 mod rst_ack;
 
-/// Available frame types
+/// Available frame types.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Frame {
     /// `ACK` frame

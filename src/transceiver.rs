@@ -190,7 +190,7 @@ where
 /// Transaction management for incoming commands.
 ///
 /// Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
-/// Otherwise, the transactions waits for the NCP to acknowledge the sent data.
+/// Otherwise, the transceiver waits for the NCP to acknowledge the data that has been sent.
 impl<T> Transceiver<T>
 where
     T: SerialPort,
@@ -209,7 +209,7 @@ where
                 // Retransmit timed out data.
                 //
                 // We do this here to avoid going into an infinite loop
-                // if the NCP does not respond to out pushed chunks.
+                // if the NCP does not respond to our pushed chunks.
                 self.retransmit_timed_out_data()?;
             }
         }
@@ -226,9 +226,9 @@ where
         Ok(())
     }
 
-    /// Sends chunks as long as the retransmit queue is not full.
+    /// Send chunks as long as the retransmission queue is not full.
     ///
-    /// Returns `true` if there are more chunks to send, otherwise `false`.
+    /// Return `true` if there are more chunks to send, otherwise `false`.
     fn send_chunks(&mut self) -> std::io::Result<bool> {
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
@@ -246,7 +246,7 @@ where
         Ok(true)
     }
 
-    /// Sends a chunk of data.
+    /// Send a chunk of data.
     fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> std::io::Result<()> {
         let data = Data::new(
             self.state.next_frame_number(),
@@ -329,13 +329,9 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Receives a frame from the serial port.
+    /// Receive a frame from the serial port.
     ///
-    /// Returns `Ok(None)` if no frame was received within the timeout.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
+    /// Return `Ok(None)` if no frame was received within the timeout.
     fn receive(&mut self) -> std::io::Result<Option<Frame>> {
         match self.frame_buffer.read_frame() {
             Ok(frame) => Ok(Some(frame)),
@@ -350,37 +346,21 @@ where
     }
 
     /// Send an `ACK` frame with the given ACK number.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
     fn ack(&mut self) -> std::io::Result<()> {
         self.send_ack(&Ack::new(self.state.ack_number(), false))
     }
 
     /// Send a `NAK` frame with the current ACK number.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
     fn nak(&mut self) -> std::io::Result<()> {
         self.send_nak(&Nak::new(self.state.ack_number(), false))
     }
 
     /// Send a RST frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
     fn rst(&mut self) -> std::io::Result<()> {
         self.frame_buffer.write_frame(&RST)
     }
 
     /// Send a `DATA` frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the serial port read operation failed.
     fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
         let data = transmission.data_for_transmit()?;
         trace!("Unmasked {:#04X}", data.unmasked());
@@ -409,10 +389,6 @@ where
     T: SerialPort,
 {
     /// Handle an incoming frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [Error] if the frame handling failed.
     fn handle_frame(&mut self, frame: Frame) -> std::io::Result<()> {
         debug!("Handling: {frame}");
         trace!("{frame:#04X}");
@@ -468,7 +444,7 @@ where
         Ok(())
     }
 
-    /// Extends the response buffer with the given data.
+    /// Send the response frame's payload through the response channel.
     fn handle_payload(&self, mut payload: Payload) {
         payload.mask();
         self.channels.respond(Ok(payload));
@@ -557,7 +533,7 @@ impl<T> Transceiver<T>
 where
     T: SerialPort,
 {
-    /// Enter the rejection state.
+    /// Enter the reject state.
     fn enter_reject(&mut self) -> std::io::Result<()> {
         if self.state.reject() {
             Ok(())

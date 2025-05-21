@@ -6,6 +6,6 @@ pub trait ToBuffer {
     ///
     /// # Errors
     ///
-    /// Returns an error if the frame buffer overflows.
+    /// Returns an [`std::io::Error`] if the frame buffer overflows.
     fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()>;
 }

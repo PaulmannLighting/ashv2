@@ -33,7 +33,7 @@ impl<T> FrameBuffer<T> {
     }
 }
 
-/// The `FrameBuffer` can read  `ASHv2` frames if `T` implements [`Read`].
+/// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
 impl<T> FrameBuffer<T>
 where
     T: Read,
@@ -59,6 +59,7 @@ where
     /// Reads an `ASHv2` frame into the buffer.
     ///
     /// # Errors
+    ///
     /// Returns an [`Error`] if any I/O or protocol error occurs.
     pub fn read_raw_frame(&mut self) -> std::io::Result<&[u8]> {
         self.buffer.clear();
