@@ -138,16 +138,7 @@ where
 
             debug!("Waiting for RSTACK...");
             let frame = loop {
-                if let Some(frame) = match self.receive() {
-                    Ok(frame) => frame,
-                    Err(error) => {
-                        if error.kind() == ErrorKind::Other {
-                            continue 'attempts;
-                        }
-
-                        return Err(error);
-                    }
-                } {
+                if let Some(frame) = self.receive()? {
                     break frame;
                 } else if let Ok(elapsed) = start.elapsed() {
                     // Retry sending `RST` if no `RSTACK` was received in time.
