@@ -477,6 +477,8 @@ where
     }
 
     /// Handle an incoming `RSTACK` frame.
+    ///
+    /// TODO: Maybe attempt a reconnect if the NCP sends an unexpected `RSTACK`?
     fn handle_rst_ack(rst_ack: &RstAck) -> Error {
         error!("Received unexpected RSTACK: {rst_ack}");
 
