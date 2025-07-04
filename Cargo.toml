@@ -10,7 +10,6 @@ documentation = "https://docs.rs/ashv2"
 version = "0.2.1"
 edition = "2024"
 exclude = [".gitignore"]
-publish = false
 
 [dependencies]
 bitflags = "2.9"
