@@ -480,7 +480,7 @@ where
     ///
     /// TODO: Maybe attempt a reconnect if the NCP sends an unexpected `RSTACK`?
     fn handle_rst_ack(rst_ack: &RstAck) -> Error {
-        error!("Received unexpected RSTACK: {rst_ack}");
+        debug!("Received unexpected RSTACK: {rst_ack}");
 
         if !rst_ack.is_ash_v2() {
             error!("{rst_ack} is not ASHv2: {:#04X}", rst_ack.version());
@@ -488,10 +488,10 @@ where
 
         rst_ack.code().map_or_else(
             |code| {
-                error!("NCP sent RSTACK with unknown code: {code}");
+                warn!("NCP sent RSTACK with unknown code: {code}");
             },
             |code| {
-                warn!("NCP sent RSTACK condition: {code}");
+                trace!("NCP sent RSTACK condition: {code}");
             },
         );
 
