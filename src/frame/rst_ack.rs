@@ -5,11 +5,11 @@ use num_traits::FromPrimitive;
 
 use crate::VERSION;
 use crate::code::Code;
-use crate::crc::CRC;
-use crate::crc::Validate;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
+use crate::validate::CRC;
+use crate::validate::Validate;
 
 /// A reset acknowledgment (`RST_ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -150,7 +150,7 @@ impl LowerHex for RstAck {
 #[cfg(test)]
 mod tests {
     use crate::code::Code;
-    use crate::crc::Validate;
+    use crate::validate::Validate;
 
     use super::RstAck;
 

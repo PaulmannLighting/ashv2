@@ -16,7 +16,6 @@ pub use utils::HexSlice;
 #[cfg(feature = "devel")]
 pub use {
     code::Code,
-    crc::{CRC, Validate},
     frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck, headers},
     frame_buffer::FrameBuffer,
     protocol::{CANCEL, ESCAPE, FLAG, Mask, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON},
@@ -24,13 +23,13 @@ pub use {
     to_buffer::ToBuffer,
     types::{MAX_FRAME_SIZE, RawFrame},
     utils::WrappingU3,
+    validate::{CRC, Validate},
 };
 
 const VERSION: u8 = 0x02;
 
 mod baud_rate;
 mod code;
-mod crc;
 mod frame;
 mod frame_buffer;
 mod protocol;
@@ -40,3 +39,4 @@ mod to_buffer;
 mod transceiver;
 mod types;
 mod utils;
+mod validate;

@@ -9,13 +9,13 @@ use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
-use crate::crc::Validate;
 use crate::frame::{Ack, Data, Frame, Nak, RST, RstAck};
 use crate::frame_buffer::FrameBuffer;
 use crate::protocol::Mask;
 use crate::status::Status;
 use crate::types::Payload;
 use crate::utils::WrappingU3;
+use crate::validate::Validate;
 
 use channels::Channels;
 use constants::{T_RSTACK_MAX, TX_K};

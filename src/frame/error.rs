@@ -4,10 +4,10 @@ use std::io::ErrorKind;
 use num_traits::FromPrimitive;
 
 use crate::code::Code;
-use crate::crc::{CRC, Validate};
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
+use crate::validate::{CRC, Validate};
 
 /// Error frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -148,7 +148,7 @@ impl LowerHex for Error {
 #[cfg(test)]
 mod tests {
     use crate::code::Code;
-    use crate::crc::Validate;
+    use crate::validate::Validate;
 
     use super::Error;
 

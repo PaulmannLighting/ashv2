@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::{CRC, Validate};
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
+use crate::validate::{CRC, Validate};
 
 pub const RST: Rst = Rst::new();
 
@@ -113,7 +113,7 @@ impl LowerHex for Rst {
 
 #[cfg(test)]
 mod tests {
-    use crate::crc::Validate;
+    use crate::validate::Validate;
 
     use super::Rst;
 

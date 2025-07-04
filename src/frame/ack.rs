@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::{CRC, Validate};
 use crate::frame::headers;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
 use crate::utils::WrappingU3;
+use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -122,9 +122,9 @@ impl LowerHex for Ack {
 #[cfg(test)]
 mod tests {
     use super::Ack;
-    use crate::crc::Validate;
     use crate::frame::headers;
     use crate::utils::WrappingU3;
+    use crate::validate::Validate;
 
     const ACK1: Ack = Ack {
         header: headers::Ack::from_bits_retain(0x81),

@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::Validate;
+use crate::validate::Validate;
 
 pub use ack::Ack;
 pub use data::Data;
@@ -127,7 +127,7 @@ impl Validate for Frame {
 mod tests {
     use super::{Frame, Rst};
     use crate::code::Code;
-    use crate::crc::Validate;
+    use crate::validate::Validate;
 
     #[test]
     fn test_rst_try_from_bytes_slice() {

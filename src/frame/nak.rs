@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::crc::{CRC, Validate};
 use crate::frame::headers;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
 use crate::utils::WrappingU3;
+use crate::validate::{CRC, Validate};
 
 /// Negative Acknowledgement (`NAK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -122,8 +122,8 @@ impl LowerHex for Nak {
 #[cfg(test)]
 mod tests {
     use super::Nak;
-    use crate::crc::Validate;
     use crate::frame::headers;
+    use crate::validate::Validate;
 
     const NAK1: Nak = Nak {
         header: headers::Nak::from_bits_retain(0xA6),
