@@ -29,10 +29,7 @@ impl<T> FrameBuffer<T> {
 
     #[must_use]
     fn buffer_overflow(byte: u8) -> Error {
-        Error::new(
-            ErrorKind::Other,
-            format!("Frame buffer overflow: {byte:#04X}"),
-        )
+        Error::other(format!("Frame buffer overflow: {byte:#04X}"))
     }
 }
 
@@ -68,6 +65,7 @@ where
         self.buffer.clear();
         let mut error = false;
 
+        #[allow(clippy::unbuffered_bytes)]
         for byte in (&mut self.inner).bytes() {
             match byte? {
                 CANCEL => {
