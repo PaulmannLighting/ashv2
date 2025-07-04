@@ -15,7 +15,7 @@ publish = false
 [dependencies]
 bitflags = "2.9"
 clap = { version = "4.5", optional = true }
-crc = "3.2"
+crc = "3.3"
 heapless = "0.8"
 log = "0.4"
 num-derive = "0.4"
