@@ -564,7 +564,7 @@ where
 
     /// Handle I/O errors.
     fn handle_io_error(&mut self, error: Error) {
-        error!("{error}");
+        debug!("Handling I/O error: {error}");
         self.channels.respond(Err(error));
         self.reset();
     }
