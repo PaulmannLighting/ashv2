@@ -480,7 +480,7 @@ where
 
     /// Handle an incoming `RSTACK` frame.
     fn handle_rst_ack(rst_ack: &RstAck) -> Error {
-        debug!("Received unexpected RSTACK: {rst_ack}");
+        debug!("Received RSTACK: {rst_ack}");
 
         if !rst_ack.is_ash_v2() {
             error!("{rst_ack} is not ASHv2: {:#04X}", rst_ack.version());
@@ -495,10 +495,7 @@ where
             },
         );
 
-        Error::new(
-            ErrorKind::ConnectionReset,
-            "NCP received unexpected RSTACK.",
-        )
+        Error::new(ErrorKind::ConnectionReset, "NCP sent RSTACK.")
     }
 }
 
