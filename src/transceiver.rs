@@ -77,7 +77,7 @@ where
     ) -> (
         Sender<Payload>,
         Receiver<std::io::Result<Payload>>,
-        JoinHandle<()>,
+        JoinHandle<T>,
     )
     where
         T: 'static,
@@ -92,12 +92,14 @@ where
     ///
     /// This should be called in a separate thread.
     #[allow(clippy::needless_pass_by_value)]
-    pub fn run(mut self, running: Arc<AtomicBool>) {
+    pub fn run(mut self, running: Arc<AtomicBool>) -> T {
         while running.load(Relaxed) {
             if let Err(error) = self.main() {
                 self.handle_io_error(error);
             }
         }
+
+        self.frame_buffer.into_inner()
     }
 
     /// Main loop of the transceiver.

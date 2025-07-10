@@ -28,6 +28,11 @@ impl<T> FrameBuffer<T> {
     }
 
     #[must_use]
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+
+    #[must_use]
     fn buffer_overflow(byte: u8) -> Error {
         Error::other(format!("Frame buffer overflow: {byte:#04X}"))
     }

@@ -7,7 +7,7 @@ repository = "https://github.com/PaulmannLighting/ashv2"
 keywords = ["ASH", "async", "serial", "host"]
 categories = ["hardware-support", "network-programming"]
 documentation = "https://docs.rs/ashv2"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2024"
 exclude = [".gitignore"]
 
