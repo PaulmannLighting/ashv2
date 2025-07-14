@@ -93,6 +93,10 @@ where
     /// Run the transceiver.
     ///
     /// This should be called in a separate thread.
+    ///
+    /// # Returns
+    ///
+    /// Returns the inner serial port after the transceiver has stopped running.
     #[allow(clippy::needless_pass_by_value)]
     pub fn run(mut self, running: Arc<AtomicBool>) -> T {
         while running.load(Relaxed) {
