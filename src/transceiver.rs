@@ -43,12 +43,6 @@ pub struct Transceiver<T> {
 
 impl<T> Transceiver<T> {
     /// Create a new transceiver.
-    ///
-    /// # Parameters
-    ///
-    /// - `serial_port`: The serial port to communicate with the NCP.
-    /// - `requests`: The receiver of the channel for request frames sent to the NCP.
-    /// - `response`: The sender of the channel for response frames from the NCP.
     #[must_use]
     pub const fn new(
         serial_port: T,
