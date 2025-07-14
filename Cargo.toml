@@ -22,12 +22,13 @@ heapless = "0.8"
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
-serialport = { version = "4.7", default-features = false }
+serialport = { version = "4.7", default-features = false, optional = true }
 tokio = { version = "1.45", default-features = false, features = ["sync"] }
 
 [features]
 clap = ["dep:clap"]
 devel = []
+serialport = ["dep:serialport"]
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

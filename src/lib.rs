@@ -8,6 +8,7 @@
 #![deny(unsafe_code)]
 
 pub use baud_rate::BaudRate;
+#[cfg(feature = "serialport")]
 pub use serial_port::open;
 pub use transceiver::Transceiver;
 pub use types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
