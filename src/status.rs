@@ -1,3 +1,5 @@
+//! Status of the `ASHv2` connection.
+
 /// `ASHv2` connection status.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum Status {

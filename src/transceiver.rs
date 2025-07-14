@@ -1,3 +1,5 @@
+//! Transceiver for the `ASHv2` protocol.
+
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

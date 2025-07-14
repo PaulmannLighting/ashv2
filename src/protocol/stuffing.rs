@@ -1,3 +1,5 @@
+//! Implementation of byte stuffing and un-stuffing.
+
 use std::io::{Error, ErrorKind, Result};
 
 use crate::protocol::{CANCEL, ESCAPE, FLAG, SUBSTITUTE, X_OFF, X_ON};

@@ -1,3 +1,5 @@
+//! Randomization for masking bytes in protocol messages.
+
 /// Mask bytes with pseudo-random numbers.
 pub trait Mask {
     /// Masks bytes with pseudo-random numbers.

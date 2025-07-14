@@ -1,3 +1,5 @@
+//! Protocol definitions for the communication layer.
+
 pub use randomization::Mask;
 pub use stuffing::Stuffing;
 

@@ -1,3 +1,5 @@
+//! Available baud rates for the NCP (Network Co-Processor).
+
 /// Available baud rates that the NCP can operate on.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]

@@ -1,3 +1,5 @@
+//! Data frame header.
+
 use bitflags::bitflags;
 
 use crate::utils::WrappingU3;

@@ -1,3 +1,5 @@
+//! Frame buffer for reading and writing ASH frames.
+
 use std::fmt::{Display, UpperHex};
 use std::io::{Error, ErrorKind, Read, Write};
 

@@ -1,3 +1,5 @@
+//! CRC checksum validation.
+
 use crc::{CRC_16_IBM_3740, Crc};
 
 /// CRC-16-IBM-3740 checksum function.

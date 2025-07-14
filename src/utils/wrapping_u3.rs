@@ -1,3 +1,5 @@
+//! A three bit number that wraps around.
+
 use std::fmt::Display;
 use std::num::NonZero;
 use std::ops::{Add, AddAssign};

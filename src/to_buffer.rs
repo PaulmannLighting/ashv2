@@ -1,3 +1,5 @@
+//! Buffering of frames.
+
 use crate::types::RawFrame;
 
 /// A trait for objects that can be written to a frame buffer.

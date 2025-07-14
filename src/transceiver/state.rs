@@ -1,3 +1,5 @@
+//! Transceiver state information.
+
 use std::time::Duration;
 
 use log::trace;

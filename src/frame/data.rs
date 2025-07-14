@@ -1,3 +1,5 @@
+//! Data frame implementation.
+
 use std::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 

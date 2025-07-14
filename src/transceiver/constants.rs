@@ -1,3 +1,5 @@
+//! Transceiver-related constants.
+
 use std::time::Duration;
 
 #[cfg(any())]

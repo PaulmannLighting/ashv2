@@ -1,3 +1,5 @@
+//! Transmitted frame with metadata.
+
 use std::io::{Error, ErrorKind};
 use std::time::{Duration, SystemTime, SystemTimeError};
 
@@ -5,6 +7,7 @@ use crate::frame::Data;
 use crate::transceiver::constants::ACK_TIMEOUTS;
 use crate::utils::WrappingU3;
 
+/// A transmitted frame with metadata.
 #[derive(Debug)]
 pub struct Transmission {
     sent: SystemTime,

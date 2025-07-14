@@ -1,3 +1,5 @@
+//! Reset and error codes of the `ASHv2` protocol.
+
 use std::fmt::{Display, Formatter};
 
 use num_derive::FromPrimitive;

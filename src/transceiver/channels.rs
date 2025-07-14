@@ -1,3 +1,5 @@
+//! Communication channels for the transceiver.
+
 use std::io::{Error, ErrorKind};
 
 use log::error;

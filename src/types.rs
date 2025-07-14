@@ -1,3 +1,5 @@
+//! Common types used in the `ASHv2` protocol implementation.
+
 use crate::frame::Data;
 
 /// In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
