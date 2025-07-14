@@ -18,7 +18,7 @@ pub struct FrameBuffer<T> {
 }
 
 impl<T> FrameBuffer<T> {
-    /// Creates a new `FrameBuffer` with the given inner reader and/or writer.
+    /// Create a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
     pub const fn new(inner: T) -> Self {
         Self {
@@ -133,7 +133,7 @@ impl<T> FrameBuffer<T>
 where
     T: Write,
 {
-    /// Writes an `ASHv2` [`Validate`].
+    /// Write an `ASHv2` frame into the buffer.
     ///
     /// # Errors
     ///
