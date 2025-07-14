@@ -27,6 +27,7 @@ impl<T> FrameBuffer<T> {
         }
     }
 
+    /// Return the inner reader-writer type.
     #[must_use]
     pub fn into_inner(self) -> T {
         self.inner
