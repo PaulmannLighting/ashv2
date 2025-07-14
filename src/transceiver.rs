@@ -1,6 +1,6 @@
 //! Transceiver for the `ASHv2` protocol.
 
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Read, Write};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -8,7 +8,6 @@ use std::thread::{JoinHandle, spawn};
 use std::time::SystemTime;
 
 use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
 
 use crate::frame::{Ack, Data, Frame, Nak, RST, RstAck};
@@ -42,10 +41,7 @@ pub struct Transceiver<T> {
     transmissions: heapless::Vec<Transmission, TX_K>,
 }
 
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
+impl<T> Transceiver<T> {
     /// Create a new transceiver.
     ///
     /// # Parameters
@@ -67,6 +63,291 @@ where
         }
     }
 
+    /// Reset buffers and state.
+    fn reset(&mut self) {
+        self.state.reset(Status::Failed);
+        self.transmissions.clear();
+    }
+
+    /// Handle I/O errors.
+    fn handle_io_error(&mut self, error: Error) {
+        debug!("Handling I/O error: {error}");
+        self.channels.respond(Err(error));
+        self.reset();
+    }
+
+    /// Leave the rejection state.
+    fn leave_reject(&mut self) {
+        if self.state.reject() {
+            trace!("Leaving rejection state.");
+            self.state.set_reject(false);
+        }
+    }
+
+    /// Send the response frame's payload through the response channel.
+    fn handle_payload(&self, mut payload: Payload) {
+        payload.mask();
+        self.channels.respond(Ok(payload));
+    }
+
+    /// Handle an incoming `RSTACK` frame.
+    fn handle_rst_ack(rst_ack: &RstAck) -> Error {
+        debug!("Received RSTACK: {rst_ack}");
+
+        if !rst_ack.is_ash_v2() {
+            error!("{rst_ack} is not ASHv2: {:#04X}", rst_ack.version());
+        }
+
+        rst_ack.code().map_or_else(
+            |code| {
+                warn!("NCP sent RSTACK with unknown code: {code}");
+            },
+            |code| {
+                trace!("NCP sent RSTACK condition: {code}");
+            },
+        );
+
+        Error::new(ErrorKind::ConnectionReset, "NCP sent RSTACK.")
+    }
+
+    /// Handle an incoming `ERROR` frame.
+    fn handle_error(error: &crate::frame::Error) -> Error {
+        if !error.is_ash_v2() {
+            error!("{error} is not ASHv2: {:#04X}", error.version());
+        }
+
+        error.code().map_or_else(
+            |code| {
+                error!("NCP sent ERROR with invalid code: {code}");
+            },
+            |code| {
+                warn!("NCP sent ERROR condition: {code}");
+            },
+        );
+
+        Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
+    }
+}
+
+impl<T> Transceiver<T>
+where
+    T: Read,
+{
+    /// Receive a frame from the serial port.
+    ///
+    /// Return `Ok(None)` if no frame was received within the timeout.
+    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
+        match self.frame_buffer.read_frame() {
+            Ok(frame) => Ok(Some(frame)),
+            Err(error) => {
+                if error.kind() == ErrorKind::TimedOut {
+                    Ok(None)
+                } else {
+                    Err(error)
+                }
+            }
+        }
+    }
+}
+
+impl<T> Transceiver<T>
+where
+    T: Write,
+{
+    /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
+    fn ack_sent_frames(&mut self, ack_num: WrappingU3) {
+        while let Some(transmission) = self
+            .transmissions
+            .iter()
+            .position(|transmission| transmission.frame_num() + 1 == ack_num)
+            .map(|index| self.transmissions.remove(index))
+        {
+            if let Ok(duration) = transmission.elapsed() {
+                trace!(
+                    "ACKed frame {} after {duration:?}",
+                    transmission.into_data()
+                );
+                self.state.update_t_rx_ack(Some(duration));
+            } else {
+                trace!("ACKed frame {}", transmission.into_data());
+            }
+        }
+    }
+
+    /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
+    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
+        trace!("Handling NAK: {nak_num}");
+
+        if let Some(transmission) = self
+            .transmissions
+            .iter()
+            .position(|transmission| transmission.frame_num() == nak_num)
+            .map(|index| self.transmissions.remove(index))
+        {
+            debug!("Retransmitting NAK'ed frame #{}", transmission.frame_num());
+            self.transmit(transmission)?;
+        }
+
+        Ok(())
+    }
+
+    /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
+    fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
+        while let Some(transmission) = self
+            .transmissions
+            .iter()
+            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack()))
+            .map(|index| self.transmissions.remove(index))
+        {
+            debug!(
+                "Retransmitting timed-out frame #{}",
+                transmission.frame_num()
+            );
+            self.state.update_t_rx_ack(None);
+            self.transmit(transmission)?;
+        }
+
+        Ok(())
+    }
+
+    /// Send an `ACK` frame with the given ACK number.
+    fn ack(&mut self) -> std::io::Result<()> {
+        self.send_ack(&Ack::new(self.state.ack_number(), false))
+    }
+
+    /// Send a `NAK` frame with the current ACK number.
+    fn nak(&mut self) -> std::io::Result<()> {
+        self.send_nak(&Nak::new(self.state.ack_number(), false))
+    }
+
+    /// Send a RST frame.
+    fn rst(&mut self) -> std::io::Result<()> {
+        self.frame_buffer.write_frame(&RST)
+    }
+
+    /// Send a `DATA` frame.
+    fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
+        let data = transmission.data_for_transmit()?;
+        trace!("Unmasked {:#04X}", data.unmasked());
+        self.frame_buffer.write_frame(data)?;
+        self.transmissions
+            .insert(0, transmission)
+            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
+    }
+
+    /// Send a chunk of data.
+    fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> std::io::Result<()> {
+        let data = Data::new(
+            self.state.next_frame_number(),
+            chunk,
+            self.state.ack_number() + offset,
+        );
+        self.transmit(data.into())
+    }
+
+    /// Send chunks as long as the retransmission queue is not full.
+    ///
+    /// Return `true` if there are more chunks to send, otherwise `false`.
+    fn send_chunks(&mut self) -> std::io::Result<bool> {
+        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
+        // fragmented messages if each DATA frame's ACK number is not increased.
+        let mut offset = WrappingU3::default();
+
+        while !self.transmissions.is_full() {
+            if let Some(chunk) = self.channels.receive()? {
+                self.send_chunk(chunk, offset)?;
+                offset += 1;
+            } else {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// Send a raw `ACK` frame.
+    fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
+        debug!("Sending ACK: {ack}");
+        self.frame_buffer.write_frame(ack)
+    }
+
+    /// Send a raw `NAK` frame.
+    fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+        debug!("Sending NAK: {nak}");
+        self.frame_buffer.write_frame(nak)
+    }
+
+    /// Enter the reject state.
+    ///
+    /// `ASH` sets the Reject Condition after receiving a `DATA` frame
+    /// with any of the following attributes:
+    ///
+    ///   * Has an incorrect CRC.
+    ///   * Has an invalid control byte.
+    ///   * Is an invalid length for the frame type.
+    ///   * Contains a low-level communication error (e.g., framing, overrun, or overflow).
+    ///   * Has an invalid ackNum.
+    ///   * Is out of sequence.
+    ///   * Was valid, but had to be discarded due to lack of memory to store it.
+    fn enter_reject(&mut self) -> std::io::Result<()> {
+        if self.state.reject() {
+            Ok(())
+        } else {
+            trace!("Entering rejection state.");
+            self.state.set_reject(true);
+            self.nak()
+        }
+    }
+
+    /// Handle an incoming `DATA` frame.
+    fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
+        trace!("Unmasked data: {:#04X}", data.unmasked());
+
+        if !data.is_crc_valid() {
+            warn!("Received data frame with invalid CRC.");
+            self.enter_reject()?;
+        } else if data.frame_num() == self.state.ack_number() {
+            self.leave_reject();
+            self.state.set_last_received_frame_num(data.frame_num());
+            self.ack()?;
+            self.ack_sent_frames(data.ack_num());
+            self.handle_payload(data.into_payload());
+        } else if data.is_retransmission() {
+            info!("Received retransmission of frame: {data}");
+            self.ack()?;
+            self.ack_sent_frames(data.ack_num());
+            self.handle_payload(data.into_payload());
+        } else {
+            warn!("Received out-of-sequence data frame: {data}");
+            self.enter_reject()?;
+        }
+
+        Ok(())
+    }
+
+    /// Handle an incoming `NAK` frame.
+    fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+        if !nak.is_crc_valid() {
+            warn!("Received ACK with invalid CRC.");
+        }
+
+        self.nak_sent_frames(nak.ack_num())
+    }
+
+    /// Handle an incoming `ACK` frame.
+    fn handle_ack(&mut self, ack: &Ack) {
+        if !ack.is_crc_valid() {
+            warn!("Received ACK with invalid CRC.");
+        }
+
+        self.ack_sent_frames(ack.ack_num());
+    }
+}
+
+impl<T> Transceiver<T>
+where
+    T: Read + Write,
+{
     /// Spawn a new transceiver.
     ///
     /// # Returns
@@ -82,7 +363,7 @@ where
         JoinHandle<T>,
     )
     where
-        T: 'static,
+        T: Send + 'static,
     {
         let (request_tx, request_rx) = channel(channel_size);
         let (response_tx, response_rx) = channel(channel_size);
@@ -127,13 +408,7 @@ where
         self.send_data()?;
         self.handle_callbacks()
     }
-}
 
-/// Establish an `ASHv2` connection with the NCP.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
     /// Establish an `ASHv2` connection with the NCP.
     fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
@@ -192,16 +467,7 @@ where
             }
         }
     }
-}
 
-/// Transaction management for incoming commands.
-///
-/// Incoming data is split into `ASH` chunks and sent to the NCP as long as the queue is not full.
-/// Otherwise, the transceiver waits for the NCP to acknowledge the data that has been sent.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
     /// Start a transaction of incoming data.
     fn send_data(&mut self) -> std::io::Result<()> {
         // Send chunks of data as long as there are chunks left to send.
@@ -233,168 +499,6 @@ where
         Ok(())
     }
 
-    /// Send chunks as long as the retransmission queue is not full.
-    ///
-    /// Return `true` if there are more chunks to send, otherwise `false`.
-    fn send_chunks(&mut self) -> std::io::Result<bool> {
-        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
-        // fragmented messages if each DATA frame's ACK number is not increased.
-        let mut offset = WrappingU3::default();
-
-        while !self.transmissions.is_full() {
-            if let Some(chunk) = self.channels.receive()? {
-                self.send_chunk(chunk, offset)?;
-                offset += 1;
-            } else {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
-    }
-
-    /// Send a chunk of data.
-    fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> std::io::Result<()> {
-        let data = Data::new(
-            self.state.next_frame_number(),
-            chunk,
-            self.state.ack_number() + offset,
-        );
-        self.transmit(data.into())
-    }
-}
-
-/// Handling of sent `DATA` frames.
-///
-/// `ASH` retransmits `DATA` frames if they
-///
-///   * have been `NAK`ed by the NCP or
-///   * not been acknowledged by the NCP in time.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
-    fn ack_sent_frames(&mut self, ack_num: WrappingU3) {
-        while let Some(transmission) = self
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.frame_num() + 1 == ack_num)
-            .map(|index| self.transmissions.remove(index))
-        {
-            if let Ok(duration) = transmission.elapsed() {
-                trace!(
-                    "ACKed frame {} after {duration:?}",
-                    transmission.into_data()
-                );
-                self.state.update_t_rx_ack(Some(duration));
-            } else {
-                trace!("ACKed frame {}", transmission.into_data());
-            }
-        }
-    }
-
-    /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
-        trace!("Handling NAK: {nak_num}");
-
-        if let Some(transmission) = self
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.frame_num() == nak_num)
-            .map(|index| self.transmissions.remove(index))
-        {
-            debug!("Retransmitting NAK'ed frame #{}", transmission.frame_num());
-            self.transmit(transmission)?;
-        }
-
-        Ok(())
-    }
-
-    /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
-    fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
-        while let Some(transmission) = self
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.is_timed_out(self.state.t_rx_ack()))
-            .map(|index| self.transmissions.remove(index))
-        {
-            debug!(
-                "Retransmitting timed-out frame #{}",
-                transmission.frame_num()
-            );
-            self.state.update_t_rx_ack(None);
-            self.transmit(transmission)?;
-        }
-
-        Ok(())
-    }
-}
-
-/// `ASHv2` frame I/O implementation.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Receive a frame from the serial port.
-    ///
-    /// Return `Ok(None)` if no frame was received within the timeout.
-    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
-        match self.frame_buffer.read_frame() {
-            Ok(frame) => Ok(Some(frame)),
-            Err(error) => {
-                if error.kind() == ErrorKind::TimedOut {
-                    Ok(None)
-                } else {
-                    Err(error)
-                }
-            }
-        }
-    }
-
-    /// Send an `ACK` frame with the given ACK number.
-    fn ack(&mut self) -> std::io::Result<()> {
-        self.send_ack(&Ack::new(self.state.ack_number(), false))
-    }
-
-    /// Send a `NAK` frame with the current ACK number.
-    fn nak(&mut self) -> std::io::Result<()> {
-        self.send_nak(&Nak::new(self.state.ack_number(), false))
-    }
-
-    /// Send a RST frame.
-    fn rst(&mut self) -> std::io::Result<()> {
-        self.frame_buffer.write_frame(&RST)
-    }
-
-    /// Send a `DATA` frame.
-    fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
-        let data = transmission.data_for_transmit()?;
-        trace!("Unmasked {:#04X}", data.unmasked());
-        self.frame_buffer.write_frame(data)?;
-        self.transmissions
-            .insert(0, transmission)
-            .map_err(|_| Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
-    }
-
-    /// Send a raw `ACK` frame.
-    fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
-        debug!("Sending ACK: {ack}");
-        self.frame_buffer.write_frame(ack)
-    }
-
-    /// Send a raw `NAK` frame.
-    fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
-        debug!("Sending NAK: {nak}");
-        self.frame_buffer.write_frame(nak)
-    }
-}
-
-/// Handling of incoming frames.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
     /// Handle an incoming frame.
     fn handle_frame(&mut self, frame: Frame) -> std::io::Result<()> {
         debug!("Handling: {frame}");
@@ -416,100 +520,6 @@ where
         Ok(())
     }
 
-    /// Handle an incoming `ACK` frame.
-    fn handle_ack(&mut self, ack: &Ack) {
-        if !ack.is_crc_valid() {
-            warn!("Received ACK with invalid CRC.");
-        }
-
-        self.ack_sent_frames(ack.ack_num());
-    }
-
-    /// Handle an incoming `DATA` frame.
-    fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
-        trace!("Unmasked data: {:#04X}", data.unmasked());
-
-        if !data.is_crc_valid() {
-            warn!("Received data frame with invalid CRC.");
-            self.enter_reject()?;
-        } else if data.frame_num() == self.state.ack_number() {
-            self.leave_reject();
-            self.state.set_last_received_frame_num(data.frame_num());
-            self.ack()?;
-            self.ack_sent_frames(data.ack_num());
-            self.handle_payload(data.into_payload());
-        } else if data.is_retransmission() {
-            info!("Received retransmission of frame: {data}");
-            self.ack()?;
-            self.ack_sent_frames(data.ack_num());
-            self.handle_payload(data.into_payload());
-        } else {
-            warn!("Received out-of-sequence data frame: {data}");
-            self.enter_reject()?;
-        }
-
-        Ok(())
-    }
-
-    /// Send the response frame's payload through the response channel.
-    fn handle_payload(&self, mut payload: Payload) {
-        payload.mask();
-        self.channels.respond(Ok(payload));
-    }
-
-    /// Handle an incoming `ERROR` frame.
-    fn handle_error(error: &crate::frame::Error) -> Error {
-        if !error.is_ash_v2() {
-            error!("{error} is not ASHv2: {:#04X}", error.version());
-        }
-
-        error.code().map_or_else(
-            |code| {
-                error!("NCP sent ERROR with invalid code: {code}");
-            },
-            |code| {
-                warn!("NCP sent ERROR condition: {code}");
-            },
-        );
-
-        Error::new(ErrorKind::ConnectionReset, "NCP entered ERROR state.")
-    }
-
-    /// Handle an incoming `NAK` frame.
-    fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
-        if !nak.is_crc_valid() {
-            warn!("Received ACK with invalid CRC.");
-        }
-
-        self.nak_sent_frames(nak.ack_num())
-    }
-
-    /// Handle an incoming `RSTACK` frame.
-    fn handle_rst_ack(rst_ack: &RstAck) -> Error {
-        debug!("Received RSTACK: {rst_ack}");
-
-        if !rst_ack.is_ash_v2() {
-            error!("{rst_ack} is not ASHv2: {:#04X}", rst_ack.version());
-        }
-
-        rst_ack.code().map_or_else(
-            |code| {
-                warn!("NCP sent RSTACK with unknown code: {code}");
-            },
-            |code| {
-                trace!("NCP sent RSTACK condition: {code}");
-            },
-        );
-
-        Error::new(ErrorKind::ConnectionReset, "NCP sent RSTACK.")
-    }
-}
-
-/// Handle callbacks actively sent by the NCP outside of transactions.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
     /// Handle callbacks actively sent by the NCP outside of transactions.
     fn handle_callbacks(&mut self) -> std::io::Result<()> {
         while let Some(callback) = self.receive()? {
@@ -517,61 +527,5 @@ where
         }
 
         Ok(())
-    }
-}
-
-/// Reject state management.
-///
-/// `ASH` sets the Reject Condition after receiving a `DATA` frame
-/// with any of the following attributes:
-///
-///   * Has an incorrect CRC.
-///   * Has an invalid control byte.
-///   * Is an invalid length for the frame type.
-///   * Contains a low-level communication error (e.g., framing, overrun, or overflow).
-///   * Has an invalid ackNum.
-///   * Is out of sequence.
-///   * Was valid, but had to be discarded due to lack of memory to store it.
-///
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Enter the reject state.
-    fn enter_reject(&mut self) -> std::io::Result<()> {
-        if self.state.reject() {
-            Ok(())
-        } else {
-            trace!("Entering rejection state.");
-            self.state.set_reject(true);
-            self.nak()
-        }
-    }
-
-    /// Leave the rejection state.
-    fn leave_reject(&mut self) {
-        if self.state.reject() {
-            trace!("Leaving rejection state.");
-            self.state.set_reject(false);
-        }
-    }
-}
-
-/// Reset and error handling implementation.
-impl<T> Transceiver<T>
-where
-    T: SerialPort,
-{
-    /// Reset buffers and state.
-    fn reset(&mut self) {
-        self.state.reset(Status::Failed);
-        self.transmissions.clear();
-    }
-
-    /// Handle I/O errors.
-    fn handle_io_error(&mut self, error: Error) {
-        debug!("Handling I/O error: {error}");
-        self.channels.respond(Err(error));
-        self.reset();
     }
 }
