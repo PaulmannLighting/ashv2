@@ -3,14 +3,14 @@
 use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
-use crate::validate::Validate;
-
 pub use ack::Ack;
 pub use data::Data;
 pub use error::Error;
 pub use nak::Nak;
 pub use rst::{RST, Rst};
 pub use rst_ack::RstAck;
+
+use crate::validate::Validate;
 
 mod ack;
 mod data;

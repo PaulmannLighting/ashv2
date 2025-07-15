@@ -6,8 +6,7 @@ use std::io::ErrorKind;
 use crate::frame::headers;
 use crate::protocol::Mask;
 use crate::to_buffer::ToBuffer;
-use crate::types::Payload;
-use crate::types::RawFrame;
+use crate::types::{Payload, RawFrame};
 use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 

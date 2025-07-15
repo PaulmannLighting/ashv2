@@ -149,10 +149,9 @@ impl LowerHex for Error {
 
 #[cfg(test)]
 mod tests {
+    use super::Error;
     use crate::code::Code;
     use crate::validate::Validate;
-
-    use super::Error;
 
     const ERROR: Error = Error {
         header: 0xC2,

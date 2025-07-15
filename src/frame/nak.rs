@@ -6,8 +6,7 @@ use std::io::ErrorKind;
 use crate::frame::headers;
 use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
-use crate::utils::HexSlice;
-use crate::utils::WrappingU3;
+use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 
 /// Negative Acknowledgement (`NAK`) frame.

@@ -115,9 +115,8 @@ impl LowerHex for Rst {
 
 #[cfg(test)]
 mod tests {
-    use crate::validate::Validate;
-
     use super::Rst;
+    use crate::validate::Validate;
 
     const RST: Rst = Rst {
         header: 0xC0,

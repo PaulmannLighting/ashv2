@@ -13,7 +13,6 @@ pub use serial_port::open;
 pub use transceiver::Transceiver;
 pub use types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
 pub use utils::HexSlice;
-
 #[cfg(feature = "devel")]
 pub use {
     code::Code,
