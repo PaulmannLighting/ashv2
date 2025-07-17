@@ -1,7 +1,8 @@
 //! Transmitted frame with metadata.
 
+use core::time::Duration;
 use std::io::{Error, ErrorKind};
-use std::time::{Duration, SystemTime, SystemTimeError};
+use std::time::{SystemTime, SystemTimeError};
 
 use crate::frame::Data;
 use crate::transceiver::constants::ACK_TIMEOUTS;

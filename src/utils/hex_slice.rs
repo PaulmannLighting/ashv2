@@ -1,6 +1,6 @@
 //! A module for formatting slices of bytes as hexadecimal values.
 
-use std::fmt::{Formatter, LowerHex, Result, UpperHex};
+use core::fmt::{Formatter, LowerHex, Result, UpperHex};
 
 /// A wrapper around a slice of bytes to format it with hexadecimal bytes.
 pub struct HexSlice<'a>(&'a [u8]);

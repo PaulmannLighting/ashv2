@@ -1,6 +1,6 @@
 //! Transceiver-related constants.
 
-use std::time::Duration;
+use core::time::Duration;
 
 #[cfg(any())]
 pub const MAX_STARTUP_ATTEMPTS: usize = 5;

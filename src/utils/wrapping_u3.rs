@@ -1,8 +1,8 @@
 //! A three bit number that wraps around.
 
-use std::fmt::Display;
-use std::num::NonZero;
-use std::ops::{Add, AddAssign};
+use core::fmt::Display;
+use core::num::NonZero;
+use core::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
 const NON_ZERO_BIT: u8 = 0b0000_1000;

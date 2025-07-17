@@ -1,6 +1,6 @@
 //! Frame types and their respective headers for the `ASHv2` protocol.
 
-use std::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
+use core::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
 
 pub use ack::Ack;
