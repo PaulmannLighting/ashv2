@@ -1,4 +1,4 @@
-on: [push]
+on: [ push ]
 
 name: CI
 
@@ -37,4 +37,4 @@ jobs:
         with:
           packages: libudev-dev
           version: 1.0
-      - run: cargo clippy -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::cargo -A clippy::multiple_crate_versions
+      - run: cargo clippy --all-features
