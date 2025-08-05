@@ -86,6 +86,11 @@ impl Data {
         unmasked.payload.mask();
         unmasked
     }
+
+    /// Returns an iterator over the data frame's bytes.
+    pub fn iter(&self) -> impl Iterator<Item = u8> {
+        self.into_iter()
+    }
 }
 
 impl Display for Data {
