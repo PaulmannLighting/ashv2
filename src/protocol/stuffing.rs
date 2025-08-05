@@ -47,15 +47,15 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
         self.retain_mut(|byte| {
             if byte == &ESCAPE {
                 escape_next = true;
-                false
-            } else {
-                if escape_next {
-                    *byte ^= COMPLEMENT_BIT;
-                    escape_next = false;
-                }
-
-                true
+                return false;
             }
+
+            if escape_next {
+                *byte ^= COMPLEMENT_BIT;
+                escape_next = false;
+            }
+
+            true
         });
     }
 }
