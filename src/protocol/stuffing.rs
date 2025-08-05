@@ -42,19 +42,21 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
     }
 
     fn unstuff(&mut self) {
-        let mut index: usize = 0;
+        let mut escaped = false;
 
-        while let Some(offset) = self.iter().skip(index).position(|byte| byte == &ESCAPE) {
-            index += offset;
-            self.remove(index);
+        self.retain_mut(|byte| {
+            if byte == &ESCAPE {
+                escaped = true;
+                false
+            } else {
+                if escaped {
+                    *byte ^= COMPLEMENT_BIT;
+                    escaped = false;
+                }
 
-            let Some(byte) = self.get_mut(index) else {
-                break;
-            };
-
-            *byte ^= COMPLEMENT_BIT;
-            index += 1; // Move past the byte that was just un-stuffed.
-        }
+                true
+            }
+        });
     }
 }
 
