@@ -9,7 +9,6 @@ use crate::frame::Frame;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON};
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
-use crate::validate::Validate;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
