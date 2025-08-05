@@ -154,6 +154,7 @@ mod tests {
     use std::io::Cursor;
 
     use super::*;
+    use crate::frame::Data;
 
     #[test]
     fn test_read_frame() {
@@ -187,13 +188,25 @@ mod tests {
             ControlByte::Flag as u8,
         ];
         let mut buffer = FrameBuffer::new(Cursor::new(data));
+        let reference = Data::try_from([0x7Eu8, 0x11, 0x13, 0x18, 0x1A, 0x7D].as_slice())
+            .expect("Reference data should be valid.");
 
-        let Frame::Data(_) = buffer.read_frame().expect("Failed to read frame") else {
+        let Frame::Data(data) = buffer.read_frame().expect("A data frame should be read.") else {
             panic!("Expected a Data frame");
         };
 
-        let Frame::Data(_) = buffer.read_frame().expect("Failed to read frame") else {
+        assert_eq!(data.ack_num(), reference.ack_num());
+        assert_eq!(data.frame_num(), reference.frame_num());
+        assert_eq!(data.is_retransmission(), reference.is_retransmission());
+        assert_eq!(data.into_payload(), reference.clone().into_payload());
+
+        let Frame::Data(data) = buffer.read_frame().expect("A data frame should be read.") else {
             panic!("Expected a Data frame");
         };
+
+        assert_eq!(data.ack_num(), reference.ack_num());
+        assert_eq!(data.frame_num(), reference.frame_num());
+        assert_eq!(data.is_retransmission(), reference.is_retransmission());
+        assert_eq!(data.into_payload(), reference.into_payload());
     }
 }
