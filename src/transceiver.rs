@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::thread::{JoinHandle, spawn};
-use std::time::SystemTime;
+use std::time::Instant;
 
 use channels::Channels;
 use constants::{T_RSTACK_MAX, TX_K};
@@ -155,12 +155,9 @@ where
             .position(|transmission| transmission.frame_num() + 1 == ack_num)
             .map(|index| self.transmissions.remove(index))
         {
-            if let Ok(duration) = transmission.elapsed() {
-                trace!("ACKed frame {transmission} after {duration:?}");
-                self.state.update_t_rx_ack(Some(duration));
-            } else {
-                trace!("ACKed frame {transmission}");
-            }
+            let duration = transmission.elapsed();
+            trace!("ACKed frame {transmission} after {duration:?}");
+            self.state.update_t_rx_ack(Some(duration));
         }
     }
 
@@ -402,7 +399,7 @@ where
     /// Establish an `ASHv2` connection with the NCP.
     fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
-        let start = SystemTime::now();
+        let start = Instant::now();
         let mut attempts: usize = 0;
 
         'attempts: loop {
@@ -413,14 +410,7 @@ where
             let frame = loop {
                 if let Some(frame) = self.receive()? {
                     break frame;
-                } else if let Ok(elapsed) = start.elapsed() {
-                    // Retry sending `RST` if no `RSTACK` was received in time.
-                    if elapsed > T_RSTACK_MAX {
-                        continue 'attempts;
-                    }
-                } else {
-                    // If the system time jumps, retry sending `RST`.
-                    error!("System time jumped.");
+                } else if start.elapsed() > T_RSTACK_MAX {
                     continue 'attempts;
                 }
             };
@@ -440,9 +430,7 @@ where
                         if attempts > 1 { "s" } else { "" }
                     );
 
-                    if let Ok(elapsed) = start.elapsed() {
-                        debug!("Establishing connection took {elapsed:?}");
-                    }
+                    debug!("Establishing connection took {:?}", start.elapsed());
 
                     match rst_ack.code() {
                         Ok(code) => trace!("Received RST_ACK with code: {code}"),

@@ -3,7 +3,7 @@
 use core::time::Duration;
 use std::fmt::Display;
 use std::io::{Error, ErrorKind};
-use std::time::{SystemTime, SystemTimeError};
+use std::time::Instant;
 
 use crate::frame::Data;
 use crate::transceiver::constants::ACK_TIMEOUTS;
@@ -12,7 +12,7 @@ use crate::utils::WrappingU3;
 /// A transmitted frame with metadata.
 #[derive(Debug)]
 pub struct Transmission {
-    sent: SystemTime,
+    sent: Instant,
     data: Data,
     transmits: usize,
 }
@@ -23,15 +23,13 @@ impl Transmission {
         self.data.frame_num()
     }
 
-    pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {
+    pub fn elapsed(&self) -> Duration {
         self.sent.elapsed()
     }
 
     #[must_use]
     pub fn is_timed_out(&self, threshold: Duration) -> bool {
-        self.elapsed()
-            .map(|elapsed| elapsed > threshold)
-            .unwrap_or(true)
+        self.elapsed() > threshold
     }
 
     pub fn data_for_transmit(&mut self) -> std::io::Result<&Data> {
@@ -64,7 +62,7 @@ impl Display for Transmission {
 impl From<Data> for Transmission {
     fn from(data: Data) -> Self {
         Self {
-            sent: SystemTime::now(),
+            sent: Instant::now(),
             data,
             transmits: 0,
         }
