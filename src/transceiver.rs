@@ -156,13 +156,10 @@ where
             .map(|index| self.transmissions.remove(index))
         {
             if let Ok(duration) = transmission.elapsed() {
-                trace!(
-                    "ACKed frame {} after {duration:?}",
-                    transmission.into_data()
-                );
+                trace!("ACKed frame {transmission} after {duration:?}");
                 self.state.update_t_rx_ack(Some(duration));
             } else {
-                trace!("ACKed frame {}", transmission.into_data());
+                trace!("ACKed frame {transmission}");
             }
         }
     }

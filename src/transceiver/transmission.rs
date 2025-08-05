@@ -1,6 +1,7 @@
 //! Transmitted frame with metadata.
 
 use core::time::Duration;
+use std::fmt::Display;
 use std::io::{Error, ErrorKind};
 use std::time::{SystemTime, SystemTimeError};
 
@@ -52,10 +53,11 @@ impl Transmission {
 
         Ok(&self.data)
     }
+}
 
-    #[must_use]
-    pub fn into_data(self) -> Data {
-        self.data
+impl Display for Transmission {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.data.fmt(f)
     }
 }
 
