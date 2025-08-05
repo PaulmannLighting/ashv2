@@ -18,7 +18,7 @@ pub use {
     code::Code,
     frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck, headers},
     frame_buffer::FrameBuffer,
-    protocol::{CANCEL, ESCAPE, FLAG, Mask, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON},
+    protocol::{ControlByte, Mask, Stuffing},
     status::Status,
     types::{MAX_FRAME_SIZE, RawFrame},
     utils::WrappingU3,
