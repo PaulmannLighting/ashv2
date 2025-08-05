@@ -4,8 +4,8 @@ use std::io::{Error, ErrorKind, Read, Write};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
-use std::thread::{JoinHandle, spawn};
-use std::time::Instant;
+use std::thread::{JoinHandle, sleep, spawn};
+use std::time::{Duration, Instant};
 
 use channels::Channels;
 use constants::{T_RSTACK_MAX, TX_K};
@@ -21,6 +21,9 @@ use crate::status::Status;
 use crate::types::Payload;
 use crate::utils::WrappingU3;
 use crate::validate::Validate;
+
+const CONNECT_GRACE_TIME_FACTOR: Duration = Duration::from_millis(100);
+const MAX_CONNECTION_GRACE_TIME: Duration = Duration::from_secs(5);
 
 mod channels;
 mod constants;
@@ -400,10 +403,9 @@ where
     fn connect(&mut self) -> std::io::Result<()> {
         debug!("Connecting to NCP...");
         let start = Instant::now();
-        let mut attempts: usize = 0;
 
-        'attempts: loop {
-            attempts += 1;
+        'attempts: for attempt in 1usize.. {
+            wait_before_attempt(attempt);
             self.rst()?;
 
             debug!("Waiting for RSTACK...");
@@ -426,8 +428,8 @@ where
 
                     self.state.set_status(Status::Connected);
                     info!(
-                        "ASHv2 connection established after {attempts} attempt{}.",
-                        if attempts > 1 { "s" } else { "" }
+                        "ASHv2 connection established after {attempt} attempt{}.",
+                        if attempt > 1 { "s" } else { "" }
                     );
 
                     debug!("Establishing connection took {:?}", start.elapsed());
@@ -444,6 +446,11 @@ where
                 }
             }
         }
+
+        Err(Error::new(
+            ErrorKind::ConnectionRefused,
+            "Connection refused",
+        ))
     }
 
     /// Start a transaction of incoming data.
@@ -505,5 +512,18 @@ where
         }
 
         Ok(())
+    }
+}
+
+/// Wait before performing the next connection attempt.
+fn wait_before_attempt(attempt: usize) {
+    if attempt > 1 {
+        sleep(
+            u32::try_from(attempt)
+                .map(|attempts| {
+                    (CONNECT_GRACE_TIME_FACTOR * attempts).max(MAX_CONNECTION_GRACE_TIME)
+                })
+                .unwrap_or(MAX_CONNECTION_GRACE_TIME),
+        );
     }
 }
