@@ -44,7 +44,7 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
     fn unstuff(&mut self) {
         let mut offset: usize = 0;
 
-        while let Some(index) = self.iter().skip(offset).position(|&byte| byte == ESCAPE) {
+        while let Some(index) = self.iter().skip(offset).position(|byte| byte == &ESCAPE) {
             offset += index;
 
             let Some(byte) = self.get_mut(offset + 1) else {
