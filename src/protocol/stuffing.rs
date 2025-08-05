@@ -42,16 +42,16 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
     }
 
     fn unstuff(&mut self) {
-        let mut escaped = false;
+        let mut escape_next = false;
 
         self.retain_mut(|byte| {
             if byte == &ESCAPE {
-                escaped = true;
+                escape_next = true;
                 false
             } else {
-                if escaped {
+                if escape_next {
                     *byte ^= COMPLEMENT_BIT;
-                    escaped = false;
+                    escape_next = false;
                 }
 
                 true
