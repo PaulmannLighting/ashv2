@@ -127,27 +127,6 @@ impl<T> Transceiver<T> {
 
 impl<T> Transceiver<T>
 where
-    T: Read,
-{
-    /// Receive a frame from the serial port.
-    ///
-    /// Return `Ok(None)` if no frame was received within the timeout.
-    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
-        match self.frame_buffer.read_frame() {
-            Ok(frame) => Ok(Some(frame)),
-            Err(error) => {
-                if error.kind() == ErrorKind::TimedOut {
-                    Ok(None)
-                } else {
-                    Err(error)
-                }
-            }
-        }
-    }
-}
-
-impl<T> Transceiver<T>
-where
     T: Write,
 {
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
@@ -451,6 +430,34 @@ where
             ErrorKind::ConnectionRefused,
             "Connection refused",
         ))
+    }
+
+    /// Receive a frame from the serial port.
+    ///
+    /// Return `Ok(None)` if no frame was received within the timeout.
+    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
+        let frame = match self.frame_buffer.read_frame() {
+            Ok(frame) => frame,
+            Err(error) => {
+                if error.kind() == ErrorKind::TimedOut {
+                    return Ok(None);
+                }
+
+                return Err(error);
+            }
+        };
+
+        if frame.is_crc_valid() {
+            return Ok(Some(frame));
+        }
+
+        trace!("Received frame with invalid CRC checksum: {frame:#04X}");
+
+        if let Frame::Data(_) = frame {
+            self.enter_reject()?;
+        }
+
+        Ok(None)
     }
 
     /// Start a transaction of incoming data.

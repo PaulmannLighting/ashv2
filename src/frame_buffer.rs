@@ -51,17 +51,7 @@ where
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     pub fn read_frame(&mut self) -> std::io::Result<Frame> {
-        let frame: Frame = self.read_raw_frame()?.try_into()?;
-
-        if frame.is_crc_valid() {
-            Ok(frame)
-        } else {
-            trace!("Received frame with invalid CRC checksum: {frame:#04X}");
-            Err(Error::new(
-                ErrorKind::InvalidData,
-                "Frame CRC checksum mismatch.",
-            ))
-        }
+        self.read_raw_frame()?.try_into()
     }
 
     /// Reads an `ASHv2` frame into the buffer.
