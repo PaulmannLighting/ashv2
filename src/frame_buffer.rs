@@ -56,9 +56,10 @@ where
         if frame.is_crc_valid() {
             Ok(frame)
         } else {
+            trace!("Received frame with invalid CRC checksum: {frame:#04X}");
             Err(Error::new(
                 ErrorKind::InvalidData,
-                "Frame is not CRC valid.",
+                "Frame CRC checksum mismatch.",
             ))
         }
     }

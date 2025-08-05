@@ -518,12 +518,10 @@ where
 /// Wait before performing the next connection attempt.
 fn wait_before_attempt(attempt: usize) {
     if attempt > 1 {
-        sleep(
-            u32::try_from(attempt)
-                .map(|attempts| {
-                    (CONNECT_GRACE_TIME_FACTOR * attempts).max(MAX_CONNECTION_GRACE_TIME)
-                })
-                .unwrap_or(MAX_CONNECTION_GRACE_TIME),
-        );
+        let grace_time = u32::try_from(attempt)
+            .map(|attempts| (CONNECT_GRACE_TIME_FACTOR * attempts).max(MAX_CONNECTION_GRACE_TIME))
+            .unwrap_or(MAX_CONNECTION_GRACE_TIME);
+        debug!("Sleeping for {grace_time:?} before next connection attempt.");
+        sleep(grace_time);
     }
 }
