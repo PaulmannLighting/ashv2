@@ -51,10 +51,7 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
                 break;
             };
 
-            if !RESERVED_BYTES.contains(byte) {
-                *byte ^= COMPLEMENT_BIT;
-            }
-
+            *byte ^= COMPLEMENT_BIT;
             self.remove(offset);
             offset += 1; // Skip unescaped follow byte.
         }
