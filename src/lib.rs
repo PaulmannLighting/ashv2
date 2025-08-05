@@ -20,7 +20,6 @@ pub use {
     frame_buffer::FrameBuffer,
     protocol::{CANCEL, ESCAPE, FLAG, Mask, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON},
     status::Status,
-    to_buffer::ToBuffer,
     types::{MAX_FRAME_SIZE, RawFrame},
     utils::WrappingU3,
     validate::{CRC, Validate},
@@ -35,7 +34,6 @@ mod frame_buffer;
 mod protocol;
 mod serial_port;
 mod status;
-mod to_buffer;
 mod transceiver;
 mod types;
 mod utils;

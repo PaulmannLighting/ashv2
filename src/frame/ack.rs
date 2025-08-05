@@ -2,10 +2,9 @@
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
+use std::iter::{Chain, Once, once};
 
 use crate::frame::headers;
-use crate::to_buffer::ToBuffer;
-use crate::types::RawFrame;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 
@@ -65,19 +64,12 @@ impl Validate for Ack {
     }
 }
 
-impl ToBuffer for Ack {
-    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
-        buffer.push(self.header.bits()).map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "ACK: Could not write header to buffer",
-            )
-        })?;
-        buffer
-            .extend_from_slice(&self.crc.to_be_bytes())
-            .map_err(|()| {
-                std::io::Error::new(ErrorKind::OutOfMemory, "ACK: Could not write CRC to buffer")
-            })
+impl IntoIterator for Ack {
+    type Item = u8;
+    type IntoIter = Chain<Once<u8>, <[u8; 2] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        once(self.header.bits()).chain(self.crc.to_be_bytes())
     }
 }
 

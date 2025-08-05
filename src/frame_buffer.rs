@@ -7,7 +7,6 @@ use log::{debug, trace, warn};
 
 use crate::frame::Frame;
 use crate::protocol::{CANCEL, FLAG, SUBSTITUTE, Stuffing, WAKE, X_OFF, X_ON};
-use crate::to_buffer::ToBuffer;
 use crate::types::RawFrame;
 use crate::utils::HexSlice;
 use crate::validate::Validate;
@@ -140,14 +139,14 @@ where
     /// # Errors
     ///
     /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
-    pub fn write_frame<F>(&mut self, frame: &F) -> std::io::Result<()>
+    pub fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
     where
-        F: ToBuffer + Display + UpperHex,
+        F: IntoIterator<Item = u8> + Display + UpperHex,
     {
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
         self.buffer.clear();
-        frame.buffer(&mut self.buffer)?;
+        self.buffer.extend(frame);
         trace!("Frame bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.buffer.stuff()?;
         trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));

@@ -2,11 +2,11 @@
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
+use std::iter::{Chain, Copied, Once, once};
 
 use crate::frame::headers;
 use crate::protocol::Mask;
-use crate::to_buffer::ToBuffer;
-use crate::types::{Payload, RawFrame};
+use crate::types::Payload;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 
@@ -110,28 +110,17 @@ impl Validate for Data {
     }
 }
 
-impl ToBuffer for Data {
-    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
-        buffer.push(self.header.bits()).map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "DATA: Could not write header to buffer",
-            )
-        })?;
-        buffer.extend_from_slice(&self.payload).map_err(|()| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "DATA: Could not write payload to buffer",
-            )
-        })?;
-        buffer
-            .extend_from_slice(&self.crc.to_be_bytes())
-            .map_err(|()| {
-                std::io::Error::new(
-                    ErrorKind::OutOfMemory,
-                    "DATA: Could not write CRC to buffer",
-                )
-            })
+impl<'data> IntoIterator for &'data Data {
+    type Item = u8;
+    type IntoIter = Chain<
+        Chain<Once<u8>, Copied<<&'data Payload as IntoIterator>::IntoIter>>,
+        <[u8; 2] as IntoIterator>::IntoIter,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        once(self.header.bits())
+            .chain(self.payload.iter().copied())
+            .chain(self.crc.to_be_bytes())
     }
 }
 
@@ -205,7 +194,6 @@ mod tests {
     use super::Data;
     use crate::frame::headers;
     use crate::protocol::Mask;
-    use crate::to_buffer::ToBuffer;
     use crate::types::RawFrame;
     use crate::validate::{CRC, Validate};
 
@@ -389,8 +377,7 @@ mod tests {
         unmasked_payload.mask();
         assert_eq!(unmasked_payload, payload);
         let mut byte_representation = RawFrame::new();
-        data.buffer(&mut byte_representation)
-            .expect("Buffer should be large enough.");
+        byte_representation.extend(&data);
         assert_eq!(&byte_representation, &[0, 67, 33, 168, 80, 155, 152]);
     }
 }

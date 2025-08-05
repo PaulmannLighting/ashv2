@@ -2,13 +2,12 @@
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::ErrorKind;
+use std::iter::Chain;
 
 use num_traits::FromPrimitive;
 
 use crate::VERSION;
 use crate::code::Code;
-use crate::to_buffer::ToBuffer;
-use crate::types::RawFrame;
 use crate::utils::HexSlice;
 use crate::validate::{CRC, Validate};
 
@@ -68,34 +67,14 @@ impl Validate for RstAck {
     }
 }
 
-impl ToBuffer for RstAck {
-    fn buffer(&self, buffer: &mut RawFrame) -> std::io::Result<()> {
-        buffer.push(self.header).map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "RST_ACK: Could not write header to buffer",
-            )
-        })?;
-        buffer.push(self.version).map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "RST_ACK: Could not write version to buffer",
-            )
-        })?;
-        buffer.push(self.reset_code).map_err(|_| {
-            std::io::Error::new(
-                ErrorKind::OutOfMemory,
-                "RST_ACK: Could not write reset code to buffer",
-            )
-        })?;
-        buffer
-            .extend_from_slice(&self.crc.to_be_bytes())
-            .map_err(|()| {
-                std::io::Error::new(
-                    ErrorKind::OutOfMemory,
-                    "RST_ACK: Could not write CRC to buffer",
-                )
-            })
+impl IntoIterator for RstAck {
+    type Item = u8;
+    type IntoIter = Chain<<[u8; 3] as IntoIterator>::IntoIter, <[u8; 2] as IntoIterator>::IntoIter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [self.header, self.version, self.reset_code]
+            .into_iter()
+            .chain(self.crc.to_be_bytes())
     }
 }
 

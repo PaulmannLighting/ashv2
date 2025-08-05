@@ -199,17 +199,17 @@ where
 
     /// Send an `ACK` frame with the given ACK number.
     fn ack(&mut self) -> std::io::Result<()> {
-        self.send_ack(&Ack::new(self.state.ack_number(), false))
+        self.send_ack(Ack::new(self.state.ack_number(), false))
     }
 
     /// Send a `NAK` frame with the current ACK number.
     fn nak(&mut self) -> std::io::Result<()> {
-        self.send_nak(&Nak::new(self.state.ack_number(), false))
+        self.send_nak(Nak::new(self.state.ack_number(), false))
     }
 
     /// Send a RST frame.
     fn rst(&mut self) -> std::io::Result<()> {
-        self.frame_buffer.write_frame(&RST)
+        self.frame_buffer.write_frame(RST)
     }
 
     /// Send a `DATA` frame.
@@ -253,13 +253,13 @@ where
     }
 
     /// Send a raw `ACK` frame.
-    fn send_ack(&mut self, ack: &Ack) -> std::io::Result<()> {
+    fn send_ack(&mut self, ack: Ack) -> std::io::Result<()> {
         debug!("Sending ACK: {ack}");
         self.frame_buffer.write_frame(ack)
     }
 
     /// Send a raw `NAK` frame.
-    fn send_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+    fn send_nak(&mut self, nak: Nak) -> std::io::Result<()> {
         debug!("Sending NAK: {nak}");
         self.frame_buffer.write_frame(nak)
     }
