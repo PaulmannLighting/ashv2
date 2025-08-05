@@ -148,3 +148,52 @@ where
         self.inner.flush()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    #[test]
+    fn test_read_frame() {
+        let data = vec![
+            ControlByte::Flag as u8,
+            0x7D,
+            0x5E,
+            0x7D,
+            0x31,
+            0x7D,
+            0x33,
+            0x7D,
+            0x38,
+            0x7D,
+            0x3A,
+            0x7D,
+            0x5D,
+            ControlByte::Flag as u8,
+            0x7D,
+            0x5E,
+            0x7D,
+            0x31,
+            0x7D,
+            0x33,
+            0x7D,
+            0x38,
+            0x7D,
+            0x3A,
+            0x7D,
+            0x5D,
+            ControlByte::Flag as u8,
+        ];
+        let mut buffer = FrameBuffer::new(Cursor::new(data));
+
+        let Frame::Data(_) = buffer.read_frame().expect("Failed to read frame") else {
+            panic!("Expected a Data frame");
+        };
+
+        let Frame::Data(_) = buffer.read_frame().expect("Failed to read frame") else {
+            panic!("Expected a Data frame");
+        };
+    }
+}
