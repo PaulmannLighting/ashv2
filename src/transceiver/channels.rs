@@ -2,7 +2,7 @@
 
 use std::io::{self, Error, ErrorKind};
 
-use log::error;
+use log::{error, trace};
 use tokio::sync::mpsc::error::{TryRecvError, TrySendError};
 use tokio::sync::mpsc::{Receiver, Sender};
 
@@ -39,11 +39,12 @@ impl Channels {
     pub fn respond(&self, result: io::Result<Payload>) {
         if let Err(error) = self.response.try_send(result) {
             match error {
-                TrySendError::Full(_) => {
+                TrySendError::Full(payload) => {
                     error!("Response channel is congested. Dropping response frame.");
+                    trace!("Response frame was: {payload:?}");
                 }
-                TrySendError::Closed(_) => {
-                    panic!("Response channel has disconnected. Bailing out.");
+                TrySendError::Closed(payload) => {
+                    panic!("Response channel has disconnected. Response was: {payload:?}");
                 }
             }
         }
