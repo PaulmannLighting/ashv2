@@ -43,8 +43,7 @@ impl Channels {
                     error!("Response channel is congested. Dropping response frame.");
                 }
                 TrySendError::Closed(_) => {
-                    // TODO: Maybe panic here?
-                    error!("Response channel has disconnected. Closing response channel.");
+                    panic!("Response channel has disconnected. Bailing out.");
                 }
             }
         }
