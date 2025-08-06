@@ -64,47 +64,49 @@ where
 
         #[allow(clippy::unbuffered_bytes)]
         for byte in (&mut self.inner).bytes() {
-            match byte? {
-                byte if byte == ControlByte::Cancel => {
-                    trace!("Resetting buffer due to cancel byte.");
-                    self.buffer.clear();
-                    error = false;
-                }
-                byte if byte == ControlByte::Flag => {
-                    trace!("Received flag byte.");
+            match ControlByte::try_from(byte?) {
+                Ok(control_byte) => match control_byte {
+                    ControlByte::Cancel => {
+                        trace!("Resetting buffer due to cancel byte.");
+                        self.buffer.clear();
+                        error = false;
+                    }
+                    ControlByte::Flag => {
+                        trace!("Received flag byte.");
 
-                    if !error && !self.buffer.is_empty() {
-                        debug!("Received frame.");
+                        if !error && !self.buffer.is_empty() {
+                            debug!("Received frame.");
+                            trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
+                            self.buffer.unstuff();
+                            trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.buffer));
+                            return Ok(&self.buffer);
+                        }
+
+                        trace!("Resetting buffer due to error or empty buffer.");
+                        trace!("Error condition was: {error}");
                         trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
-                        self.buffer.unstuff();
-                        trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.buffer));
-                        return Ok(&self.buffer);
+                        self.buffer.clear();
+                        error = false;
                     }
-
-                    trace!("Resetting buffer due to error or empty buffer.");
-                    trace!("Error condition was: {error}");
-                    trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
-                    self.buffer.clear();
-                    error = false;
-                }
-                byte if byte == ControlByte::Substitute => {
-                    trace!("Received SUBSTITUTE byte. Setting error condition.");
-                    error = true;
-                }
-                byte if byte == ControlByte::Xon => {
-                    warn!("NCP requested to resume transmission. Ignoring.");
-                }
-                byte if byte == ControlByte::Xoff => {
-                    warn!("NCP requested to stop transmission. Ignoring.");
-                }
-                byte if byte == ControlByte::Wake => {
-                    if self.buffer.is_empty() {
-                        debug!("NCP tried to wake us up.");
-                    } else if self.buffer.push(byte).is_err() {
-                        return Err(Self::buffer_overflow(byte));
+                    ControlByte::Substitute => {
+                        trace!("Received SUBSTITUTE byte. Setting error condition.");
+                        error = true;
                     }
-                }
-                byte => {
+                    ControlByte::Xon => {
+                        warn!("NCP requested to resume transmission. Ignoring.");
+                    }
+                    ControlByte::Xoff => {
+                        warn!("NCP requested to stop transmission. Ignoring.");
+                    }
+                    ControlByte::Wake => {
+                        if self.buffer.is_empty() {
+                            debug!("NCP tried to wake us up.");
+                        } else if self.buffer.push(control_byte.into()).is_err() {
+                            return Err(Self::buffer_overflow(control_byte.into()));
+                        }
+                    }
+                },
+                Err(byte) => {
                     if self.buffer.push(byte).is_err() {
                         return Err(Self::buffer_overflow(byte));
                     }
@@ -141,8 +143,8 @@ where
         self.buffer.stuff()?;
         trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.buffer
-            .push(ControlByte::Flag as u8)
-            .map_err(|_| Self::buffer_overflow(ControlByte::Flag as u8))?;
+            .push(ControlByte::Flag.into())
+            .map_err(|_| Self::buffer_overflow(ControlByte::Flag.into()))?;
         trace!("Writing bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.inner.write_all(&self.buffer)?;
         self.inner.flush()

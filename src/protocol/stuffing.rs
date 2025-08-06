@@ -3,10 +3,11 @@
 use std::io::{Error, ErrorKind, Result};
 
 use crate::protocol::ControlByte;
+use crate::protocol::control_byte::ESCAPE;
 
 const RESERVED_BYTES: [u8; 6] = [
+    ESCAPE,
     ControlByte::Flag as u8,
-    ControlByte::Escape as u8,
     ControlByte::Xon as u8,
     ControlByte::Xoff as u8,
     ControlByte::Substitute as u8,
@@ -36,7 +37,7 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
 
             if RESERVED_BYTES.contains(byte) {
                 *byte ^= COMPLEMENT_BIT;
-                self.insert(index, ControlByte::Escape as u8).map_err(|_| {
+                self.insert(index, ESCAPE).map_err(|_| {
                     Error::new(ErrorKind::OutOfMemory, "Could not insert escape byte.")
                 })?;
                 index += 2;
@@ -52,7 +53,7 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
         let mut escape_next = false;
 
         self.retain_mut(|byte| {
-            if *byte == ControlByte::Escape {
+            if *byte == ESCAPE {
                 escape_next = true;
                 return false;
             }

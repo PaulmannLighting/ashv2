@@ -1,12 +1,15 @@
+use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+
+/// Escape byte to escape special characters.
+pub const ESCAPE: u8 = 0x7D;
+
 /// Control bytes used in the `ASHv2` protocol.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, FromPrimitive)]
 #[repr(u8)]
 pub enum ControlByte {
     /// Flag byte to initiate the end of a frame.
     Flag = 0x7E,
-
-    /// Escape byte to escape special characters.
-    Escape = 0x7D,
 
     /// XON byte to resume transmission.
     Xon = 0x11,
@@ -24,8 +27,16 @@ pub enum ControlByte {
     Wake = 0xFF,
 }
 
-impl PartialEq<ControlByte> for u8 {
-    fn eq(&self, other: &ControlByte) -> bool {
-        *self == *other as Self
+impl From<ControlByte> for u8 {
+    fn from(byte: ControlByte) -> Self {
+        byte as Self
+    }
+}
+
+impl TryFrom<u8> for ControlByte {
+    type Error = u8;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Self::from_u8(value).ok_or(value)
     }
 }
