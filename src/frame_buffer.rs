@@ -33,6 +33,7 @@ impl<T> FrameBuffer<T> {
         self.inner
     }
 
+    /// Return a buffer overflow error.
     #[must_use]
     fn buffer_overflow(&self, byte: u8) -> Error {
         trace!("Buffer was: {:#04X}", HexSlice::new(&self.buffer));
