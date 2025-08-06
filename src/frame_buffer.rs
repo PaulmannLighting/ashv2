@@ -34,7 +34,8 @@ impl<T> FrameBuffer<T> {
     }
 
     #[must_use]
-    fn buffer_overflow(byte: u8) -> Error {
+    fn buffer_overflow(&self, byte: u8) -> Error {
+        trace!("Buffer was: {:#04X}", HexSlice::new(&self.buffer));
         Error::other(format!("Frame buffer overflow: {byte:#04X}"))
     }
 }
@@ -102,13 +103,13 @@ where
                         if self.buffer.is_empty() {
                             debug!("NCP tried to wake us up.");
                         } else if self.buffer.push(control_byte.into()).is_err() {
-                            return Err(Self::buffer_overflow(control_byte.into()));
+                            return Err(self.buffer_overflow(control_byte.into()));
                         }
                     }
                 },
                 Err(byte) => {
                     if self.buffer.push(byte).is_err() {
-                        return Err(Self::buffer_overflow(byte));
+                        return Err(self.buffer_overflow(byte));
                     }
                 }
             }
@@ -144,7 +145,7 @@ where
         trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.buffer
             .push(ControlByte::Flag.into())
-            .map_err(|_| Self::buffer_overflow(ControlByte::Flag.into()))?;
+            .map_err(|_| self.buffer_overflow(ControlByte::Flag.into()))?;
         trace!("Writing bytes: {:#04X}", HexSlice::new(&self.buffer));
         self.inner.write_all(&self.buffer)?;
         self.inner.flush()
