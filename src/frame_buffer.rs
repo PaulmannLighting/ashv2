@@ -38,6 +38,11 @@ impl<T> FrameBuffer<T> {
         trace!("Buffer was: {:#04X}", HexSlice::new(&self.buffer));
         Error::other(format!("Frame buffer overflow: {byte:#04X}"))
     }
+
+    /// Trace the current state of the frame buffer.
+    fn trace_buffer(&self) {
+        trace!("Frame buffer was: {:#04X}", HexSlice::new(&self.buffer));
+    }
 }
 
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
@@ -115,6 +120,7 @@ where
             }
         }
 
+        self.trace_buffer();
         Err(Error::new(
             ErrorKind::UnexpectedEof,
             "Byte stream terminated unexpectedly.",
