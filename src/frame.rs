@@ -1,7 +1,7 @@
 //! Frame types and their respective headers for the `ASHv2` protocol.
 
 use core::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 
 pub use ack::Ack;
 pub use data::Data;
@@ -51,12 +51,12 @@ impl Display for Frame {
 }
 
 impl TryFrom<&[u8]> for Frame {
-    type Error = std::io::Error;
+    type Error = io::Error;
 
-    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+    fn try_from(buffer: &[u8]) -> io::Result<Self> {
         match *buffer
             .first()
-            .ok_or_else(|| std::io::Error::new(ErrorKind::UnexpectedEof, "Missing frame header."))?
+            .ok_or_else(|| io::Error::new(ErrorKind::UnexpectedEof, "Missing frame header."))?
         {
             Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
             RstAck::HEADER => RstAck::try_from(buffer).map(Self::RstAck),
@@ -66,7 +66,7 @@ impl TryFrom<&[u8]> for Frame {
             }
             header if header & 0x60 == 0x00 => Ack::try_from(buffer).map(Self::Ack),
             header if header & 0x60 == 0x20 => Nak::try_from(buffer).map(Self::Nak),
-            header => Err(std::io::Error::new(
+            header => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown frame header: {header:#04X}"),
             )),

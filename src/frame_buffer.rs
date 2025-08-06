@@ -1,7 +1,7 @@
 //! Frame buffer for reading and writing ASH frames.
 
 use core::fmt::{Display, UpperHex};
-use std::io::{Error, ErrorKind, Read, Write};
+use std::io::{self, Error, ErrorKind, Read, Write};
 
 use log::{debug, trace, warn};
 
@@ -56,7 +56,7 @@ where
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub fn read_frame(&mut self) -> std::io::Result<Frame> {
+    pub fn read_frame(&mut self) -> io::Result<Frame> {
         self.read_raw_frame()?.try_into()
     }
 
@@ -65,7 +65,7 @@ where
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O or protocol error occurs.
-    pub fn read_raw_frame(&mut self) -> std::io::Result<&[u8]> {
+    pub fn read_raw_frame(&mut self) -> io::Result<&[u8]> {
         self.buffer.clear();
         let mut error = false;
 
@@ -139,7 +139,7 @@ where
     /// # Errors
     ///
     /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
-    pub fn write_frame<F>(&mut self, frame: F) -> std::io::Result<()>
+    pub fn write_frame<F>(&mut self, frame: F) -> io::Result<()>
     where
         F: IntoIterator<Item = u8> + Display + UpperHex,
     {

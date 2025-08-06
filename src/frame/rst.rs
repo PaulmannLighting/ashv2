@@ -1,7 +1,7 @@
 //! Reset (`RST`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
+use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Once, once};
 
 use crate::utils::HexSlice;
@@ -67,14 +67,14 @@ impl IntoIterator for Rst {
 }
 
 impl TryFrom<&[u8]> for Rst {
-    type Error = std::io::Error;
+    type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+    fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, crc0, crc1] = buffer else {
             return Err(if buffer.len() < Self::SIZE {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RST.")
+                Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RST.")
             } else {
-                std::io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for RST.")
+                Error::new(ErrorKind::OutOfMemory, "Too many bytes for RST.")
             });
         };
 

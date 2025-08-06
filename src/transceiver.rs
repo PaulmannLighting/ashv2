@@ -1,6 +1,6 @@
 //! Transceiver for the `ASHv2` protocol.
 
-use std::io::{Error, ErrorKind, Read, Write};
+use std::io::{self, Error, ErrorKind, Read, Write};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -49,7 +49,7 @@ impl<T> Transceiver<T> {
     pub const fn new(
         serial_port: T,
         requests: Receiver<Payload>,
-        response: Sender<std::io::Result<Payload>>,
+        response: Sender<io::Result<Payload>>,
     ) -> Self {
         Self {
             frame_buffer: FrameBuffer::new(serial_port),
@@ -144,7 +144,7 @@ where
     }
 
     /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> std::io::Result<()> {
+    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> io::Result<()> {
         trace!("Handling NAK: {nak_num}");
 
         if let Some(transmission) = self
@@ -161,7 +161,7 @@ where
     }
 
     /// Retransmit `DATA` frames that have not been acknowledged by the NCP in time.
-    fn retransmit_timed_out_data(&mut self) -> std::io::Result<()> {
+    fn retransmit_timed_out_data(&mut self) -> io::Result<()> {
         while let Some(transmission) = self
             .transmissions
             .iter()
@@ -180,22 +180,22 @@ where
     }
 
     /// Send an `ACK` frame with the given ACK number.
-    fn ack(&mut self) -> std::io::Result<()> {
+    fn ack(&mut self) -> io::Result<()> {
         self.send_ack(Ack::new(self.state.ack_number(), false))
     }
 
     /// Send a `NAK` frame with the current ACK number.
-    fn nak(&mut self) -> std::io::Result<()> {
+    fn nak(&mut self) -> io::Result<()> {
         self.send_nak(Nak::new(self.state.ack_number(), false))
     }
 
     /// Send a RST frame.
-    fn rst(&mut self) -> std::io::Result<()> {
+    fn rst(&mut self) -> io::Result<()> {
         self.frame_buffer.write_frame(RST)
     }
 
     /// Send a `DATA` frame.
-    fn transmit(&mut self, mut transmission: Transmission) -> std::io::Result<()> {
+    fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
         let data = transmission.data_for_transmit()?;
         trace!("Unmasked {:#04X}", data.unmasked());
         self.frame_buffer.write_frame(data)?;
@@ -205,7 +205,7 @@ where
     }
 
     /// Send a chunk of data.
-    fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> std::io::Result<()> {
+    fn send_chunk(&mut self, chunk: Payload, offset: WrappingU3) -> io::Result<()> {
         let data = Data::new(
             self.state.next_frame_number(),
             chunk,
@@ -217,7 +217,7 @@ where
     /// Send chunks as long as the retransmission queue is not full.
     ///
     /// Return `true` if there are more chunks to send, otherwise `false`.
-    fn send_chunks(&mut self) -> std::io::Result<bool> {
+    fn send_chunks(&mut self) -> io::Result<bool> {
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
         let mut offset = WrappingU3::default();
@@ -235,13 +235,13 @@ where
     }
 
     /// Send a raw `ACK` frame.
-    fn send_ack(&mut self, ack: Ack) -> std::io::Result<()> {
+    fn send_ack(&mut self, ack: Ack) -> io::Result<()> {
         debug!("Sending ACK: {ack}");
         self.frame_buffer.write_frame(ack)
     }
 
     /// Send a raw `NAK` frame.
-    fn send_nak(&mut self, nak: Nak) -> std::io::Result<()> {
+    fn send_nak(&mut self, nak: Nak) -> io::Result<()> {
         debug!("Sending NAK: {nak}");
         self.frame_buffer.write_frame(nak)
     }
@@ -258,7 +258,7 @@ where
     ///   * Has an invalid ackNum.
     ///   * Is out of sequence.
     ///   * Was valid, but had to be discarded due to lack of memory to store it.
-    fn enter_reject(&mut self) -> std::io::Result<()> {
+    fn enter_reject(&mut self) -> io::Result<()> {
         if self.state.reject() {
             Ok(())
         } else {
@@ -269,7 +269,7 @@ where
     }
 
     /// Handle an incoming `DATA` frame.
-    fn handle_data(&mut self, data: Data) -> std::io::Result<()> {
+    fn handle_data(&mut self, data: Data) -> io::Result<()> {
         trace!("Unmasked data: {:#04X}", data.unmasked());
 
         if !data.is_crc_valid() {
@@ -295,7 +295,7 @@ where
     }
 
     /// Handle an incoming `NAK` frame.
-    fn handle_nak(&mut self, nak: &Nak) -> std::io::Result<()> {
+    fn handle_nak(&mut self, nak: &Nak) -> io::Result<()> {
         if !nak.is_crc_valid() {
             warn!("Received ACK with invalid CRC.");
         }
@@ -328,7 +328,7 @@ where
         channel_size: usize,
     ) -> (
         Sender<Payload>,
-        Receiver<std::io::Result<Payload>>,
+        Receiver<io::Result<Payload>>,
         JoinHandle<T>,
     )
     where
@@ -362,7 +362,7 @@ where
     ///
     /// This method checks whether the transceiver is connected and establishes a connection if not.
     /// Otherwise, it will communicate with the NCP via the `ASHv2` protocol.
-    fn main(&mut self) -> std::io::Result<()> {
+    fn main(&mut self) -> io::Result<()> {
         match self.state.status() {
             Status::Disconnected | Status::Failed => Ok(self.connect()?),
             Status::Connected => self.communicate(),
@@ -373,13 +373,13 @@ where
     ///
     /// If there is an incoming transaction, handle it.
     /// Otherwise, handle callbacks.
-    fn communicate(&mut self) -> std::io::Result<()> {
+    fn communicate(&mut self) -> io::Result<()> {
         self.send_data()?;
         self.handle_callbacks()
     }
 
     /// Establish an `ASHv2` connection with the NCP.
-    fn connect(&mut self) -> std::io::Result<()> {
+    fn connect(&mut self) -> io::Result<()> {
         debug!("Connecting to NCP...");
         let start = Instant::now();
 
@@ -435,7 +435,7 @@ where
     /// Receive a frame from the serial port.
     ///
     /// Return `Ok(None)` if no frame was received within the timeout.
-    fn receive(&mut self) -> std::io::Result<Option<Frame>> {
+    fn receive(&mut self) -> io::Result<Option<Frame>> {
         let frame = match self.frame_buffer.read_frame() {
             Ok(frame) => frame,
             Err(error) => {
@@ -461,7 +461,7 @@ where
     }
 
     /// Start a transaction of incoming data.
-    fn send_data(&mut self) -> std::io::Result<()> {
+    fn send_data(&mut self) -> io::Result<()> {
         // Send chunks of data as long as there are chunks left to send.
         while self.send_chunks()? {
             // Wait for space in the queue to become available before transmitting more data.
@@ -492,7 +492,7 @@ where
     }
 
     /// Handle an incoming frame.
-    fn handle_frame(&mut self, frame: Frame) -> std::io::Result<()> {
+    fn handle_frame(&mut self, frame: Frame) -> io::Result<()> {
         debug!("Handling: {frame}");
         trace!("{frame:#04X}");
 
@@ -513,7 +513,7 @@ where
     }
 
     /// Handle callbacks actively sent by the NCP outside of transactions.
-    fn handle_callbacks(&mut self) -> std::io::Result<()> {
+    fn handle_callbacks(&mut self) -> io::Result<()> {
         while let Some(callback) = self.receive()? {
             self.handle_frame(callback)?;
         }

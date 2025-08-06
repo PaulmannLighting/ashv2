@@ -1,7 +1,7 @@
 //! Error frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 use std::iter::Chain;
 
 use num_traits::FromPrimitive;
@@ -78,14 +78,14 @@ impl IntoIterator for Error {
 }
 
 impl TryFrom<&[u8]> for Error {
-    type Error = std::io::Error;
+    type Error = io::Error;
 
-    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+    fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, version, code, crc0, crc1] = buffer else {
             return Err(if buffer.len() < Self::SIZE {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for ERROR.")
+                io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for ERROR.")
             } else {
-                std::io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for ERROR.")
+                io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for ERROR.")
             });
         };
 

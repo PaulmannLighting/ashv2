@@ -1,7 +1,7 @@
 //! Data frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
+use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Copied, Once, once};
 
 use crate::frame::headers;
@@ -155,18 +155,18 @@ impl LowerHex for Data {
 }
 
 impl TryFrom<&[u8]> for Data {
-    type Error = std::io::Error;
+    type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+    fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, payload @ .., crc0, crc1] = buffer else {
-            return Err(std::io::Error::new(
+            return Err(Error::new(
                 ErrorKind::UnexpectedEof,
                 "Too few bytes for DATA.",
             ));
         };
 
         if payload.len() < Self::MIN_PAYLOAD_SIZE {
-            return Err(std::io::Error::new(
+            return Err(Error::new(
                 ErrorKind::UnexpectedEof,
                 "Too few bytes for payload for DATA.",
             ));
@@ -175,7 +175,7 @@ impl TryFrom<&[u8]> for Data {
         Ok(Self {
             header: headers::Data::from_bits_retain(*header),
             payload: payload.try_into().map_err(|()| {
-                std::io::Error::new(
+                Error::new(
                     ErrorKind::OutOfMemory,
                     format!("Payload too large for DATA: {} bytes", payload.len()),
                 )

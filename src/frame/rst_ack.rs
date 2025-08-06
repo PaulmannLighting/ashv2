@@ -1,7 +1,7 @@
 //! Reset acknowledgment (`RST_ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::ErrorKind;
+use std::io::{self, Error, ErrorKind};
 use std::iter::Chain;
 
 use num_traits::FromPrimitive;
@@ -79,14 +79,14 @@ impl IntoIterator for RstAck {
 }
 
 impl TryFrom<&[u8]> for RstAck {
-    type Error = std::io::Error;
+    type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> std::io::Result<Self> {
+    fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, version, reset_code, crc0, crc1] = buffer else {
             return Err(if buffer.len() < Self::SIZE {
-                std::io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RSTACK.")
+                Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RSTACK.")
             } else {
-                std::io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for RSTACK.")
+                Error::new(ErrorKind::OutOfMemory, "Too many bytes for RSTACK.")
             });
         };
 

@@ -2,7 +2,7 @@
 
 use core::time::Duration;
 use std::fmt::Display;
-use std::io::{Error, ErrorKind};
+use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
 use crate::frame::Data;
@@ -32,7 +32,7 @@ impl Transmission {
         self.elapsed() > threshold
     }
 
-    pub fn data_for_transmit(&mut self) -> std::io::Result<&Data> {
+    pub fn data_for_transmit(&mut self) -> io::Result<&Data> {
         self.transmits += 1;
 
         if self.transmits > 1 {
