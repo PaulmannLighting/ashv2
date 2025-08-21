@@ -174,12 +174,7 @@ impl TryFrom<&[u8]> for Data {
 
         Ok(Self {
             header: headers::Data::from_bits_retain(*header),
-            payload: payload.try_into().map_err(|()| {
-                Error::new(
-                    ErrorKind::OutOfMemory,
-                    format!("Payload too large for DATA: {} bytes", payload.len()),
-                )
-            })?,
+            payload: payload.try_into().map_err(Error::other)?,
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
     }

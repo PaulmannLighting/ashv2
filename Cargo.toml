@@ -18,7 +18,7 @@ all-features = true
 bitflags = "2.9"
 clap = { version = "4.5", optional = true }
 crc = "3.3"
-heapless = "0.8"
+heapless = "0.9"
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
