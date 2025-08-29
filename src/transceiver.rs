@@ -364,7 +364,7 @@ where
     /// Otherwise, it will communicate with the NCP via the `ASHv2` protocol.
     fn main(&mut self) -> io::Result<()> {
         match self.state.status() {
-            Status::Disconnected | Status::Failed => Ok(self.connect()?),
+            Status::Disconnected | Status::Failed => self.connect(),
             Status::Connected => self.communicate(),
         }
     }
