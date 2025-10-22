@@ -7,14 +7,14 @@
 //! This library is free software and is not affiliated with Silicon Labs.
 #![deny(unsafe_code)]
 
-pub use baud_rate::BaudRate;
+pub use self::baud_rate::BaudRate;
 #[cfg(feature = "serialport")]
-pub use serial_port::open;
-pub use transceiver::Transceiver;
-pub use types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
-pub use utils::HexSlice;
+pub use self::serial_port::open;
+pub use self::transceiver::Transceiver;
+pub use self::types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
+pub use self::utils::HexSlice;
 #[cfg(feature = "devel")]
-pub use {
+pub use self::{
     code::Code,
     frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck, headers},
     frame_buffer::FrameBuffer,

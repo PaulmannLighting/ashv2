@@ -6,10 +6,10 @@ use crate::utils::WrappingU3;
 
 /// Negative Acknowledgement (`NAK`) frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct Nak(u8);
+pub struct Header(u8);
 
 bitflags! {
-    impl Nak: u8 {
+    impl Header: u8 {
         /// The default NAK header.
         const DEFAULT = 0b1010_0000;
         /// The `nRDY` flag.
@@ -19,7 +19,7 @@ bitflags! {
     }
 }
 
-impl Nak {
+impl Header {
     /// Creates a new NAK header.
     #[must_use]
     pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
@@ -41,20 +41,20 @@ impl Nak {
 
 #[cfg(test)]
 mod tests {
-    use super::Nak;
+    use super::Header;
     use crate::utils::WrappingU3;
 
     #[test]
     fn test_new() {
-        let nak = Nak::new(WrappingU3::from_u8_lossy(3), false);
+        let nak = Header::new(WrappingU3::from_u8_lossy(3), false);
         assert_eq!(nak.ack_num().as_u8(), 3);
-        assert!(!nak.contains(Nak::NOT_READY));
+        assert!(!nak.contains(Header::NOT_READY));
     }
 
     #[test]
     fn test_new_nrdy() {
-        let nak = Nak::new(WrappingU3::from_u8_lossy(3), true);
+        let nak = Header::new(WrappingU3::from_u8_lossy(3), true);
         assert_eq!(nak.ack_num().as_u8(), 3);
-        assert!(nak.contains(Nak::NOT_READY));
+        assert!(nak.contains(Header::NOT_READY));
     }
 }

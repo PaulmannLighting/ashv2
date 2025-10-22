@@ -4,14 +4,14 @@ use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Once, once};
 
-use crate::frame::headers;
+use super::headers::nak::Header;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 
 /// Negative Acknowledgement (`NAK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Nak {
-    header: headers::Nak,
+    header: Header,
     crc: u16,
 }
 
@@ -22,7 +22,7 @@ impl Nak {
     /// Creates a new NAK frame.
     #[must_use]
     pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let header = headers::Nak::new(ack_num, n_rdy);
+        let header = Header::new(ack_num, n_rdy);
 
         Self {
             header,
@@ -33,7 +33,7 @@ impl Nak {
     /// Determines whether the not-ready flag is set.
     #[must_use]
     pub const fn not_ready(&self) -> bool {
-        self.header.contains(headers::Nak::NOT_READY)
+        self.header.contains(Header::NOT_READY)
     }
 
     /// Return the acknowledgement number.
@@ -86,7 +86,7 @@ impl TryFrom<&[u8]> for Nak {
         };
 
         Ok(Self {
-            header: headers::Nak::from_bits_retain(*header),
+            header: Header::from_bits_retain(*header),
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
     }
@@ -114,16 +114,15 @@ impl LowerHex for Nak {
 
 #[cfg(test)]
 mod tests {
-    use super::Nak;
-    use crate::frame::headers;
+    use super::{Header, Nak};
     use crate::validate::Validate;
 
     const NAK1: Nak = Nak {
-        header: headers::Nak::from_bits_retain(0xA6),
+        header: Header::from_bits_retain(0xA6),
         crc: 0x34DC,
     };
     const NAK2: Nak = Nak {
-        header: headers::Nak::from_bits_retain(0xAD),
+        header: Header::from_bits_retain(0xAD),
         crc: 0x85B7,
     };
 
@@ -147,8 +146,8 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(NAK1.header, headers::Nak::from_bits_retain(0xA6));
-        assert_eq!(NAK2.header, headers::Nak::from_bits_retain(0xAD));
+        assert_eq!(NAK1.header, Header::from_bits_retain(0xA6));
+        assert_eq!(NAK2.header, Header::from_bits_retain(0xAD));
     }
 
     #[test]

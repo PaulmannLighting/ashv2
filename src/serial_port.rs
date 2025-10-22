@@ -2,7 +2,7 @@
 
 //! Miscellaneous functions for opening serial ports.
 
-use std::borrow::Cow;
+use core::borrow::Cow;
 
 use serialport::{FlowControl, SerialPort};
 

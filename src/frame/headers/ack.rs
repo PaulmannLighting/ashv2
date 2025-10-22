@@ -6,10 +6,10 @@ use crate::utils::WrappingU3;
 
 /// Acknowledgement (`ACK`) frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct Ack(u8);
+pub struct Header(u8);
 
 bitflags! {
-    impl Ack: u8 {
+    impl Header: u8 {
         /// The default ACK header.
         const DEFAULT = 0b1000_0000;
         /// The `nRDY` flag.
@@ -19,7 +19,7 @@ bitflags! {
     }
 }
 
-impl Ack {
+impl Header {
     /// Creates a new ACK header.
     #[must_use]
     pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
@@ -41,20 +41,20 @@ impl Ack {
 
 #[cfg(test)]
 mod tests {
-    use super::Ack;
+    use super::Header;
     use crate::utils::WrappingU3;
 
     #[test]
     fn test_new() {
-        let ack = Ack::new(WrappingU3::from_u8_lossy(3), false);
+        let ack = Header::new(WrappingU3::from_u8_lossy(3), false);
         assert_eq!(ack.ack_num().as_u8(), 3);
-        assert!(!ack.contains(Ack::NOT_READY));
+        assert!(!ack.contains(Header::NOT_READY));
     }
 
     #[test]
     fn test_new_nrdy() {
-        let ack = Ack::new(WrappingU3::from_u8_lossy(3), true);
+        let ack = Header::new(WrappingU3::from_u8_lossy(3), true);
         assert_eq!(ack.ack_num().as_u8(), 3);
-        assert!(ack.contains(Ack::NOT_READY));
+        assert!(ack.contains(Header::NOT_READY));
     }
 }

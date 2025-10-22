@@ -1,7 +1,7 @@
 //! Transmitted frame with metadata.
 
+use core::fmt::Display;
 use core::time::Duration;
-use std::fmt::Display;
 use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 

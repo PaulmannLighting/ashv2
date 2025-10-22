@@ -6,10 +6,10 @@ use crate::utils::WrappingU3;
 
 /// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct Data(u8);
+pub struct Header(u8);
 
 bitflags! {
-    impl Data: u8 {
+    impl Header: u8 {
         /// The frame number mask.
         const FRAME_NUM = 0b0111_0000;
         /// The retransmit flag.
@@ -19,7 +19,7 @@ bitflags! {
     }
 }
 
-impl Data {
+impl Header {
     /// Creates a new data header.
     #[must_use]
     pub const fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
@@ -51,10 +51,10 @@ impl Data {
 
 #[cfg(test)]
 mod tests {
-    use super::Data;
+    use super::Header;
 
     #[test]
     fn test_offset() {
-        assert_eq!(Data::FRAME_NUM.bits().trailing_zeros(), 4);
+        assert_eq!(Header::FRAME_NUM.bits().trailing_zeros(), 4);
     }
 }

@@ -7,13 +7,13 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::thread::{JoinHandle, sleep, spawn};
 use std::time::{Duration, Instant};
 
-use channels::Channels;
-use constants::{T_RSTACK_MAX, TX_K};
 use log::{debug, error, info, trace, warn};
-use state::State;
 use tokio::sync::mpsc::{Receiver, Sender, channel};
-use transmission::Transmission;
 
+use self::channels::Channels;
+use self::constants::{T_RSTACK_MAX, TX_K};
+use self::state::State;
+use self::transmission::Transmission;
 use crate::frame::{Ack, Data, Frame, Nak, RST, RstAck};
 use crate::frame_buffer::FrameBuffer;
 use crate::protocol::Mask;

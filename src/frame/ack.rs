@@ -4,14 +4,14 @@ use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Once, once};
 
-use crate::frame::headers;
+use super::headers::ack::Header;
 use crate::utils::{HexSlice, WrappingU3};
 use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Ack {
-    header: headers::Ack,
+    header: Header,
     crc: u16,
 }
 
@@ -22,7 +22,7 @@ impl Ack {
     /// Creates a new ACK frame.
     #[must_use]
     pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
-        let header = headers::Ack::new(ack_num, n_rdy);
+        let header = Header::new(ack_num, n_rdy);
 
         Self {
             header,
@@ -33,7 +33,7 @@ impl Ack {
     /// Determines whether the not-ready flag is set.
     #[must_use]
     pub const fn not_ready(&self) -> bool {
-        self.header.contains(headers::Ack::NOT_READY)
+        self.header.contains(Header::NOT_READY)
     }
 
     /// Returns the acknowledgement number.
@@ -86,7 +86,7 @@ impl TryFrom<&[u8]> for Ack {
         };
 
         Ok(Self {
-            header: headers::Ack::from_bits_retain(*header),
+            header: Header::from_bits_retain(*header),
             crc: u16::from_be_bytes([*crc0, *crc1]),
         })
     }
@@ -114,17 +114,16 @@ impl LowerHex for Ack {
 
 #[cfg(test)]
 mod tests {
-    use super::Ack;
-    use crate::frame::headers;
+    use super::{Ack, Header};
     use crate::utils::WrappingU3;
     use crate::validate::Validate;
 
     const ACK1: Ack = Ack {
-        header: headers::Ack::from_bits_retain(0x81),
+        header: Header::from_bits_retain(0x81),
         crc: 0x6059,
     };
     const ACK2: Ack = Ack {
-        header: headers::Ack::from_bits_retain(0x8E),
+        header: Header::from_bits_retain(0x8E),
         crc: 0x91B6,
     };
 
@@ -148,8 +147,8 @@ mod tests {
 
     #[test]
     fn test_header() {
-        assert_eq!(ACK1.header, headers::Ack::from_bits_retain(0x81));
-        assert_eq!(ACK2.header, headers::Ack::from_bits_retain(0x8E));
+        assert_eq!(ACK1.header, Header::from_bits_retain(0x81));
+        assert_eq!(ACK2.header, Header::from_bits_retain(0x8E));
     }
 
     #[test]
