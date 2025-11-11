@@ -123,8 +123,8 @@ impl Validate for Frame {
     }
 }
 
-#[allow(clippy::unwrap_used)]
 #[cfg(test)]
+#[expect(clippy::unwrap_used)]
 mod tests {
     use super::{Frame, Rst};
     use crate::code::Code;

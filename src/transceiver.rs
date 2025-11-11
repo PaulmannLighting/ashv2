@@ -347,7 +347,7 @@ where
     /// # Returns
     ///
     /// Returns the inner serial port after the transceiver has stopped running.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(clippy::needless_pass_by_value)]
     pub fn run(mut self, running: Arc<AtomicBool>) -> T {
         while running.load(Relaxed) {
             if let Err(error) = self.main() {

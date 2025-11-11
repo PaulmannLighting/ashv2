@@ -187,8 +187,8 @@ fn calculate_crc(header: u8, payload: &Payload) -> u16 {
     digest.finalize()
 }
 
-#[allow(clippy::unwrap_used)]
 #[cfg(test)]
+#[expect(clippy::unwrap_used)]
 mod tests {
     use super::{Data, Header};
     use crate::protocol::Mask;

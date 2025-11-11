@@ -69,7 +69,7 @@ where
         self.buffer.clear();
         let mut error = false;
 
-        #[allow(clippy::unbuffered_bytes)]
+        #[expect(clippy::unbuffered_bytes)]
         for byte in (&mut self.inner).bytes() {
             match ControlByte::try_from(byte?) {
                 Ok(control_byte) => match control_byte {

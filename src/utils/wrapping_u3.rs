@@ -19,7 +19,7 @@ impl WrappingU3 {
     /// Creates a new three bit number.
     #[must_use]
     pub const fn from_u8_lossy(n: u8) -> Self {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         // SAFETY: We create a three bit number by applying `MASK` to `n`.
         // Finally, we OR the result with `NON_ZERO_BIT`, which makes the number non-zero.
         Self(unsafe { NonZero::new_unchecked(n & MASK | NON_ZERO_BIT) })
