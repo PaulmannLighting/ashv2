@@ -15,14 +15,14 @@ exclude = [".gitignore"]
 all-features = true
 
 [dependencies]
-bitflags = "2.9"
+bitflags = "2.10"
 clap = { version = "4.5", optional = true }
 crc = "3.3"
 heapless = "0.9"
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
-serialport = { version = "4.7", default-features = false, optional = true }
+serialport = { version = "4.8", default-features = false, optional = true }
 tokio = { version = "1.48", default-features = false, features = ["sync"] }
 
 [features]
