@@ -197,7 +197,7 @@ where
     /// Send a `DATA` frame.
     fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
         let data = transmission.data_for_transmit()?;
-        trace!("Unmasked {:#04X}", data.unmasked());
+        trace!("Transmissing frame {data:#04X}");
         self.frame_buffer.write_frame(data)?;
         self.transmissions
             .insert(0, transmission)
@@ -270,7 +270,7 @@ where
 
     /// Handle an incoming `DATA` frame.
     fn handle_data(&mut self, data: Data) -> io::Result<()> {
-        trace!("Unmasked data: {:#04X}", data.unmasked());
+        trace!("Handling data frame: {data:#04X}");
 
         if !data.is_crc_valid() {
             warn!("Received data frame with invalid CRC.");

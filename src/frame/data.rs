@@ -78,14 +78,6 @@ impl Data {
         self.payload
     }
 
-    /// Returns a copy of the data frame with the payload unmasked.
-    #[must_use]
-    pub fn unmasked(&self) -> Self {
-        let mut unmasked = self.clone();
-        unmasked.payload.mask();
-        unmasked
-    }
-
     /// Returns an iterator over the data frame's bytes.
     pub fn iter(&self) -> impl Iterator<Item = u8> {
         self.into_iter()
