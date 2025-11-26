@@ -9,7 +9,7 @@
 
 pub use self::baud_rate::BaudRate;
 #[cfg(feature = "serialport")]
-pub use self::serial_port::open;
+pub use self::serial_port::{FlowControl, SerialPort, open};
 pub use self::transceiver::Transceiver;
 pub use self::types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
 pub use self::utils::HexSlice;

@@ -4,7 +4,7 @@
 
 use std::borrow::Cow;
 
-use serialport::{FlowControl, SerialPort};
+pub use serialport::{FlowControl, SerialPort};
 
 use crate::BaudRate;
 
