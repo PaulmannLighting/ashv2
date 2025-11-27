@@ -197,7 +197,7 @@ where
     /// Send a `DATA` frame.
     fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
         let data = transmission.data_for_transmit()?;
-        trace!("Transmissing frame {data:#04X}");
+        trace!("Transmitting frame {data:#04X}");
         self.frame_buffer.write_frame(data)?;
         self.transmissions
             .insert(0, transmission)
