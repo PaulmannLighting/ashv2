@@ -3,7 +3,7 @@
 use core::fmt::{Display, UpperHex};
 use std::io::{self, Error, ErrorKind, Read, Write};
 
-use log::{debug, trace, warn};
+use log::{debug, trace};
 
 use crate::frame::Frame;
 use crate::protocol::{ControlByte, Stuffing};
@@ -15,6 +15,7 @@ use crate::utils::HexSlice;
 pub struct FrameBuffer<T> {
     inner: T,
     buffer: RawFrame,
+    xon: bool,
 }
 
 impl<T> FrameBuffer<T> {
@@ -24,6 +25,7 @@ impl<T> FrameBuffer<T> {
         Self {
             inner,
             buffer: RawFrame::new(),
+            xon: true,
         }
     }
 
@@ -100,10 +102,12 @@ where
                         error = true;
                     }
                     ControlByte::Xon => {
-                        warn!("NCP requested to resume transmission. Ignoring.");
+                        trace!("NCP requested to resume transmission.");
+                        self.xon = true;
                     }
                     ControlByte::Xoff => {
-                        warn!("NCP requested to stop transmission. Ignoring.");
+                        trace!("NCP requested to stop transmission.");
+                        self.xon = false;
                     }
                     ControlByte::Wake => {
                         if self.buffer.is_empty() {
@@ -143,6 +147,13 @@ where
     where
         F: IntoIterator<Item = u8> + Display + UpperHex,
     {
+        if !self.xon {
+            return Err(Error::new(
+                ErrorKind::ResourceBusy,
+                "Transmission not allowed by NCP (XOFF received).",
+            ));
+        }
+
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
         self.buffer.clear();
