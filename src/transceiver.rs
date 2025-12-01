@@ -68,7 +68,14 @@ impl<T> Transceiver<T> {
     /// Handle I/O errors.
     fn handle_io_error(&mut self, error: Error) {
         debug!("Handling I/O error: {error}");
+        let kind = error.kind();
         self.channels.respond(Err(error));
+
+        // Do not reset connection if resource is busy.
+        if kind == ErrorKind::ResourceBusy {
+            return;
+        }
+
         self.reset();
     }
 
