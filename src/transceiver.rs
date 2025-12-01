@@ -381,7 +381,12 @@ where
     /// If there is an incoming transaction, handle it.
     /// Otherwise, handle callbacks.
     fn communicate(&mut self) -> io::Result<()> {
-        self.send_data()?;
+        if self.frame_buffer.xon() {
+            self.send_data()?;
+        } else {
+            trace!("Transmission paused (XOFF received).");
+        }
+
         self.handle_callbacks()
     }
 

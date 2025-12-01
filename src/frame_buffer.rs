@@ -35,6 +35,12 @@ impl<T> FrameBuffer<T> {
         self.inner
     }
 
+    /// Return whether transmission is allowed (XON received).
+    #[must_use]
+    pub const fn xon(&self) -> bool {
+        self.xon
+    }
+
     /// Return a buffer overflow error.
     #[must_use]
     fn buffer_overflow(&self, byte: u8) -> Error {
