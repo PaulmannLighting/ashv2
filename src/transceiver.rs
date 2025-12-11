@@ -1,7 +1,6 @@
 //! Transceiver for the `ASHv2` protocol.
 
 use std::io::{self, Error, ErrorKind, Read, Write};
-use std::num::TryFromIntError;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
