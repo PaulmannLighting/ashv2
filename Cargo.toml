@@ -17,7 +17,7 @@ all-features = true
 [dependencies]
 bitflags = "2.10"
 clap = { version = "4.5", optional = true }
-crc = "3.3"
+crc = "3.4"
 heapless = "0.9"
 log = "0.4"
 num-derive = "0.4"
