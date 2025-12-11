@@ -1,6 +1,7 @@
 //! Transceiver for the `ASHv2` protocol.
 
 use std::io::{self, Error, ErrorKind, Read, Write};
+use std::num::TryFromIntError;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -396,7 +397,18 @@ where
         let start = Instant::now();
 
         'attempts: for attempt in 1usize.. {
-            wait_before_attempt(attempt);
+            match get_wait_time(attempt) {
+                Ok(duration) => {
+                    if let Some(duration) = duration {
+                        debug!("Waiting {duration:?} before next connection attempt...");
+                        sleep(duration);
+                    }
+                }
+                Err(_) => {
+                    break;
+                }
+            }
+
             self.rst()?;
 
             debug!("Waiting for RSTACK...");
@@ -535,12 +547,18 @@ where
 }
 
 /// Wait before performing the next connection attempt.
-fn wait_before_attempt(attempt: usize) {
+fn get_wait_time(attempt: usize) -> Result<Option<Duration>, &'static str> {
     if attempt > 1 {
-        let grace_time = u32::try_from(attempt)
-            .map(|attempts| (CONNECT_GRACE_TIME_FACTOR * attempts).min(MAX_CONNECTION_GRACE_TIME))
-            .unwrap_or(MAX_CONNECTION_GRACE_TIME);
-        debug!("Sleeping for {grace_time:?} before next connection attempt.");
-        sleep(grace_time);
+        let duration = u32::try_from(attempt)
+            .map(|attempt| CONNECT_GRACE_TIME_FACTOR * attempt)
+            .unwrap_or(Duration::MAX);
+
+        if duration > MAX_CONNECTION_GRACE_TIME {
+            Err("Max connection grace time exceeded.")
+        } else {
+            Ok(Some(duration))
+        }
+    } else {
+        Ok(None)
     }
 }
