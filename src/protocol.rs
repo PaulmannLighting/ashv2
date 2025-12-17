@@ -2,7 +2,7 @@
 
 pub use self::control_byte::ControlByte;
 pub use self::randomization::Mask;
-pub use self::stuffing::Stuffing;
+pub use self::stuffing::{Stuff, Unstuff};
 
 mod control_byte;
 mod randomization;

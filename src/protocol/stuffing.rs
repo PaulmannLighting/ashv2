@@ -15,20 +15,23 @@ const RESERVED_BYTES: [u8; 6] = [
 ];
 const COMPLEMENT_BIT: u8 = 1 << 5;
 
-/// Stuff and un-stuff bytes.
-pub trait Stuffing {
+/// Stuff  bytes.
+pub trait Stuff {
     /// Stuffs bytes.
     ///
     /// # Errors
     ///
     /// Returns an error if the escape byte could not be inserted, i.e. on potential buffer overflows.
     fn stuff(&mut self) -> Result<()>;
+}
 
+/// Un-stuff bytes.
+pub trait Unstuff {
     /// Unstuffs bytes.
     fn unstuff(&mut self);
 }
 
-impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
+impl<const SIZE: usize> Stuff for heapless::Vec<u8, SIZE> {
     fn stuff(&mut self) -> Result<()> {
         let mut index: usize = 0;
 
@@ -48,7 +51,9 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
 
         Ok(())
     }
+}
 
+impl Unstuff for Vec<u8> {
     fn unstuff(&mut self) {
         let mut escape_next = false;
 
@@ -70,7 +75,7 @@ impl<const SIZE: usize> Stuffing for heapless::Vec<u8, SIZE> {
 
 #[cfg(test)]
 mod tests {
-    use super::Stuffing;
+    use super::{Stuff, Unstuff};
 
     #[test]
     fn test_stuffing() {
@@ -85,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_unstuffing() {
-        let mut stuffed: heapless::Vec<u8, 12> = [
+        let mut stuffed: Vec<u8> = vec![
             0x7D, 0x5E, 0x7D, 0x31, 0x7D, 0x33, 0x7D, 0x38, 0x7D, 0x3A, 0x7D, 0x5D,
         ]
         .into_iter()
@@ -97,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_unstuffing_unchanged() {
-        let payload: heapless::Vec<_, 70> = [
+        let payload: Vec<u8> = vec![
             0xd7, 0x90, 0xd7, 0xa0, 0xd7, 0x99, 0x20, 0xd7, 0x96, 0xd7, 0x95, 0xd7, 0x9b, 0xd7,
             0xa8, 0x20, 0xd7, 0x91, 0xd7, 0x9c, 0xd7, 0x99, 0xd7, 0x9c, 0xd7, 0x95, 0xd7, 0xaa,
             0x20, 0xd7, 0xa9, 0xd7, 0x9c, 0x20, 0xd7, 0x99, 0xd7, 0xa8, 0xd7, 0x97, 0x20, 0xd7,
