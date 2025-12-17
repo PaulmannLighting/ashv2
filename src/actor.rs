@@ -4,14 +4,14 @@ use tokio::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
 
 use self::message::Message;
+pub use self::proxy::{Error, Proxy};
 pub use self::receiver::Receiver;
-pub use self::transmit::Transmit;
 pub use self::transmitter::Transmitter;
 use crate::types::Payload;
 
 mod message;
+mod proxy;
 mod receiver;
-mod transmit;
 mod transmitter;
 
 /// Actor that manages serial port communication.

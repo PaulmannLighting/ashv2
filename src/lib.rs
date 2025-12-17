@@ -7,7 +7,7 @@
 //! This library is free software and is not affiliated with Silicon Labs.
 #![deny(unsafe_code)]
 
-pub use self::actor::{Actor, Transmit};
+pub use self::actor::{Actor, Error, Proxy};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, SerialPort, open};
 
