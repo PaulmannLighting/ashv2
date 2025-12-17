@@ -1,7 +1,7 @@
 use std::io;
 use std::io::{BufReader, ErrorKind, Read};
 
-use log::{debug, error, trace, warn};
+use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
@@ -49,7 +49,7 @@ where
         loop {
             if let Some(frame) = self.receive_frame() {
                 if let Err(error) = self.handle_frame(frame).await {
-                    error!("Error handling received frame: {error}");
+                    info!("Transmitter channel closed, receiver exiting: {error}");
                     break;
                 }
             }
