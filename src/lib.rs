@@ -27,6 +27,7 @@ pub use self::{
 
 const VERSION: u8 = 0x02;
 
+mod actor;
 mod baud_rate;
 mod code;
 mod frame;
