@@ -1,46 +1,21 @@
 //! Frame buffer for reading and writing ASH frames.
 
-use core::fmt::{Display, UpperHex};
-use std::io::{self, Error, ErrorKind, Read, Write};
+use std::io::{self, BufReader, Error, ErrorKind, Read};
 
 use log::{debug, trace};
 
 use crate::frame::Frame;
-use crate::protocol::{ControlByte, Stuffing};
-use crate::types::RawFrame;
+use crate::protocol::{ControlByte, Unstuff};
 use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
-pub struct FrameBuffer<T> {
-    inner: T,
-    buffer: RawFrame,
-    xon: bool,
+pub struct Buffer<T> {
+    reader: BufReader<T>,
+    buffer: Vec<u8>,
 }
 
-impl<T> FrameBuffer<T> {
-    /// Create a new `FrameBuffer` with the given inner reader and/or writer.
-    #[must_use]
-    pub const fn new(inner: T) -> Self {
-        Self {
-            inner,
-            buffer: RawFrame::new(),
-            xon: true,
-        }
-    }
-
-    /// Return the inner reader-writer type.
-    #[must_use]
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
-
-    /// Return whether transmission is allowed (XON received).
-    #[must_use]
-    pub const fn xon(&self) -> bool {
-        self.xon
-    }
-
+impl<T> Buffer<T> {
     /// Return a buffer overflow error.
     #[must_use]
     fn buffer_overflow(&self, byte: u8) -> Error {
@@ -55,30 +30,29 @@ impl<T> FrameBuffer<T> {
 }
 
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
-impl<T> FrameBuffer<T>
+impl<T> Buffer<T>
 where
     T: Read,
 {
+    /// Create a new `FrameBuffer` with the given inner reader and/or writer.
+    #[must_use]
+    pub fn new(serial_port: T) -> Self {
+        Self {
+            reader: BufReader::new(serial_port),
+            buffer: Vec::new(),
+        }
+    }
+
     /// Read an `ASHv2` [`Frame`].
     ///
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
     pub fn read_frame(&mut self) -> io::Result<Frame> {
-        self.read_raw_frame()?.try_into()
-    }
-
-    /// Reads an `ASHv2` frame into the buffer.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [`Error`] if any I/O or protocol error occurs.
-    pub fn read_raw_frame(&mut self) -> io::Result<&[u8]> {
         self.buffer.clear();
         let mut error = false;
 
-        #[expect(clippy::unbuffered_bytes)]
-        for byte in (&mut self.inner).bytes() {
+        for byte in (&mut self.reader).bytes() {
             match ControlByte::try_from(byte?) {
                 Ok(control_byte) => match control_byte {
                     ControlByte::Cancel => {
@@ -94,7 +68,7 @@ where
                             trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
                             self.buffer.unstuff();
                             trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.buffer));
-                            return Ok(&self.buffer);
+                            return self.buffer.drain(..).as_slice().try_into();
                         }
 
                         trace!("Resetting buffer due to error or empty buffer.");
@@ -109,24 +83,20 @@ where
                     }
                     ControlByte::Xon => {
                         trace!("NCP requested to resume transmission.");
-                        self.xon = true;
                     }
                     ControlByte::Xoff => {
                         trace!("NCP requested to stop transmission.");
-                        self.xon = false;
                     }
                     ControlByte::Wake => {
                         if self.buffer.is_empty() {
                             debug!("NCP tried to wake us up.");
-                        } else if self.buffer.push(control_byte.into()).is_err() {
-                            return Err(self.buffer_overflow(control_byte.into()));
+                        } else {
+                            self.buffer.push(control_byte.into())
                         }
                     }
                 },
                 Err(byte) => {
-                    if self.buffer.push(byte).is_err() {
-                        return Err(self.buffer_overflow(byte));
-                    }
+                    self.buffer.push(byte);
                 }
             }
         }
@@ -136,43 +106,6 @@ where
             ErrorKind::UnexpectedEof,
             "Byte stream terminated unexpectedly.",
         ))
-    }
-}
-
-/// The `FrameBuffer` can write `ASHv2` frames if `T` implements [`Write`].
-impl<T> FrameBuffer<T>
-where
-    T: Write,
-{
-    /// Write an `ASHv2` frame into the buffer.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
-    pub fn write_frame<F>(&mut self, frame: F) -> io::Result<()>
-    where
-        F: IntoIterator<Item = u8> + Display + UpperHex,
-    {
-        if !self.xon {
-            return Err(Error::new(
-                ErrorKind::ResourceBusy,
-                "Transmission not allowed by NCP (XOFF received).",
-            ));
-        }
-
-        debug!("Writing frame: {frame}");
-        trace!("Frame: {frame:#04X}");
-        self.buffer.clear();
-        self.buffer.extend(frame);
-        trace!("Frame bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer.stuff()?;
-        trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer
-            .push(ControlByte::Flag.into())
-            .map_err(|_| self.buffer_overflow(ControlByte::Flag.into()))?;
-        trace!("Writing bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.inner.write_all(&self.buffer)?;
-        self.inner.flush()
     }
 }
 
@@ -214,7 +147,7 @@ mod tests {
             0x5D,
             ControlByte::Flag as u8,
         ];
-        let mut buffer = FrameBuffer::new(Cursor::new(data));
+        let mut buffer = Buffer::new(Cursor::new(data));
         let reference = Data::try_from([0x7Eu8, 0x11, 0x13, 0x18, 0x1A, 0x7D].as_slice())
             .expect("Reference data should be valid.");
 

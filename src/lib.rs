@@ -8,7 +8,6 @@
 #![deny(unsafe_code)]
 
 pub use self::baud_rate::BaudRate;
-#[cfg(feature = "serialport")]
 pub use self::serial_port::{FlowControl, SerialPort, open};
 pub use self::transceiver::Transceiver;
 pub use self::types::{MAX_PAYLOAD_SIZE, MIN_PAYLOAD_SIZE, Payload};
@@ -17,7 +16,6 @@ pub use self::utils::HexSlice;
 pub use self::{
     code::Code,
     frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck, headers},
-    frame_buffer::FrameBuffer,
     protocol::{ControlByte, Mask, Stuffing},
     status::Status,
     types::{MAX_FRAME_SIZE, RawFrame},
@@ -31,7 +29,6 @@ mod actor;
 mod baud_rate;
 mod code;
 mod frame;
-mod frame_buffer;
 mod protocol;
 mod serial_port;
 mod status;

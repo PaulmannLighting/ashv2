@@ -8,6 +8,7 @@ use crate::actor::message::Message;
 
 mod message;
 mod receiver;
+mod transmit;
 mod transmitter;
 
 pub struct Actor {

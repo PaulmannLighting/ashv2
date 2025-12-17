@@ -1,5 +1,3 @@
-#![cfg(feature = "serialport")]
-
 //! Miscellaneous functions for opening serial ports.
 
 use std::borrow::Cow;

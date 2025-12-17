@@ -1,3 +1,7 @@
+use std::io;
+
+use tokio::sync::oneshot::Sender;
+
 use crate::frame::{Error, Rst, RstAck};
 use crate::utils::WrappingU3;
 
@@ -6,11 +10,16 @@ use crate::utils::WrappingU3;
 #[derive(Debug)]
 pub enum Message {
     /// Payload received from the network.
-    Payload(Box<[u8]>),
-    /// Send an ACK frame with the given frame number.
+    Payload {
+        /// Data payload to send.
+        payload: Box<[u8]>,
+        /// Response channel to notify when the payload has been sent.
+        response: Sender<io::Result<()>>,
+    },
+    /// Send an ACK frame with the given ack number.
     Ack(WrappingU3),
-    /// Send a NAK frame with the given expected frame number or the current frame counter.
-    Nak(Option<WrappingU3>),
+    /// Send a NAK frame with the given ack number.
+    Nak(WrappingU3),
     /// Received RST frame.
     Rst(Rst),
     /// Received RST-ACK frame.
