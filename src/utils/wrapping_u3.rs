@@ -6,6 +6,7 @@ use core::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
 const NON_ZERO_BIT: u8 = 0b0000_1000;
+const MODULO: usize = 7;
 
 /// A three bit number.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -45,6 +46,15 @@ impl Add<u8> for WrappingU3 {
 
     fn add(self, rhs: u8) -> Self::Output {
         Self::from_u8_lossy(self.as_u8().wrapping_add(rhs))
+    }
+}
+
+impl Add<usize> for WrappingU3 {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        #[expect(clippy::cast_possible_truncation, clippy::suspicious_arithmetic_impl)]
+        Self::from_u8_lossy((usize::from(self.as_u8()).wrapping_add(rhs) % MODULO) as u8)
     }
 }
 

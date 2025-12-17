@@ -5,10 +5,10 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
 use self::buffer::Buffer;
-use crate::Payload;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
 use crate::protocol::Mask;
+use crate::types::Payload;
 use crate::utils::WrappingU3;
 use crate::validate::Validate;
 
@@ -25,7 +25,7 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T>
 where
-    T: Read,
+    T: Read + Sync,
 {
     /// Creates a new `ASHv2` receiver.
     pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
@@ -36,20 +36,15 @@ where
             last_received_frame_num: None,
         }
     }
-}
 
-impl<T> Receiver<T>
-where
-    T: Read + Sync,
-{
     /// Runs the receiver loop.
     pub async fn run(&mut self) {
         loop {
-            if let Some(frame) = self.receive_frame() {
-                if let Err(error) = self.handle_frame(frame).await {
-                    info!("Transmitter channel closed, receiver exiting: {error}");
-                    break;
-                }
+            if let Some(frame) = self.receive_frame()
+                && let Err(error) = self.handle_frame(frame).await
+            {
+                info!("Transmitter channel closed, receiver exiting: {error}");
+                break;
             }
         }
     }
@@ -59,7 +54,7 @@ where
     /// This is equal to the last received frame number plus one.
     fn ack_number(&self) -> WrappingU3 {
         self.last_received_frame_num
-            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1)
+            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1u8)
     }
 
     fn receive_frame(&mut self) -> Option<Frame> {
@@ -164,7 +159,7 @@ where
     async fn handle_payload(&self, mut payload: Payload) {
         payload.mask();
         self.response.send(payload).await.unwrap_or_else(|error| {
-            error!("Failed to send payload through response channel: {error}")
+            error!("Failed to send payload through response channel: {error}");
         });
     }
 

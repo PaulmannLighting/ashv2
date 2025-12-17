@@ -23,7 +23,7 @@ log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
 serialport = { version = "4.8", default-features = false }
-tokio = { version = "1.48", default-features = false, features = ["sync"] }
+tokio = { version = "1.48", default-features = false, features = ["sync", "rt", "rt-multi-thread"] }
 
 [features]
 clap = ["dep:clap"]

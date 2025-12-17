@@ -6,8 +6,9 @@ use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
 use crate::frame::Data;
-use crate::transceiver::constants::ACK_TIMEOUTS;
 use crate::utils::WrappingU3;
+
+const ACK_TIMEOUTS: usize = 4;
 
 /// A transmitted frame with metadata.
 #[derive(Debug)]
@@ -71,8 +72,8 @@ impl From<Data> for Transmission {
 
 #[cfg(test)]
 mod tests {
+    use super::Transmission;
     use crate::frame::Data;
-    use crate::transceiver::transmission::Transmission;
     use crate::utils::WrappingU3;
 
     #[test]

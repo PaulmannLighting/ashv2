@@ -15,20 +15,6 @@ pub struct Buffer<T> {
     buffer: Vec<u8>,
 }
 
-impl<T> Buffer<T> {
-    /// Return a buffer overflow error.
-    #[must_use]
-    fn buffer_overflow(&self, byte: u8) -> Error {
-        trace!("Buffer was: {:#04X}", HexSlice::new(&self.buffer));
-        Error::other(format!("Frame buffer overflow: {byte:#04X}"))
-    }
-
-    /// Trace the current state of the frame buffer.
-    fn trace_buffer(&self) {
-        trace!("Frame buffer was: {:#04X}", HexSlice::new(&self.buffer));
-    }
-}
-
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
 impl<T> Buffer<T>
 where
@@ -91,7 +77,7 @@ where
                         if self.buffer.is_empty() {
                             debug!("NCP tried to wake us up.");
                         } else {
-                            self.buffer.push(control_byte.into())
+                            self.buffer.push(control_byte.into());
                         }
                     }
                 },
@@ -101,7 +87,7 @@ where
             }
         }
 
-        self.trace_buffer();
+        trace!("Buffer state: {:#04X}", HexSlice::new(&self.buffer));
         Err(Error::new(
             ErrorKind::UnexpectedEof,
             "Byte stream terminated unexpectedly.",
