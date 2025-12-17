@@ -97,7 +97,7 @@ where
         }
 
         match message {
-            Message::Payload { payload, response } => self.handle_payload(&payload, response).await,
+            Message::Payload { payload, response } => self.handle_payload(payload, response).await,
             Message::Ack(ack_num) => self.send_ack(ack_num),
             Message::Nak(ack_num) => self.send_nak(ack_num),
             Message::Rst(rst) => self.handle_rst(&rst),
@@ -113,54 +113,28 @@ where
 
     async fn handle_payload(
         &mut self,
-        payload: &[u8],
+        payload: Box<Payload>,
         response: oneshot::Sender<io::Result<()>>,
     ) -> io::Result<()> {
-        let chunks = payload.chunks(Data::MAX_PAYLOAD_SIZE);
-
-        // Payload too large to fit into transmission queue.
-        if chunks.len() > self.transmissions.capacity() {
-            response
-                .send(Err(io::Error::new(
-                    ErrorKind::OutOfMemory,
-                    "Insufficient space in transmission queue",
-                )))
-                .unwrap_or_else(|_| {
-                    error!("Failed to send payload response.");
-                });
-
-            return Ok(());
-        }
-
-        // Not enough space in transmission queue, requeue the payload.
-        if chunks.len()
-            > self
-                .transmissions
-                .capacity()
-                .saturating_sub(self.transmissions.len())
-        {
+        if self.transmissions.is_full() {
             warn!("Insufficient space in transmission queue for payload, requeuing...");
             self.requeue
-                .send(Message::Payload {
-                    payload: Box::from(payload),
-                    response,
-                })
+                .send(Message::Payload { payload, response })
                 .await
                 .unwrap_or_else(|error| {
                     error!("Failed to requeue payload message: {error}");
                 });
+            return Ok(());
         }
 
-        // Transmit the chunks.
-        for (index, chunk) in chunks
-            .map(|chunk| Payload::try_from(chunk).expect("Chunk size fits into Payload"))
-            .enumerate()
-        {
-            let data = Data::new(self.next_frame_number(), chunk, self.ack_number + index);
-            self.transmit(data.into())?;
-        }
-
-        Ok(())
+        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
+        // fragmented messages if each DATA frame's ACK number is not increased.
+        let data = Data::new(
+            self.next_frame_number(),
+            *payload,
+            self.ack_number + self.transmissions.len(),
+        );
+        self.transmit(data.into())
     }
 
     fn send_ack(&mut self, ack_num: WrappingU3) -> io::Result<()> {

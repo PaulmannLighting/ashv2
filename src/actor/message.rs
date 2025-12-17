@@ -2,6 +2,7 @@ use std::io;
 
 use tokio::sync::oneshot::Sender;
 
+use crate::Payload;
 use crate::frame::{Error, Rst, RstAck};
 use crate::utils::WrappingU3;
 
@@ -12,7 +13,7 @@ pub enum Message {
     /// Payload received from the network.
     Payload {
         /// Data payload to send.
-        payload: Box<[u8]>,
+        payload: Box<Payload>,
         /// Response channel to notify when the payload has been sent.
         response: Sender<io::Result<()>>,
     },
