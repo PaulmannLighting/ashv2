@@ -2,8 +2,7 @@
 
 use std::borrow::Cow;
 
-use serialport::TTYPort;
-pub use serialport::{FlowControl, SerialPort};
+pub use serialport::{FlowControl, SerialPort, TTYPort};
 
 use crate::BaudRate;
 

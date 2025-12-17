@@ -9,7 +9,7 @@
 
 pub use self::actor::{Actor, Error, Proxy};
 pub use self::baud_rate::BaudRate;
-pub use self::serial_port::{FlowControl, SerialPort, open};
+pub use self::serial_port::{FlowControl, SerialPort, TTYPort, open};
 
 const VERSION: u8 = 0x02;
 
