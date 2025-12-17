@@ -12,6 +12,10 @@ pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, SerialPort, TTYPort, open};
 pub use self::types::Payload;
 pub use self::utils::HexSlice;
+use crate::frame::Data;
+
+/// Maximum payload size in bytes.
+pub const MAX_PAYLOAD_SIZE: usize = Data::MAX_PAYLOAD_SIZE;
 
 const VERSION: u8 = 0x02;
 
