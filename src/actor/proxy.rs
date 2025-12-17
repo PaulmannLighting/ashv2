@@ -13,6 +13,12 @@ pub struct Proxy {
 }
 
 impl Proxy {
+    /// Create a new `ASHv2` actor proxy.
+    #[must_use]
+    pub(crate) const fn new(sender: Sender<Message>) -> Self {
+        Self { sender }
+    }
+
     /// Send data through the `ASHv2` actor.
     ///
     /// # Errors

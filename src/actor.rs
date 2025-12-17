@@ -3,7 +3,6 @@ use tokio::spawn;
 use tokio::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
 
-use self::message::Message;
 pub use self::proxy::{Error, Proxy};
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
@@ -31,7 +30,7 @@ impl Actor<TTYPort> {
         serial_port: TTYPort,
         rx_queue_len: usize,
         tx_queue_len: usize,
-    ) -> Result<(Self, mpsc::Sender<Message>, mpsc::Receiver<Payload>), serialport::Error> {
+    ) -> Result<(Self, Proxy, mpsc::Receiver<Payload>), serialport::Error> {
         let (rx_tx, rx_rx) = channel(rx_queue_len);
         let (tx_tx, tx_rx) = channel(tx_queue_len);
         let receiver = Receiver::new(serial_port.try_clone_native()?, rx_tx, tx_tx.clone());
@@ -41,7 +40,7 @@ impl Actor<TTYPort> {
                 receiver,
                 transmitter,
             },
-            tx_tx,
+            Proxy::new(tx_tx),
             rx_rx,
         ))
     }
