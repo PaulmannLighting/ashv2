@@ -14,7 +14,7 @@ use crate::utils::HexSlice;
 #[derive(Debug)]
 pub struct Buffer<T> {
     inner: T,
-    buffer: RawFrame,
+    frame: RawFrame,
 }
 
 impl<T> Buffer<T> {
@@ -23,7 +23,7 @@ impl<T> Buffer<T> {
     pub const fn new(inner: T) -> Self {
         Self {
             inner,
-            buffer: RawFrame::new(),
+            frame: RawFrame::new(),
         }
     }
 }
@@ -43,16 +43,16 @@ where
     {
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
-        self.buffer.clear();
-        self.buffer.extend(frame);
-        trace!("Frame bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer.stuff()?;
-        trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.buffer
+        self.frame.clear();
+        self.frame.extend(frame);
+        trace!("Frame bytes: {:#04X}", HexSlice::new(&self.frame));
+        self.frame.stuff()?;
+        trace!("Stuffed bytes: {:#04X}", HexSlice::new(&self.frame));
+        self.frame
             .push(ControlByte::Flag.into())
             .map_err(|byte| Error::other(format!("Frame buffer overflow: {byte:#04X}")))?;
-        trace!("Writing bytes: {:#04X}", HexSlice::new(&self.buffer));
-        self.inner.write_all(&self.buffer)?;
+        trace!("Writing bytes: {:#04X}", HexSlice::new(&self.frame));
+        self.inner.write_all(&self.frame)?;
         self.inner.flush()
     }
 }

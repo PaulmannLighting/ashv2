@@ -1,8 +1,12 @@
 //! Frame buffer for reading and writing ASH frames.
 
-use std::io::{self, Error, ErrorKind, Read};
+use std::io::{self, BufReader, Error, ErrorKind, Read};
+use std::time::Duration;
+use std::vec::Drain;
 
 use log::{debug, trace};
+use serialport::SerialPort;
+use tokio::time::sleep;
 
 use crate::frame::Frame;
 use crate::protocol::{ControlByte, Unstuff};
@@ -11,8 +15,9 @@ use crate::utils::HexSlice;
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
 pub struct Buffer<T> {
-    reader: T,
-    buffer: Vec<u8>,
+    reader: BufReader<T>,
+    frame: Vec<u8>,
+    timeout: Option<Duration>,
 }
 
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
@@ -22,10 +27,11 @@ where
 {
     /// Create a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
-    pub const fn new(serial_port: T) -> Self {
+    pub fn new(serial_port: T, timeout: Option<Duration>) -> Self {
         Self {
-            reader: serial_port,
-            buffer: Vec::new(),
+            reader: BufReader::new(serial_port),
+            frame: Vec::new(),
+            timeout,
         }
     }
 
@@ -34,34 +40,49 @@ where
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub fn read_frame(&mut self) -> io::Result<Frame> {
-        self.buffer.clear();
+    pub async fn read_frame(&mut self) -> io::Result<Option<Frame>> {
+        let error = match self.read_raw_frame() {
+            Ok(raw_frame) => return raw_frame.as_slice().try_into().map(Some),
+            Err(error) => error,
+        };
+
+        if error.kind() == ErrorKind::TimedOut {
+            if let Some(timeout) = self.timeout {
+                sleep(timeout).await;
+            }
+            Ok(None)
+        } else {
+            Err(error)
+        }
+    }
+
+    fn read_raw_frame(&mut self) -> io::Result<Drain<'_, u8>> {
+        self.frame.clear();
         let mut error = false;
 
-        #[expect(clippy::unbuffered_bytes)]
         for byte in (&mut self.reader).bytes() {
             match ControlByte::try_from(byte?) {
                 Ok(control_byte) => match control_byte {
                     ControlByte::Cancel => {
                         trace!("Resetting buffer due to cancel byte.");
-                        self.buffer.clear();
+                        self.frame.clear();
                         error = false;
                     }
                     ControlByte::Flag => {
                         trace!("Received flag byte.");
 
-                        if !error && !self.buffer.is_empty() {
+                        if !error && !self.frame.is_empty() {
                             debug!("Received frame.");
-                            trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
-                            self.buffer.unstuff();
-                            trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.buffer));
-                            return self.buffer.drain(..).as_slice().try_into();
+                            trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
+                            self.frame.unstuff();
+                            trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.frame));
+                            return Ok(self.frame.drain(..));
                         }
 
                         trace!("Resetting buffer due to error or empty buffer.");
                         trace!("Error condition was: {error}");
-                        trace!("Buffer: {:#04X}", HexSlice::new(&self.buffer));
-                        self.buffer.clear();
+                        trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
+                        self.frame.clear();
                         error = false;
                     }
                     ControlByte::Substitute => {
@@ -75,24 +96,34 @@ where
                         trace!("NCP requested to stop transmission.");
                     }
                     ControlByte::Wake => {
-                        if self.buffer.is_empty() {
+                        if self.frame.is_empty() {
                             debug!("NCP tried to wake us up.");
                         } else {
-                            self.buffer.push(control_byte.into());
+                            self.frame.push(control_byte.into());
                         }
                     }
                 },
                 Err(byte) => {
-                    self.buffer.push(byte);
+                    self.frame.push(byte);
                 }
             }
         }
 
-        trace!("Buffer state: {:#04X}", HexSlice::new(&self.buffer));
+        trace!("Buffer state: {:#04X}", HexSlice::new(&self.frame));
         Err(Error::new(
             ErrorKind::UnexpectedEof,
             "Byte stream terminated unexpectedly.",
         ))
+    }
+}
+
+impl<T> From<T> for Buffer<T>
+where
+    T: SerialPort,
+{
+    fn from(serial_port: T) -> Self {
+        let timeout = serial_port.timeout();
+        Self::new(serial_port, Some(timeout))
     }
 }
 
@@ -134,11 +165,17 @@ mod tests {
             0x5D,
             ControlByte::Flag as u8,
         ];
-        let mut buffer = Buffer::new(Cursor::new(data));
+        let mut buffer = Buffer::new(Cursor::new(data), None);
         let reference = Data::try_from([0x7Eu8, 0x11, 0x13, 0x18, 0x1A, 0x7D].as_slice())
             .expect("Reference data should be valid.");
 
-        let Frame::Data(data) = buffer.read_frame().expect("A data frame should be read.") else {
+        let Frame::Data(data) = buffer
+            .read_raw_frame()
+            .expect("A data frame should be read.")
+            .as_slice()
+            .try_into()
+            .expect("A data frame should be read.")
+        else {
             panic!("Expected a Data frame");
         };
 
@@ -147,7 +184,13 @@ mod tests {
         assert_eq!(data.is_retransmission(), reference.is_retransmission());
         assert_eq!(data.into_payload(), reference.clone().into_payload());
 
-        let Frame::Data(data) = buffer.read_frame().expect("A data frame should be read.") else {
+        let Frame::Data(data) = buffer
+            .read_raw_frame()
+            .expect("A data frame should be read.")
+            .as_slice()
+            .try_into()
+            .expect("A data frame should be read.")
+        else {
             panic!("Expected a Data frame");
         };
 

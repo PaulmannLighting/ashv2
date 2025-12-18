@@ -1,11 +1,7 @@
-use std::io;
-use std::io::{ErrorKind, Read};
-use std::time::Duration;
-
 use log::{debug, error, info, trace, warn};
+use serialport::SerialPort;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
-use tokio::time::sleep;
 
 use self::buffer::Buffer;
 use crate::actor::message::Message;
@@ -16,8 +12,6 @@ use crate::utils::WrappingU3;
 use crate::validate::Validate;
 
 mod buffer;
-
-const BURST: Duration = Duration::from_millis(100);
 
 /// `ASHv2` receiver.
 #[derive(Debug)]
@@ -30,16 +24,12 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T>
 where
-    T: Read + Sync,
+    T: SerialPort + Sync,
 {
     /// Creates a new `ASHv2` receiver.
-    pub const fn new(
-        serial_port: T,
-        response: Sender<Payload>,
-        transmitter: Sender<Message>,
-    ) -> Self {
+    pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
         Self {
-            buffer: Buffer::new(serial_port),
+            buffer: serial_port.into(),
             response,
             transmitter,
             last_received_frame_num: None,
@@ -51,7 +41,7 @@ where
         trace!("Starting receiver");
 
         loop {
-            let maybe_frame = match self.receive_frame() {
+            let maybe_frame = match self.buffer.read_frame().await {
                 Ok(maybe_frame) => maybe_frame,
                 Err(error) => {
                     error!("Error receiving frame: {error}");
@@ -66,9 +56,6 @@ where
                     info!("Transmitter channel closed, receiver exiting: {error}");
                     break;
                 }
-            } else {
-                // Prevent blocking of main thread in async environment.
-                sleep(BURST).await;
             }
         }
     }
@@ -79,19 +66,6 @@ where
     fn ack_number(&self) -> WrappingU3 {
         self.last_received_frame_num
             .map_or_else(WrappingU3::default, |ack_number| ack_number + 1u8)
-    }
-
-    fn receive_frame(&mut self) -> io::Result<Option<Frame>> {
-        match self.buffer.read_frame() {
-            Ok(frame) => Ok(Some(frame)),
-            Err(error) => {
-                if error.kind() != ErrorKind::TimedOut {
-                    return Err(error);
-                }
-
-                Ok(None)
-            }
-        }
     }
 
     async fn handle_frame(&mut self, frame: Frame) -> Result<(), SendError<Message>> {
