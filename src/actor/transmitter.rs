@@ -172,6 +172,11 @@ where
     fn handle_rst_ack(&mut self, rst_ack: &RstAck) -> io::Result<()> {
         trace!("Received RST ACK frame: {rst_ack}, connection reset acknowledged.");
 
+        if !rst_ack.is_ash_v2() {
+            error!("Received RST ACK frame with invalid ASH version: {rst_ack}.");
+            return Ok(());
+        }
+
         if let Some(timestamp) = self.last_rst_sent.take() {
             if timestamp.elapsed() < T_RSTACK_MAX {
                 debug!("Connection established successfully.");
