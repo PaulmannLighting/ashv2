@@ -72,6 +72,9 @@ where
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self) {
         trace!("Starting transmitter");
+        self.reset().unwrap_or_else(|error| {
+            error!("Failed to send initial RST frame: {error}");
+        });
 
         while let Some(message) = self.messages.recv().await {
             trace!("Received message: {message:?}");
@@ -98,7 +101,7 @@ where
             self.requeue.send(message).await.unwrap_or_else(|error| {
                 error!("Failed to requeue message: {error}");
             });
-            return Ok(());
+            return self.reset();
         }
 
         match message {
