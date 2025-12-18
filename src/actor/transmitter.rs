@@ -69,7 +69,7 @@ impl<T> Transmitter<T> {
 
 impl<T> Transmitter<T>
 where
-    T: SerialPort + Sync + 'static,
+    T: SerialPort + Sync,
 {
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self) {

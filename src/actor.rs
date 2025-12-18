@@ -52,12 +52,6 @@ where
 {
     /// Spawns the actor's transmitter and receiver as asynchronous tasks.
     pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>) {
-        let transmitter_handle = spawn(async move {
-            self.transmitter.run().await;
-        });
-        let receiver_handle = spawn(async move {
-            self.receiver.run().await;
-        });
-        (transmitter_handle, receiver_handle)
+        (spawn(self.transmitter.run()), spawn(self.receiver.run()))
     }
 }

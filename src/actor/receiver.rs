@@ -24,7 +24,7 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T>
 where
-    T: SerialPort + Sync,
+    T: SerialPort,
 {
     /// Creates a new `ASHv2` receiver.
     pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
@@ -35,7 +35,12 @@ where
             last_received_frame_num: None,
         }
     }
+}
 
+impl<T> Receiver<T>
+where
+    T: SerialPort + Sync,
+{
     /// Runs the receiver loop.
     pub async fn run(mut self) {
         trace!("Starting receiver");
