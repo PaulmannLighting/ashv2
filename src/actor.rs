@@ -1,4 +1,4 @@
-use serialport::{SerialPort, TTYPort};
+use serialport::SerialPort;
 use tokio::spawn;
 use tokio::sync::mpsc::{self, channel};
 use tokio::task::JoinHandle;
@@ -6,6 +6,7 @@ use tokio::task::JoinHandle;
 pub use self::proxy::{Error, Proxy};
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
+use crate::TryCloneNative;
 use crate::types::Payload;
 
 mod message;
@@ -20,17 +21,23 @@ pub struct Actor<T> {
     transmitter: Transmitter<T>,
 }
 
-impl Actor<TTYPort> {
+impl<T> Actor<T>
+where
+    T: SerialPort,
+{
     /// Creates a new actor with the given serial port and queue lengths.
     ///
     /// # Errors
     ///
     /// Returns a [`serialport::Error`] if the serial port cannot be cloned.
     pub fn new(
-        serial_port: TTYPort,
+        serial_port: T,
         rx_queue_len: usize,
         tx_queue_len: usize,
-    ) -> Result<(Self, Proxy, mpsc::Receiver<Payload>), serialport::Error> {
+    ) -> Result<(Self, Proxy, mpsc::Receiver<Payload>), serialport::Error>
+    where
+        T: TryCloneNative,
+    {
         let (rx_tx, rx_rx) = channel(rx_queue_len);
         let (tx_tx, tx_rx) = channel(tx_queue_len);
         let receiver = Receiver::new(serial_port.try_clone_native()?, rx_tx, tx_tx.clone());
@@ -44,14 +51,12 @@ impl Actor<TTYPort> {
             rx_rx,
         ))
     }
-}
 
-impl<T> Actor<T>
-where
-    T: SerialPort + Sync + 'static,
-{
     /// Spawns the actor's transmitter and receiver as asynchronous tasks.
-    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>) {
+    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>)
+    where
+        T: Sync + 'static,
+    {
         (spawn(self.transmitter.run()), spawn(self.receiver.run()))
     }
 }

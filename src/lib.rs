@@ -9,7 +9,7 @@
 
 pub use self::actor::{Actor, Error, Proxy};
 pub use self::baud_rate::BaudRate;
-pub use self::serial_port::{FlowControl, SerialPort, TTYPort, open};
+pub use self::serial_port::{FlowControl, SerialPort, TryCloneNative, open};
 pub use self::types::Payload;
 pub use self::utils::HexSlice;
 use crate::frame::Data;
