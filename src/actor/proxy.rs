@@ -1,9 +1,10 @@
+use log::trace;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::oneshot::channel;
 
 pub use self::error::Error;
-use crate::Payload;
 use crate::actor::message::Message;
+use crate::{HexSlice, Payload};
 
 mod error;
 
@@ -28,13 +29,17 @@ impl Proxy {
     pub async fn communicate(&self, payload: Payload) -> Result<(), Error> {
         let (response_tx, response_rx) = channel();
 
+        trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
         self.sender
             .send(Message::Payload {
                 payload: Box::new(payload),
                 response: response_tx,
             })
             .await?;
-        response_rx.await??;
+        trace!("Awaiting response from back-channel...");
+        let result = response_rx.await?;
+        trace!("Resolving result from back-channel...");
+        result?;
         Ok(())
     }
 }

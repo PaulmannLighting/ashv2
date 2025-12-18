@@ -1,9 +1,11 @@
 use std::io;
 use std::io::{ErrorKind, Read};
+use std::time::Duration;
 
 use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
+use tokio::time::sleep;
 
 use self::buffer::Buffer;
 use crate::actor::message::Message;
@@ -14,6 +16,8 @@ use crate::utils::WrappingU3;
 use crate::validate::Validate;
 
 mod buffer;
+
+const BURST: Duration = Duration::from_millis(100);
 
 /// `ASHv2` receiver.
 #[derive(Debug)]
@@ -58,6 +62,9 @@ where
                     info!("Transmitter channel closed, receiver exiting: {error}");
                     break;
                 }
+            } else {
+                // Prevent blocking of main thread in async environment.
+                sleep(BURST).await;
             }
         }
     }
