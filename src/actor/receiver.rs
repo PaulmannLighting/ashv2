@@ -1,3 +1,4 @@
+use std::io;
 use std::io::{ErrorKind, Read};
 
 use log::{debug, error, info, trace, warn};
@@ -38,13 +39,25 @@ where
     }
 
     /// Runs the receiver loop.
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) {
+        trace!("Starting receiver");
+
         loop {
-            if let Some(frame) = self.receive_frame()
-                && let Err(error) = self.handle_frame(frame).await
-            {
-                info!("Transmitter channel closed, receiver exiting: {error}");
-                break;
+            let maybe_frame = match self.receive_frame() {
+                Ok(maybe_frame) => maybe_frame,
+                Err(error) => {
+                    error!("Error receiving frame: {error}");
+                    continue;
+                }
+            };
+
+            if let Some(frame) = maybe_frame {
+                trace!("Received frame: {frame:#04X}");
+
+                if let Err(error) = self.handle_frame(frame).await {
+                    info!("Transmitter channel closed, receiver exiting: {error}");
+                    break;
+                }
             }
         }
     }
@@ -57,15 +70,15 @@ where
             .map_or_else(WrappingU3::default, |ack_number| ack_number + 1u8)
     }
 
-    fn receive_frame(&mut self) -> Option<Frame> {
+    fn receive_frame(&mut self) -> io::Result<Option<Frame>> {
         match self.buffer.read_frame() {
-            Ok(frame) => Some(frame),
+            Ok(frame) => Ok(Some(frame)),
             Err(error) => {
                 if error.kind() != ErrorKind::TimedOut {
-                    error!("Error receiving frame: {error}");
+                    return Err(error);
                 }
 
-                None
+                Ok(None)
             }
         }
     }

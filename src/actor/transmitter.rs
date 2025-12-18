@@ -69,8 +69,13 @@ impl<T> Transmitter<T>
 where
     T: SerialPort + 'static,
 {
+    /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self) {
+        trace!("Starting transmitter");
+
         while let Some(message) = self.messages.recv().await {
+            trace!("Received message: {message:?}");
+
             if let Err(error) = self.handle_message(message).await {
                 error!("Resetting connection due to I/O error: {error}");
                 self.status = Status::Failed;
@@ -97,7 +102,10 @@ where
         }
 
         match message {
-            Message::Payload { payload, response } => self.handle_payload(payload, response).await,
+            Message::Payload { payload, response } => {
+                self.handle_payload(payload, response).await;
+                Ok(())
+            }
             Message::Ack(ack_num) => self.send_ack(ack_num),
             Message::Nak(ack_num) => self.send_nak(ack_num),
             Message::Rst(rst) => self.handle_rst(&rst),
@@ -115,7 +123,7 @@ where
         &mut self,
         payload: Box<Payload>,
         response: oneshot::Sender<io::Result<()>>,
-    ) -> io::Result<()> {
+    ) {
         if self.transmissions.is_full() {
             warn!("Insufficient space in transmission queue for payload, requeuing...");
             self.requeue
@@ -124,7 +132,7 @@ where
                 .unwrap_or_else(|error| {
                     error!("Failed to requeue payload message: {error}");
                 });
-            return Ok(());
+            return;
         }
 
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
@@ -134,7 +142,11 @@ where
             *payload,
             self.ack_number + self.transmissions.len(),
         );
-        self.transmit(data.into())
+        response
+            .send(self.transmit(data.into()))
+            .unwrap_or_else(|_| {
+                error!("Failed to send transmit result through response channel.");
+            });
     }
 
     fn send_ack(&mut self, ack_num: WrappingU3) -> io::Result<()> {
