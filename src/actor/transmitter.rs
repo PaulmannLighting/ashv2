@@ -79,7 +79,7 @@ where
         });
 
         while let Some(message) = self.messages.recv().await {
-            trace!("Received message: {message:?}");
+            trace!("Received message: {message}");
 
             if let Err(error) = self.handle_message(message).await {
                 error!("Resetting connection due to I/O error: {error}");
@@ -91,8 +91,6 @@ where
     }
 
     async fn handle_message(&mut self, message: Message) -> io::Result<()> {
-        trace!("Received message to transmit: {message:?}");
-
         if self.status != Status::Connected {
             if let Message::RstAck(ack) = message {
                 return self.handle_rst_ack(&ack);
@@ -134,13 +132,10 @@ where
             return;
         }
 
+        let data = Data::new(self.next_frame_number(), *payload, self.ack_number);
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
-        let data = Data::new(
-            self.next_frame_number(),
-            *payload,
-            self.ack_number + self.transmissions.len(),
-        );
+        self.ack_number += 1;
         response
             .send(self.transmit(data.into()))
             .unwrap_or_else(|_| {
