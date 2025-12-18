@@ -6,6 +6,7 @@ use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::oneshot;
+use tokio::time::sleep;
 
 use self::buffer::Buffer;
 use self::transmission::Transmission;
@@ -28,6 +29,7 @@ const TX_K: usize = 5;
 const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
 const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
+const REQUEUE_DELAY: Duration = Duration::from_millis(100);
 
 /// `ASHv2` transmitter.
 #[derive(Debug)]
@@ -67,7 +69,7 @@ impl<T> Transmitter<T> {
 
 impl<T> Transmitter<T>
 where
-    T: SerialPort + 'static,
+    T: SerialPort + Sync + 'static,
 {
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self) {
@@ -97,11 +99,10 @@ where
             }
 
             warn!("Transmitter not connected (status: {:?}).", self.status);
+            self.reset()?;
             trace!("Requeuing message: {message:?}");
-            self.requeue.send(message).await.unwrap_or_else(|error| {
-                error!("Failed to requeue message: {error}");
-            });
-            return self.reset();
+            self.requeue(message).await;
+            return Ok(());
         }
 
         match message {
@@ -129,12 +130,7 @@ where
     ) {
         if self.transmissions.is_full() {
             warn!("Insufficient space in transmission queue for payload, requeuing...");
-            self.requeue
-                .send(Message::Payload { payload, response })
-                .await
-                .unwrap_or_else(|error| {
-                    error!("Failed to requeue payload message: {error}");
-                });
+            self.requeue(Message::Payload { payload, response }).await;
             return;
         }
 
@@ -278,5 +274,12 @@ where
             )
             .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
         trace!("Updated T_RX_ACK to {:?}", self.t_rx_ack);
+    }
+
+    async fn requeue(&self, message: Message) {
+        sleep(REQUEUE_DELAY).await;
+        self.requeue.send(message).await.unwrap_or_else(|error| {
+            error!("Failed to requeue payload message: {error}");
+        });
     }
 }

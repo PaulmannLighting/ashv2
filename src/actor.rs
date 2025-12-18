@@ -51,7 +51,7 @@ where
     T: SerialPort + Sync + 'static,
 {
     /// Spawns the actor's transmitter and receiver as asynchronous tasks.
-    pub fn spawn(mut self) -> (JoinHandle<()>, JoinHandle<()>) {
+    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>) {
         let transmitter_handle = spawn(async move {
             self.transmitter.run().await;
         });

@@ -1,6 +1,6 @@
 //! Frame buffer for reading and writing ASH frames.
 
-use std::io::{self, BufReader, Error, ErrorKind, Read};
+use std::io::{self, Error, ErrorKind, Read};
 
 use log::{debug, trace};
 
@@ -11,7 +11,7 @@ use crate::utils::HexSlice;
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
 pub struct Buffer<T> {
-    reader: BufReader<T>,
+    reader: T,
     buffer: Vec<u8>,
 }
 
@@ -22,9 +22,9 @@ where
 {
     /// Create a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
-    pub fn new(serial_port: T) -> Self {
+    pub const fn new(serial_port: T) -> Self {
         Self {
-            reader: BufReader::new(serial_port),
+            reader: serial_port,
             buffer: Vec::new(),
         }
     }
@@ -38,6 +38,7 @@ where
         self.buffer.clear();
         let mut error = false;
 
+        #[expect(clippy::unbuffered_bytes)]
         for byte in (&mut self.reader).bytes() {
             match ControlByte::try_from(byte?) {
                 Ok(control_byte) => match control_byte {

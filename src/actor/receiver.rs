@@ -33,7 +33,11 @@ where
     T: Read + Sync,
 {
     /// Creates a new `ASHv2` receiver.
-    pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
+    pub const fn new(
+        serial_port: T,
+        response: Sender<Payload>,
+        transmitter: Sender<Message>,
+    ) -> Self {
         Self {
             buffer: Buffer::new(serial_port),
             response,

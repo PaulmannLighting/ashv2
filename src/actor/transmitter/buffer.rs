@@ -1,9 +1,9 @@
 //! Frame buffer for reading and writing ASH frames.
 
 use core::fmt::{Display, UpperHex};
-use std::io::{self, Error, ErrorKind};
+use std::io::{self, Error};
 
-use log::{debug, trace, warn};
+use log::{debug, trace};
 use serialport::SerialPort;
 
 use crate::protocol::{ControlByte, Stuff};
@@ -41,20 +41,6 @@ where
     where
         F: IntoIterator<Item = u8> + Display + UpperHex,
     {
-        if !self
-            .inner
-            .read_clear_to_send()
-            .inspect_err(|error| {
-                warn!("Failed to read CTS line: {error}");
-            })
-            .unwrap_or(true)
-        {
-            return Err(Error::new(
-                ErrorKind::ResourceBusy,
-                "Transmission not allowed by NCP (XOFF received).",
-            ));
-        }
-
         debug!("Writing frame: {frame}");
         trace!("Frame: {frame:#04X}");
         self.buffer.clear();
