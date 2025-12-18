@@ -8,8 +8,8 @@ use crate::utils::WrappingU3;
 use crate::{HexSlice, Payload};
 
 /// Messages sent to the `ASHv2` transmitter.
-#[expect(variant_size_differences)]
 #[derive(Debug)]
+#[cfg_attr(target_pointer_width = "64", expect(variant_size_differences))]
 pub enum Message {
     /// Payload received from the network.
     Payload {
