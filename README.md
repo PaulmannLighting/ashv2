@@ -9,42 +9,37 @@ at [silabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-g
 
 ## Usage
 
-This library provides the struct `Transceiver` which implements the ASHv2 protocol.
+This library provides the structs `Actor` which implements the ASHv2 protocol.
 
 It is to be initialized with the underlying serial port and the request and response channels used so send and receive
 data via the ASHv2 protocol.
 
 ```rust
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::thread::spawn;
-
-use ashv2::Transceiver;
-use serialport;
-use tokio::sync::mpsc;
+use ashv2::{Actor, BaudRate, FlowControl, open};
 
 #[tokio::main]
 async fn main() {
-    let (request_tx, request_rx) = mpsc::channel(32);
-    let (response_tx, mut response_rx) = mpsc::channel(32);
-
-    let serial_port = serialport::new("/dev/ttyUSB0", 115200)
-        .open()
+    // Open the serial port connected to the NCP.
+    let serial_port = open("/dev/ttyUSB0", BaudRate::RstCts, FlowControl::Hardware)
         .expect("Failed to open serial port");
 
-    let mut transceiver = Transceiver::new(serial_port, request_rx, response_tx);
-    spawn(|| transceiver.run(Arc::new(AtomicBool::new(true))));
+    // Create the ASHv2 actor, which returns the actor,
+    // a proxy to communicate with it, and a receiver for responses.
+    let (actor, proxy, mut receiver) = Actor::new(serial_port, 64, 64);
+    // Spawn the actor's tasks to handle communication.
+    let (_transmitter_task, _receiver_task) = actor.spawn();
 
-    // Example: Sending a request
-    let request_data = vec![0x01, 0x02, 0x03];
-    request_tx
-        .send(request_data.into_iter().collect())
+    // Send a data frame to the NCP using the proxy.
+    // Example: EZSP version command
+    let request_data = vec![0x00, 0x00, 0x00, 0x02];
+    proxy
+        .communicate(request_data.into_iter().collect())
         .await
         .expect("Failed to send request");
 
-    // Example: Receiving a response
-    if let Some(response) = response_rx.recv().await {
-        println!("Received response: {:?}", response);
+    // Receive a response from the NCP.
+    if let Some(response) = receiver.recv().await {
+        println!("Received response: {response:?}");
     }
 }
 ```
