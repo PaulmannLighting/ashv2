@@ -39,7 +39,6 @@ impl Proxy {
         trace!("Awaiting response from back-channel...");
         let result = response_rx.await?;
         trace!("Resolving result from back-channel...");
-        result?;
-        Ok(())
+        Ok(result?)
     }
 }
