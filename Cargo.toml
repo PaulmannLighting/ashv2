@@ -17,6 +17,7 @@ all-features = true
 [dependencies]
 bitflags = "2.10"
 clap = { version = "4.5", optional = true }
+const_env = "0.1"
 crc = "3.4"
 heapless = "0.9"
 log = "0.4"
@@ -27,7 +28,6 @@ tokio = { version = "1.48", default-features = false, features = ["sync", "rt", 
 
 [features]
 clap = ["dep:clap"]
-MGM210P22A = []
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

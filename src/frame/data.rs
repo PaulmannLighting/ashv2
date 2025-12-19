@@ -4,6 +4,8 @@ use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Copied, Once, once};
 
+use const_env::env_item;
+
 use super::headers::data::Header;
 use crate::protocol::Mask;
 use crate::types::Payload;
@@ -26,14 +28,8 @@ impl Data {
     /// The minimum size of a data frame payload.
     pub const MIN_PAYLOAD_SIZE: usize = 3;
 
-    #[cfg(feature = "MGM210P22A")]
     /// The maximum size of a data frame payload.
-    ///
-    /// This is the tested limit on the `Siliconlabs MGM210P22A`.
-    pub const MAX_PAYLOAD_SIZE: usize = 220;
-
-    /// The maximum size of a data frame payload.
-    #[cfg(not(feature = "MGM210P22A"))]
+    #[env_item("ASHV2_MAX_PAYLOAD_SIZE")]
     pub const MAX_PAYLOAD_SIZE: usize = 128;
 
     /// The size of a data frame buffer.
