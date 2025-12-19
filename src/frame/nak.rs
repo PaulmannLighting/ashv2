@@ -1,7 +1,7 @@
 //! Acknowledgement (`ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error, ErrorKind};
+use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use super::headers::nak::Header;
@@ -16,9 +16,6 @@ pub struct Nak {
 }
 
 impl Nak {
-    /// The size of the `NAK` frame in bytes.
-    pub const SIZE: usize = 3;
-
     /// Creates a new NAK frame.
     #[must_use]
     pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
@@ -78,11 +75,7 @@ impl TryFrom<&[u8]> for Nak {
 
     fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, crc0, crc1] = buffer else {
-            return Err(if buffer.len() < Self::SIZE {
-                Error::new(ErrorKind::UnexpectedEof, "Too few bytes for NAK.")
-            } else {
-                Error::new(ErrorKind::OutOfMemory, "Too many bytes for NAK.")
-            });
+            return Err(Error::other("Invalid NAK frame size."));
         };
 
         Ok(Self {

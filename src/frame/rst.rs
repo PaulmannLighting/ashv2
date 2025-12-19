@@ -1,7 +1,7 @@
 //! Reset (`RST`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error, ErrorKind};
+use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use crate::utils::HexSlice;
@@ -21,9 +21,6 @@ impl Rst {
 
     /// Constant header value for `RST` frames.
     pub const HEADER: u8 = 0xC0;
-
-    /// The size of the `RST` frame in bytes.
-    pub const SIZE: usize = 3;
 
     /// Creates a new RST frame.
     #[must_use]
@@ -71,11 +68,7 @@ impl TryFrom<&[u8]> for Rst {
 
     fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, crc0, crc1] = buffer else {
-            return Err(if buffer.len() < Self::SIZE {
-                Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RST.")
-            } else {
-                Error::new(ErrorKind::OutOfMemory, "Too many bytes for RST.")
-            });
+            return Err(Error::other("Invalid RST frame size."));
         };
 
         Ok(Self {

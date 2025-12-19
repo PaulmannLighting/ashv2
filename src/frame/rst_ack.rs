@@ -1,7 +1,7 @@
 //! Reset acknowledgment (`RST_ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error, ErrorKind};
+use std::io::{self, Error};
 use std::iter::Chain;
 
 use num_traits::FromPrimitive;
@@ -23,9 +23,6 @@ pub struct RstAck {
 impl RstAck {
     /// Constant header value for `RST_ACK` frames.
     pub const HEADER: u8 = 0xC1;
-
-    /// The size of the `RST_ACK` frame in bytes.
-    pub const SIZE: usize = 5;
 
     /// Returns the protocol version.
     ///
@@ -86,11 +83,7 @@ impl TryFrom<&[u8]> for RstAck {
 
     fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, version, reset_code, crc0, crc1] = buffer else {
-            return Err(if buffer.len() < Self::SIZE {
-                Error::new(ErrorKind::UnexpectedEof, "Too few bytes for RSTACK.")
-            } else {
-                Error::new(ErrorKind::OutOfMemory, "Too many bytes for RSTACK.")
-            });
+            return Err(Error::other("Invalid RST_ACK frame size."));
         };
 
         Ok(Self {

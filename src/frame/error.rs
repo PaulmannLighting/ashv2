@@ -1,7 +1,7 @@
 //! Error frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, ErrorKind};
+use std::io;
 use std::iter::Chain;
 
 use num_traits::FromPrimitive;
@@ -22,9 +22,6 @@ pub struct Error {
 impl Error {
     /// Constant header value for `ERROR` frames.
     pub const HEADER: u8 = 0xC2;
-
-    /// The size of the `ERROR` frame in bytes.
-    pub const SIZE: usize = 5;
 
     /// Returns the protocol version.
     ///
@@ -82,11 +79,7 @@ impl TryFrom<&[u8]> for Error {
 
     fn try_from(buffer: &[u8]) -> io::Result<Self> {
         let [header, version, code, crc0, crc1] = buffer else {
-            return Err(if buffer.len() < Self::SIZE {
-                io::Error::new(ErrorKind::UnexpectedEof, "Too few bytes for ERROR.")
-            } else {
-                io::Error::new(ErrorKind::OutOfMemory, "Too many bytes for ERROR.")
-            });
+            return Err(io::Error::other("Invalid ERROR frame size."));
         };
 
         Ok(Self {
