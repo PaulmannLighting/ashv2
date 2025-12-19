@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-        assert_eq!(&RST_ACK.to_string(), "RSTACK(0x02, 0x02)");
+        assert_eq!(&RST_ACK.to_string(), "RSTACK(0x02, Reset: Power-on)");
     }
 
     #[test]
