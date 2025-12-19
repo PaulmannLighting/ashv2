@@ -27,7 +27,6 @@ tokio = { version = "1.48", default-features = false, features = ["sync", "rt", 
 
 [features]
 clap = ["dep:clap"]
-devel = []
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"
