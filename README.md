@@ -35,9 +35,12 @@ async fn main() {
     // Example: EZSP version command
     let request_data = vec![0x00, 0x00, 0x00, 0x02];
     proxy
-        .communicate(request_data.into_iter().collect())
+        .send(request_data.into_iter().collect())
         .await
-        .expect("Failed to send request");
+        .expect("Failed to send request")
+        .await
+        .expect("Failed to receive response")
+        .expect("Actor reported an error");
 
     // Receive a response from the NCP.
     if let Some(response) = receiver.recv().await {
