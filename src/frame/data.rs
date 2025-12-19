@@ -4,9 +4,8 @@ use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error, ErrorKind};
 use std::iter::{Chain, Copied, Once, once};
 
-use const_env::env_item;
-
 use super::headers::data::Header;
+use crate::MAX_PAYLOAD_SIZE;
 use crate::protocol::Mask;
 use crate::types::Payload;
 use crate::utils::{HexSlice, WrappingU3};
@@ -28,12 +27,8 @@ impl Data {
     /// The minimum size of a data frame payload.
     pub const MIN_PAYLOAD_SIZE: usize = 3;
 
-    /// The maximum size of a data frame payload.
-    #[env_item("ASHV2_MAX_PAYLOAD_SIZE")]
-    pub const MAX_PAYLOAD_SIZE: usize = 128;
-
     /// The size of a data frame buffer.
-    pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + Self::MAX_PAYLOAD_SIZE;
+    pub const BUFFER_SIZE: usize = Self::METADATA_SIZE + MAX_PAYLOAD_SIZE;
 
     /// Creates a new data frame.
     #[must_use]

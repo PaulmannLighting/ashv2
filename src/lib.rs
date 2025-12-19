@@ -7,15 +7,17 @@
 //! This library is free software and is not affiliated with Silicon Labs.
 #![deny(unsafe_code)]
 
+use const_env::env_item;
+
 pub use self::actor::{Actor, Error, Proxy};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, SerialPort, TryCloneNative, open};
 pub use self::types::Payload;
 pub use self::utils::HexSlice;
-use crate::frame::Data;
 
 /// Maximum payload size in bytes.
-pub const MAX_PAYLOAD_SIZE: usize = Data::MAX_PAYLOAD_SIZE;
+#[env_item("ASHV2_MAX_PAYLOAD_SIZE")]
+pub const MAX_PAYLOAD_SIZE: usize = 128;
 
 const VERSION: u8 = 0x02;
 
