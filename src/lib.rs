@@ -20,7 +20,7 @@ pub const MAX_PAYLOAD_SIZE: usize = Data::MAX_PAYLOAD_SIZE;
 const VERSION: u8 = 0x02;
 
 /// `ASHv2` receiver type alias.
-pub type Receiver = tokio::sync::mpsc::Receiver<Result<Payload, Error>>;
+pub type Receiver = tokio::sync::mpsc::Receiver<Payload>;
 
 mod actor;
 mod baud_rate;
