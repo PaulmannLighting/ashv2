@@ -13,7 +13,7 @@ use self::transmission::Transmission;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
 use crate::status::Status;
-use crate::types::Payload;
+use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::utils::WrappingU3;
 
 mod buffer;
@@ -69,7 +69,7 @@ where
 {
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self) {
-        trace!("Starting transmitter");
+        trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");
         self.reset().unwrap_or_else(|error| {
             error!("Failed to send initial RST frame: {error}");
         });

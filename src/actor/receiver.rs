@@ -7,7 +7,7 @@ use self::buffer::Buffer;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
 use crate::protocol::Mask;
-use crate::types::Payload;
+use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::utils::WrappingU3;
 use crate::validate::Validate;
 
@@ -43,7 +43,7 @@ where
 {
     /// Runs the receiver loop.
     pub async fn run(mut self) {
-        trace!("Starting receiver");
+        trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");
 
         loop {
             let maybe_frame = match self.buffer.read_frame().await {
