@@ -26,8 +26,6 @@ const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
 /// Also amounts to the so-called *sliding window size*.
 const TX_K: usize = 5;
 
-const T_RX_ACK_INIT: Duration = Duration::from_millis(1600);
-const T_RX_ACK_MIN: Duration = Duration::from_millis(400);
 const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
 const REQUEUE_DELAY: Duration = Duration::from_millis(100);
 
@@ -42,7 +40,6 @@ pub struct Transmitter<T> {
     transmissions: heapless::Vec<Transmission, TX_K>,
     frame_number: WrappingU3,
     ack_number: WrappingU3,
-    t_rx_ack: Duration,
 }
 
 impl<T> Transmitter<T> {
@@ -62,7 +59,6 @@ impl<T> Transmitter<T> {
             transmissions: heapless::Vec::new(),
             frame_number: WrappingU3::ZERO,
             ack_number: WrappingU3::ZERO,
-            t_rx_ack: T_RX_ACK_INIT,
         }
     }
 }
@@ -203,9 +199,10 @@ where
             .position(|transmission| transmission.frame_num() + 1u8 == ack_num)
             .map(|index| self.transmissions.remove(index))
         {
-            let duration = transmission.elapsed();
-            trace!("ACKed frame {transmission} after {duration:?}");
-            self.update_t_rx_ack(Some(duration));
+            trace!(
+                "ACKed frame {transmission} after {:?}",
+                transmission.elapsed()
+            );
         }
     }
 
@@ -258,17 +255,6 @@ where
         let frame_number = self.frame_number;
         self.frame_number += 1;
         frame_number
-    }
-
-    /// Update the `T_RX_ACK` timeout duration.
-    fn update_t_rx_ack(&mut self, last_ack_duration: Option<Duration>) {
-        self.t_rx_ack = last_ack_duration
-            .map_or_else(
-                || self.t_rx_ack * 2,
-                |duration| self.t_rx_ack * 7 / 8 + duration / 2,
-            )
-            .clamp(T_RX_ACK_MIN, T_RX_ACK_MAX);
-        trace!("Updated T_RX_ACK to {:?}", self.t_rx_ack);
     }
 
     async fn requeue(&self, message: Message) {
