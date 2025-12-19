@@ -100,7 +100,10 @@ where
         }
 
         match message {
-            Message::Payload { payload, response } => {
+            Message::Payload {
+                payload,
+                response_tx: response,
+            } => {
                 self.handle_payload(payload, response).await;
                 Ok(())
             }
@@ -124,7 +127,11 @@ where
     ) {
         if self.transmissions.is_full() {
             warn!("Insufficient space in transmission queue for payload, requeuing...");
-            self.requeue(Message::Payload { payload, response }).await;
+            self.requeue(Message::Payload {
+                payload,
+                response_tx: response,
+            })
+            .await;
             return;
         }
 

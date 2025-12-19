@@ -16,7 +16,7 @@ pub enum Message {
         /// Data payload to send.
         payload: Box<Payload>,
         /// Response channel to notify when the payload has been sent.
-        response: Sender<io::Result<()>>,
+        response_tx: Sender<io::Result<()>>,
     },
     /// Send an ACK frame with the given ack number.
     Ack(WrappingU3),

@@ -1,12 +1,15 @@
+use std::io;
+
 use log::trace;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot::channel;
+use tokio::sync::mpsc::error::SendError;
+use tokio::sync::oneshot::{Receiver, channel};
 
-pub use self::error::Error;
 use crate::actor::message::Message;
 use crate::{HexSlice, Payload};
 
-mod error;
+type Response = Receiver<io::Result<()>>;
+type Error = SendError<Message>;
 
 /// `ASHv2` actor proxy.
 #[derive(Clone, Debug)]
@@ -21,24 +24,22 @@ impl Proxy {
         Self { sender }
     }
 
-    /// Send data through the `ASHv2` actor.
+    /// Send data to the `ASHv2` actor.
     ///
     /// # Errors
     ///
-    /// Returns an [`Error`] if sending the message fails, receiving the response fails or if there was an I/O error.
-    pub async fn communicate(&self, payload: Payload) -> Result<(), Error> {
+    /// Returns an [`Error`] if sending the message fails.
+    pub async fn send(&self, payload: Payload) -> Result<Response, Error> {
         let (response_tx, response_rx) = channel();
 
         trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
         self.sender
             .send(Message::Payload {
                 payload: Box::new(payload),
-                response: response_tx,
+                response_tx,
             })
             .await?;
-        trace!("Awaiting response from back-channel...");
-        let result = response_rx.await?;
-        trace!("Resolving result from back-channel...");
-        Ok(result?)
+
+        Ok(response_rx)
     }
 }
