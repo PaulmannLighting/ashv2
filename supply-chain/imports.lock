@@ -2,64 +2,64 @@
 # cargo-vet imports lock
 
 [[publisher.anstream]]
-version = "0.6.18"
-when = "2024-11-04"
+version = "0.6.21"
+when = "2025-10-02"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.anstyle]]
-version = "1.0.10"
-when = "2024-11-01"
+version = "1.0.13"
+when = "2025-09-29"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.anstyle-parse]]
-version = "0.2.6"
-when = "2024-10-24"
+version = "0.2.7"
+when = "2025-06-04"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.anstyle-query]]
-version = "1.1.2"
-when = "2024-10-24"
+version = "1.1.5"
+when = "2025-11-13"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.anstyle-wincon]]
-version = "3.0.7"
-when = "2025-01-13"
+version = "3.0.11"
+when = "2025-11-13"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap]]
-version = "4.5.38"
-when = "2025-05-11"
+version = "4.5.53"
+when = "2025-11-19"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap_builder]]
-version = "4.5.38"
-when = "2025-05-11"
+version = "4.5.53"
+when = "2025-11-19"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap_lex]]
-version = "0.7.4"
-when = "2024-12-05"
+version = "0.7.6"
+when = "2025-10-13"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.colorchoice]]
-version = "1.0.3"
-when = "2024-10-24"
+version = "1.0.4"
+when = "2025-06-04"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -72,28 +72,21 @@ user-login = "jrmuizel"
 user-name = "Jeff Muizelaar"
 
 [[publisher.is_terminal_polyfill]]
-version = "1.70.1"
-when = "2024-07-25"
+version = "1.70.2"
+when = "2025-10-21"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.libc]]
-version = "0.2.172"
-when = "2025-04-15"
+version = "0.2.178"
+when = "2025-12-02"
 user-id = 55123
 user-login = "rust-lang-owner"
 
-[[publisher.memchr]]
-version = "2.7.4"
-when = "2024-06-14"
-user-id = 189
-user-login = "BurntSushi"
-user-name = "Andrew Gallant"
-
 [[publisher.proc-macro2]]
-version = "1.0.95"
-when = "2025-04-16"
+version = "1.0.103"
+when = "2025-10-23"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -106,36 +99,43 @@ user-login = "Amanieu"
 user-name = "Amanieu d'Antras"
 
 [[publisher.syn]]
-version = "2.0.101"
-when = "2025-04-26"
+version = "2.0.111"
+when = "2025-11-23"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.thiserror]]
-version = "2.0.12"
-when = "2025-03-03"
+version = "2.0.17"
+when = "2025-09-28"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.thiserror-impl]]
-version = "2.0.12"
-when = "2025-03-03"
+version = "2.0.17"
+when = "2025-09-28"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.tokio]]
-version = "1.45.0"
-when = "2025-05-06"
+version = "1.48.0"
+when = "2025-10-14"
 user-id = 6741
 user-login = "Darksonn"
 user-name = "Alice Ryhl"
 
 [[publisher.windows-sys]]
-version = "0.59.0"
-when = "2024-07-30"
+version = "0.52.0"
+when = "2023-11-15"
+user-id = 64539
+user-login = "kennykerr"
+user-name = "Kenny Kerr"
+
+[[publisher.windows-sys]]
+version = "0.61.2"
+when = "2025-10-06"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
@@ -209,31 +209,11 @@ criteria = "safe-to-deploy"
 delta = "0.4.1 -> 0.4.2"
 notes = "It does unsafe FFI bindings, as expected. I didn't check the FFI bindings against the C headers."
 
-[[audits.bytecode-alliance.audits.rustc-demangle]]
+[[audits.bytecode-alliance.audits.pin-project-lite]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
-version = "0.1.21"
-notes = "I am the author of this crate."
-
-[[audits.bytecode-alliance.audits.rustc-demangle]]
-who = "Alex Crichton <alex@alexcrichton.com>"
-criteria = "safe-to-deploy"
-delta = "0.1.21 -> 0.1.24"
-
-[[audits.google.audits.adler2]]
-who = "Lukasz Anforowicz <lukasza@chromium.org>"
-criteria = "safe-to-deploy"
-version = "2.0.0"
-notes = '''
-This audit has been reviewed in https://crrev.com/c/5811890
-
-The crate is fairly easy to read thanks to its small size and rich comments.
-
-I've grepped for `-i cipher`, `-i crypto`, `\bfs\b`, `\bnet\b`, and
-`\bunsafe\b`.  There were no hits (except for a comment in `README.md`
-and `lib.rs` pointing out "Zero `unsafe`").
-'''
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+delta = "0.2.13 -> 0.2.14"
+notes = "No substantive changes in this update"
 
 [[audits.google.audits.autocfg]]
 who = "Manish Goregaokar <manishearth@google.com>"
@@ -328,6 +308,20 @@ criteria = "safe-to-deploy"
 version = "0.2.19"
 notes = "Contains a single line of float-to-int unsafe with decent safety comments"
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
+
+[[audits.google.audits.pin-project-lite]]
+who = "David Koloski <dkoloski@google.com>"
+criteria = "safe-to-deploy"
+version = "0.2.9"
+notes = "Reviewed on https://fxrev.dev/824504"
+aggregated-from = "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main/third_party/rust_crates/supply-chain/audits.toml?format=TEXT"
+
+[[audits.google.audits.pin-project-lite]]
+who = "David Koloski <dkoloski@google.com>"
+criteria = "safe-to-deploy"
+delta = "0.2.9 -> 0.2.13"
+notes = "Audited at https://fxrev.dev/946396"
+aggregated-from = "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main/third_party/rust_crates/supply-chain/audits.toml?format=TEXT"
 
 [[audits.google.audits.quote]]
 who = "Lukasz Anforowicz <lukasza@chromium.org>"
@@ -447,6 +441,13 @@ delta = "1.0.16 -> 1.0.18"
 notes = "Only minor comment and documentation updates."
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
+[[audits.google.audits.utf8parse]]
+who = "David Koloski <dkoloski@google.com>"
+criteria = "safe-to-deploy"
+version = "0.2.1"
+notes = "Reviewed on https://fxrev.dev/904811"
+aggregated-from = "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main/third_party/rust_crates/supply-chain/audits.toml?format=TEXT"
+
 [[audits.mozilla.wildcard-audits.core-foundation]]
 who = "Bobby Holley <bobbyholley@gmail.com>"
 criteria = "safe-to-deploy"
@@ -495,8 +496,24 @@ criteria = "safe-to-deploy"
 delta = "0.4.0 -> 0.4.2"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.pin-project-lite]]
+who = "Nika Layzell <nika@thelayzells.com>"
+criteria = "safe-to-deploy"
+delta = "0.2.14 -> 0.2.16"
+notes = """
+Only functional change is to work around a bug in the negative_impls feature
+(https://github.com/taiki-e/pin-project/issues/340#issuecomment-2432146009)
+"""
+aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.strsim]]
 who = "Ben Dean-Kawamura <bdk@mozilla.com>"
 criteria = "safe-to-deploy"
 delta = "0.10.0 -> 0.11.1"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.utf8parse]]
+who = "Nika Layzell <nika@thelayzells.com>"
+criteria = "safe-to-deploy"
+delta = "0.2.1 -> 0.2.2"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"

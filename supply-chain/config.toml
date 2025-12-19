@@ -13,24 +13,12 @@ url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
 [imports.mozilla]
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 
-[[exemptions.addr2line]]
-version = "0.24.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.backtrace]]
-version = "0.3.75"
-criteria = "safe-to-deploy"
-
 [[exemptions.crc]]
 version = "3.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.crc-catalog]]
 version = "2.4.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.gimli]]
-version = "0.31.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.hash32]]
@@ -49,24 +37,8 @@ criteria = "safe-to-deploy"
 version = "0.4.27"
 criteria = "safe-to-deploy"
 
-[[exemptions.miniz_oxide]]
-version = "0.8.8"
-criteria = "safe-to-deploy"
-
 [[exemptions.nix]]
 version = "0.26.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.object]]
-version = "0.36.7"
-criteria = "safe-to-deploy"
-
-[[exemptions.once_cell]]
-version = "1.21.3"
-criteria = "safe-to-deploy"
-
-[[exemptions.pin-project-lite]]
-version = "0.2.16"
 criteria = "safe-to-deploy"
 
 [[exemptions.serialport]]
@@ -75,20 +47,4 @@ criteria = "safe-to-deploy"
 
 [[exemptions.unescaper]]
 version = "0.1.6"
-criteria = "safe-to-deploy"
-
-[[exemptions.utf8parse]]
-version = "0.2.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.winapi]]
-version = "0.3.9"
-criteria = "safe-to-deploy"
-
-[[exemptions.winapi-i686-pc-windows-gnu]]
-version = "0.4.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.winapi-x86_64-pc-windows-gnu]]
-version = "0.4.0"
 criteria = "safe-to-deploy"

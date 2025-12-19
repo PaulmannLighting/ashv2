@@ -77,7 +77,7 @@ end = "2026-05-15"
 
 [[trusted.memchr]]
 criteria = "safe-to-deploy"
-user-id = 189 # Andrew Gallant (BurntSushi)
+user-id = 189
 start = "2019-07-07"
 end = "2026-05-15"
 
