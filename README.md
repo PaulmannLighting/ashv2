@@ -12,7 +12,7 @@ at [silabs.com](https://www.silabs.com/documents/public/user-guides/ug101-uart-g
 This library provides the `Actor` struct which implements the [actor model](https://en.wikipedia.org/wiki/Actor_model)
 for the ASHv2 protocol.
 
-It is to be initialized with the underlying serial port and returns the request and response channels used so send and
+It is to be initialized with the underlying serial port and returns the request and response channels used to send and
 receive data via the ASHv2 protocol.
 
 ```rust
