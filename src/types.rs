@@ -3,6 +3,8 @@
 use crate::MAX_PAYLOAD_SIZE;
 use crate::frame::Data;
 
+/// Maximum frame size in bytes.
+///
 /// In the wost-case, all frame bytes are stuffed (*2) and we append the FLAG byte (+1).
 pub const MAX_FRAME_SIZE: usize = Data::BUFFER_SIZE
     .checked_mul(2)
