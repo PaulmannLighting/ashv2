@@ -24,6 +24,7 @@ impl Transmission {
         self.data.frame_num()
     }
 
+    #[must_use]
     pub fn elapsed(&self) -> Duration {
         self.sent.elapsed()
     }
