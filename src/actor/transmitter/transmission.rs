@@ -19,21 +19,29 @@ pub struct Transmission {
 }
 
 impl Transmission {
+    /// Return the frame number of the transmitted data.
     #[must_use]
     pub const fn frame_num(&self) -> WrappingU3 {
         self.data.frame_num()
     }
 
+    /// Return the duration since the frame was sent.
     #[must_use]
     pub fn elapsed(&self) -> Duration {
         self.sent.elapsed()
     }
 
+    /// Return `true` if the transmission has timed out given the threshold.
     #[must_use]
     pub fn is_timed_out(&self, threshold: Duration) -> bool {
         self.elapsed() > threshold
     }
 
+    /// Prepare the data for transmission, updating retransmission status and count.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error`] if the retransmission limit is exceeded.
     pub fn data_for_transmit(&mut self) -> io::Result<&Data> {
         self.transmits += 1;
 
