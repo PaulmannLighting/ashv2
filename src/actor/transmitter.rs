@@ -98,7 +98,7 @@ where
             }
 
             self.reset()?;
-            trace!("Requeuing message: {message:?}");
+            trace!("Re-queuing message: {message:?}");
             self.requeue(message).await;
             return Ok(());
         }
