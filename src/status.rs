@@ -5,7 +5,7 @@
 pub enum Status {
     #[default]
     /// No connection has been established yet.
-    Disconnected,
+    Uninitialized,
     /// A connection has been established.
     Connected,
     /// The connection has been terminated.

@@ -54,7 +54,7 @@ impl<T> Transmitter<T> {
             buffer: Buffer::new(serial_port),
             messages,
             requeue,
-            status: Status::Disconnected,
+            status: Status::Uninitialized,
             last_rst_sent: None,
             transmissions: heapless::Vec::new(),
             frame_number: WrappingU3::ZERO,
@@ -162,7 +162,7 @@ where
     /// Handle RST frame received from the NCP.
     fn handle_rst(&mut self, rst: &Rst) -> io::Result<()> {
         error!("Received RST frame: {rst}, resetting connection.");
-        self.status = Status::Disconnected;
+        self.status = Status::Failed;
         self.reset()
     }
 
