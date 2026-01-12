@@ -92,7 +92,11 @@ where
                 return self.handle_rst_ack(&ack);
             }
 
-            warn!("Transmitter not connected (status: {:?}).", self.status);
+            // Only log if the connection has failed, not if it hasn't been established yet.
+            if self.status == Status::Failed {
+                warn!("ASHv2 Connection failed. Resetting...");
+            }
+
             self.reset()?;
             trace!("Requeuing message: {message:?}");
             self.requeue(message).await;
