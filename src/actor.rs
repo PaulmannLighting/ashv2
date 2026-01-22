@@ -1,6 +1,6 @@
 use serialport::SerialPort;
 use tokio::spawn;
-use tokio::sync::mpsc::{self, channel};
+use tokio::sync::mpsc::{Sender, channel};
 use tokio::task::JoinHandle;
 
 pub use self::proxy::Proxy;
@@ -32,15 +32,14 @@ where
     /// Returns a [`serialport::Error`] if the serial port cannot be cloned.
     pub fn new(
         serial_port: T,
-        rx_queue_len: usize,
-        tx_queue_len: usize,
-    ) -> Result<(Self, Proxy, mpsc::Receiver<Payload>), serialport::Error>
+        response: Sender<Payload>,
+        message_queue_len: usize,
+    ) -> Result<(Self, Proxy), serialport::Error>
     where
         T: TryCloneNative,
     {
-        let (rx_tx, rx_rx) = channel(rx_queue_len);
-        let (tx_tx, tx_rx) = channel(tx_queue_len);
-        let receiver = Receiver::new(serial_port.try_clone_native()?, rx_tx, tx_tx.clone());
+        let (tx_tx, tx_rx) = channel(message_queue_len);
+        let receiver = Receiver::new(serial_port.try_clone_native()?, response, tx_tx.clone());
         let transmitter = Transmitter::new(serial_port, tx_rx, tx_tx.clone());
         Ok((
             Self {
@@ -48,7 +47,6 @@ where
                 transmitter,
             },
             Proxy::new(tx_tx),
-            rx_rx,
         ))
     }
 
