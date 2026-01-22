@@ -17,6 +17,7 @@ receive data via the ASHv2 protocol.
 
 ```rust
 use ashv2::{Actor, BaudRate, FlowControl, open};
+use tokio::sync::mpsc::channel;
 
 #[tokio::main]
 async fn main() {
@@ -24,10 +25,11 @@ async fn main() {
     let serial_port = open("/dev/ttymxc3", BaudRate::RstCts, FlowControl::Hardware)
         .expect("Failed to open serial port");
 
+    // Crate a communication channel with a specified size.
+    let (ash_tx, ash_rx) = channel(64);
     // Create the ASHv2 actor, which returns the actor,
     // a proxy to communicate with it, and a receiver for responses.
-    let (actor, proxy, mut receiver) =
-        Actor::new(serial_port, 64, 64).expect("Failed to create actor.");
+    let (actor, proxy) = Actor::new(serial_port, ash_tx, 64).expect("Failed to create actor.");
     // Spawn the actor's tasks to handle communication.
     let (_transmitter_task, _receiver_task) = actor.spawn();
 
