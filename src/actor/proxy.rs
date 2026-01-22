@@ -8,37 +8,38 @@ use tokio::sync::oneshot::{Receiver, channel};
 use crate::actor::message::Message;
 use crate::{HexSlice, Payload};
 
-type Response = Receiver<io::Result<()>>;
-type Error = SendError<Message>;
-
 /// `ASHv2` actor proxy.
-#[derive(Clone, Debug)]
-pub struct Proxy {
-    sender: Sender<Message>,
-}
+pub trait Proxy {
+    /// Response type for sending data to the `ASHv2` actor.
+    type Response;
 
-impl Proxy {
-    /// Create a new `ASHv2` actor proxy.
-    #[must_use]
-    pub(crate) const fn new(sender: Sender<Message>) -> Self {
-        Self { sender }
-    }
+    /// Error type for sending data to the `ASHv2` actor.
+    type Error;
 
     /// Send data to the `ASHv2` actor.
     ///
     /// # Errors
     ///
     /// Returns an [`Error`] if sending the message fails.
-    pub async fn send(&self, payload: Payload) -> Result<Response, Error> {
+    fn send(
+        &self,
+        payload: Payload,
+    ) -> impl Future<Output = Result<Self::Response, Self::Error>> + Send;
+}
+
+impl Proxy for Sender<Message> {
+    type Response = Receiver<io::Result<()>>;
+    type Error = SendError<Message>;
+
+    async fn send(&self, payload: Payload) -> Result<Self::Response, Self::Error> {
         let (response_tx, response_rx) = channel();
 
         trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
-        self.sender
-            .send(Message::Payload {
-                payload: Box::new(payload),
-                response_tx,
-            })
-            .await?;
+        self.send(Message::Payload {
+            payload: Box::new(payload),
+            response_tx,
+        })
+        .await?;
 
         Ok(response_rx)
     }
