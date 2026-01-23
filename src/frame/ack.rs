@@ -152,8 +152,8 @@ mod tests {
 
     #[test]
     fn test_is_crc_valid() {
-        assert!(ACK1.is_crc_valid());
-        assert!(ACK2.is_crc_valid());
+        assert!(ACK1.validate().is_ok());
+        assert!(ACK2.validate().is_ok());
     }
 
     #[test]

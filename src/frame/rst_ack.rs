@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_is_crc_valid() {
-        assert!(RST_ACK.is_crc_valid());
+        assert!(RST_ACK.validate().is_ok());
     }
 
     #[test]

@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn test_is_crc_valid() {
-        assert!(ERROR.is_crc_valid());
+        assert!(ERROR.validate().is_ok());
     }
 
     #[test]

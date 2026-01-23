@@ -175,7 +175,7 @@ mod tests {
         match Frame::try_from(&DATA[..DATA.len() - 1]).unwrap() {
             Frame::Data(data) => {
                 assert_eq!(data.crc(), 0x6316);
-                assert!(data.is_crc_valid());
+                let data = data.validate().unwrap();
                 assert_eq!(data.into_payload().as_slice(), &DATA[1..DATA.len() - 3]);
             }
             packet => panic!("Expected Data, got {packet:?}"),
@@ -191,7 +191,7 @@ mod tests {
                 assert!(!ack.not_ready());
                 assert_eq!(ack.ack_num(), 1);
                 assert_eq!(ack.crc(), 0x6059);
-                assert!(ack.is_crc_valid());
+                assert!(ack.validate().is_ok());
             }
             packet => panic!("Expected Ack, got {packet:?}"),
         }
@@ -203,7 +203,7 @@ mod tests {
                 assert!(ack.not_ready());
                 assert_eq!(ack.ack_num(), 0x06);
                 assert_eq!(ack.crc(), 0x91B6);
-                assert!(ack.is_crc_valid());
+                assert!(ack.validate().is_ok());
             }
             packet => panic!("Expected Ack, got {packet:?}"),
         }
@@ -218,7 +218,7 @@ mod tests {
                 assert!(!nak.not_ready());
                 assert_eq!(nak.ack_num(), 0x06);
                 assert_eq!(nak.crc(), 0x34DC);
-                assert!(nak.is_crc_valid());
+                assert!(nak.validate().is_ok());
             }
             packet => panic!("Expected Nak, got {packet:?}"),
         }
@@ -230,7 +230,7 @@ mod tests {
                 assert!(nak.not_ready());
                 assert_eq!(nak.ack_num(), 0x05);
                 assert_eq!(nak.crc(), 0x85B7);
-                assert!(nak.is_crc_valid());
+                assert!(nak.validate().is_ok());
             }
             packet => panic!("Expected Nak, got {packet:?}"),
         }

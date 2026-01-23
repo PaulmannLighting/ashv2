@@ -75,33 +75,34 @@ where
 
     async fn handle_frame(&mut self, frame: Frame) -> Result<(), SendError<Message>> {
         match frame {
-            Frame::Ack(ack) => self.handle_ack(&ack).await,
+            Frame::Ack(ack) => self.handle_ack(ack).await,
             Frame::Data(data) => self.handle_data(*data).await,
             Frame::Error(error) => self.handle_error(error).await,
-            Frame::Nak(nak) => self.handle_nak(&nak).await,
+            Frame::Nak(nak) => self.handle_nak(nak).await,
             Frame::Rst(rst) => self.handle_rst(rst).await,
             Frame::RstAck(rst_ack) => self.handle_rst_ack(rst_ack).await,
         }
     }
 
     /// Handle an incoming `ACK` frame.
-    async fn handle_ack(&self, ack: &Ack) -> Result<(), SendError<Message>> {
-        if !ack.is_crc_valid() {
+    async fn handle_ack(&self, ack: Ack) -> Result<(), SendError<Message>> {
+        if let Ok(ack) = ack.validate() {
+            self.ack_sent_frames(ack.ack_num()).await
+        } else {
             warn!("Received ACK with invalid CRC.");
+            Ok(())
         }
-
-        self.ack_sent_frames(ack.ack_num()).await
     }
 
     /// Handle an incoming `DATA` frame.
     async fn handle_data(&mut self, data: Data) -> Result<(), SendError<Message>> {
         trace!("Handling data frame: {data:#04X}");
 
-        if !data.is_crc_valid() {
+        let Ok(data) = data.validate() else {
             warn!("Received data frame with invalid CRC.");
             self.send_nak().await?;
             return Ok(());
-        }
+        };
 
         if data.frame_num() == self.ack_number() {
             trace!("Received in-sequence data frame: {data}");
@@ -126,36 +127,40 @@ where
     }
 
     async fn handle_error(&self, error: Error) -> Result<(), SendError<Message>> {
-        if !error.is_crc_valid() {
+        if let Ok(error) = error.validate() {
+            self.transmitter.send(Message::Error(error)).await
+        } else {
             warn!("Received ERROR with invalid CRC.");
+            Ok(())
         }
-
-        self.transmitter.send(Message::Error(error)).await
     }
 
     /// Handle an incoming `NAK` frame.
-    async fn handle_nak(&self, nak: &Nak) -> Result<(), SendError<Message>> {
-        if !nak.is_crc_valid() {
+    async fn handle_nak(&self, nak: Nak) -> Result<(), SendError<Message>> {
+        if let Ok(nak) = nak.validate() {
+            self.nak_sent_frames(nak.ack_num()).await
+        } else {
             warn!("Received NAK with invalid CRC.");
+            Ok(())
         }
-
-        self.nak_sent_frames(nak.ack_num()).await
     }
 
     async fn handle_rst(&self, rst: Rst) -> Result<(), SendError<Message>> {
-        if !rst.is_crc_valid() {
+        if let Ok(rst) = rst.validate() {
+            self.transmitter.send(Message::Rst(rst)).await
+        } else {
             warn!("Received RST with invalid CRC.");
+            Ok(())
         }
-
-        self.transmitter.send(Message::Rst(rst)).await
     }
 
     async fn handle_rst_ack(&self, rst_ack: RstAck) -> Result<(), SendError<Message>> {
-        if !rst_ack.is_crc_valid() {
+        if let Ok(rst_ack) = rst_ack.validate() {
+            self.transmitter.send(Message::RstAck(rst_ack)).await
+        } else {
             warn!("Received RST-ACK with invalid CRC.");
+            Ok(())
         }
-
-        self.transmitter.send(Message::RstAck(rst_ack)).await
     }
 
     /// Send the response frame's payload through the response channel.

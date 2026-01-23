@@ -237,7 +237,7 @@ mod tests {
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
-        assert!(data.is_crc_valid());
+        assert!(data.validate().is_ok());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let mut data = Data {
@@ -251,7 +251,7 @@ mod tests {
         assert!(!data.is_retransmission());
         data.set_is_retransmission(true);
         assert!(data.is_retransmission());
-        assert!(data.is_crc_valid());
+        assert!(data.validate().is_ok());
     }
 
     #[test]
@@ -306,7 +306,7 @@ mod tests {
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert!(data.is_crc_valid());
+        assert!(data.validate().is_ok());
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
@@ -317,7 +317,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert!(data.is_crc_valid());
+        assert!(data.validate().is_ok());
     }
 
     #[test]

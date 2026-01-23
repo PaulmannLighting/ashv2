@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_is_crc_valid() {
-        assert!(RST.is_crc_valid());
+        assert!(RST.validate().is_ok());
     }
 
     #[test]

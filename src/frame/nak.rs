@@ -151,8 +151,8 @@ mod tests {
 
     #[test]
     fn test_is_crc_valid() {
-        assert!(NAK1.is_crc_valid());
-        assert!(NAK2.is_crc_valid());
+        assert!(NAK1.validate().is_ok());
+        assert!(NAK2.validate().is_ok());
     }
 
     #[test]
