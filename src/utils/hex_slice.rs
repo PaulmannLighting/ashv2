@@ -11,7 +11,9 @@ impl<'a> HexSlice<'a> {
     pub const fn new(slice: &'a [u8]) -> Self {
         Self(slice)
     }
+}
 
+impl HexSlice<'_> {
     /// Formats the slice with a custom byte formatter.
     fn format<F>(&self, f: &mut Formatter<'_>, byte_formatter: F) -> Result
     where
