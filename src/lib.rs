@@ -13,7 +13,6 @@ pub use self::actor::{Actor, Proxy};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, SerialPort, TryCloneNative, open};
 pub use self::types::Payload;
-pub use self::utils::HexSlice;
 
 /// Maximum payload size in bytes.
 #[env_item("ASHV2_MAX_PAYLOAD_SIZE")]

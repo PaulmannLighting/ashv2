@@ -3,9 +3,9 @@ use std::io;
 
 use tokio::sync::oneshot::Sender;
 
+use crate::Payload;
 use crate::frame::{Error, Rst, RstAck};
-use crate::utils::WrappingU3;
-use crate::{HexSlice, Payload};
+use crate::utils::{HexSlice, WrappingU3};
 
 /// Messages sent to the `ASHv2` transmitter.
 #[derive(Debug)]

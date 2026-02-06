@@ -5,8 +5,9 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot::{Receiver, channel};
 
+use crate::Payload;
 use crate::actor::message::Message;
-use crate::{HexSlice, Payload};
+use crate::utils::HexSlice;
 
 type Response = Receiver<io::Result<()>>;
 type Error = SendError<Message>;
