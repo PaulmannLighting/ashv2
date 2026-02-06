@@ -59,7 +59,7 @@ Received response: [0, 128, 0, 8, 2, 48, 106]
 
 ## Legal
 
-This project is free software and is not affiliated with Siliconlabs.
+This project is free software and is not affiliated with Silicon Labs.
 
 ## Contribution guidelines
 
