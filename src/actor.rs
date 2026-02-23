@@ -55,7 +55,7 @@ where
     /// # Returns
     ///
     /// Returns a tuple of the tasks handler and the proxy.
-    pub fn spawn(self) -> (Tasks, Proxy)
+    pub fn spawn(self) -> (Tasks<T>, Proxy)
     where
         T: Sync + 'static,
     {
