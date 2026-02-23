@@ -26,6 +26,11 @@ impl<T> Buffer<T> {
             frame: RawFrame::new(),
         }
     }
+
+    /// Return the inner serial port.
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
 }
 
 impl<T> Buffer<T>

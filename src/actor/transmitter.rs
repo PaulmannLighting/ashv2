@@ -68,7 +68,7 @@ where
     T: SerialPort + Sync,
 {
     /// Runs the transmitter, processing messages from the channel.
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> T {
         trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");
         self.reset().unwrap_or_else(|error| {
             error!("Failed to send initial RST frame: {error}");
@@ -79,7 +79,7 @@ where
 
             if matches!(message, Message::Terminate) {
                 debug!("Terminating transmitter");
-                return;
+                return self.buffer.into_inner();
             }
 
             if let Err(error) = self.handle_message(message).await {
@@ -89,6 +89,7 @@ where
         }
 
         info!("Message channel closed, transmitter exiting.");
+        self.buffer.into_inner()
     }
 
     async fn handle_message(&mut self, message: Message) -> io::Result<()> {

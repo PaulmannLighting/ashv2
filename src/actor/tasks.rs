@@ -14,23 +14,23 @@ use crate::actor::{Receiver, Transmitter};
 
 /// Sender and receiver tasks wrapper to allow termination.
 #[derive(Debug)]
-pub struct Tasks {
-    transmitter: JoinHandle<()>,
+pub struct Tasks<T> {
+    transmitter: JoinHandle<T>,
     receiver: JoinHandle<()>,
     sender: Sender<Message>,
     running: Arc<AtomicBool>,
 }
 
-impl Tasks {
+impl<T> Tasks<T>
+where
+    T: SerialPort + Sync + 'static,
+{
     /// Crate new tasks.
-    pub(crate) fn spawn<T>(
+    pub(crate) fn spawn(
         transmitter: Transmitter<T>,
         receiver: Receiver<T>,
         sender: Sender<Message>,
-    ) -> Self
-    where
-        T: SerialPort + Sync + 'static,
-    {
+    ) -> Self {
         let running = Arc::new(AtomicBool::new(true));
         Self {
             transmitter: spawn(transmitter.run()),
@@ -39,7 +39,9 @@ impl Tasks {
             running,
         }
     }
+}
 
+impl<T> Tasks<T> {
     /// Terminate the tasks.
     ///
     /// # Errors
@@ -47,11 +49,11 @@ impl Tasks {
     /// Returns either
     /// - a [`SendError`] if sending the termination message fails, or
     /// - a [`JoinError`] if joining either task fails.
-    pub async fn terminate(self) -> Result<(), Either<SendError<Message>, JoinError>> {
+    pub async fn terminate(self) -> Result<T, Either<SendError<Message>, JoinError>> {
         self.running.store(false, Relaxed);
         self.sender.send(Message::Terminate).await.map_err(Left)?;
-        self.transmitter.await.map_err(Right)?;
+        let serial_port = self.transmitter.await.map_err(Right)?;
         self.receiver.await.map_err(Right)?;
-        Ok(())
+        Ok(serial_port)
     }
 }
