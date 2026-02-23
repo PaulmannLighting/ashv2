@@ -6,7 +6,7 @@ pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::TryCloneNative;
 use crate::actor::message::Message;
-use crate::actor::tasks::Tasks;
+pub use crate::actor::tasks::Tasks;
 use crate::types::Payload;
 
 mod message;
