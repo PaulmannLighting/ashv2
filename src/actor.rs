@@ -3,7 +3,7 @@ use tokio::spawn;
 use tokio::sync::mpsc::{Sender, channel};
 use tokio::task::JoinHandle;
 
-pub use self::proxy::Proxy;
+pub use self::proxy::{DefaultProxy, Proxy};
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::TryCloneNative;

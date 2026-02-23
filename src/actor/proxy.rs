@@ -12,6 +12,9 @@ use crate::utils::HexSlice;
 type Response = Receiver<io::Result<()>>;
 type Error = SendError<Message>;
 
+/// Default proxy type.
+pub type DefaultProxy = Sender<Message>;
+
 /// `ASHv2` actor proxy.
 pub trait Proxy {
     /// Send data to the `ASHv2` actor.
