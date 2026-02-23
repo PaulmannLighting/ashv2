@@ -15,7 +15,7 @@ exclude = [".gitignore", "TODO.md"]
 all-features = true
 
 [dependencies]
-bitflags = "2.10"
+bitflags = "2.11"
 clap = { version = "4.5", optional = true }
 const_env = "0.1"
 crc = "3.4"
@@ -24,7 +24,7 @@ log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
 serialport = { version = "4.8", default-features = false }
-tokio = { version = "1.48", default-features = false, features = ["sync", "rt", "rt-multi-thread", "time"] }
+tokio = { version = "1.49", default-features = false, features = ["sync", "rt", "rt-multi-thread", "time"] }
 
 [features]
 clap = ["dep:clap"]
