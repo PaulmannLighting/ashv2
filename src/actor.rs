@@ -19,6 +19,7 @@ mod transmitter;
 pub struct Actor<T> {
     receiver: Receiver<T>,
     transmitter: Transmitter<T>,
+    proxy: Proxy,
 }
 
 impl<T> Actor<T>
@@ -34,27 +35,34 @@ where
         serial_port: T,
         response: Sender<Payload>,
         message_queue_len: usize,
-    ) -> Result<(Self, Proxy), serialport::Error>
+    ) -> Result<Self, serialport::Error>
     where
         T: TryCloneNative,
     {
         let (tx_tx, tx_rx) = channel(message_queue_len);
         let receiver = Receiver::new(serial_port.try_clone_native()?, response, tx_tx.clone());
         let transmitter = Transmitter::new(serial_port, tx_rx, tx_tx.clone());
-        Ok((
-            Self {
-                receiver,
-                transmitter,
-            },
-            tx_tx.into(),
-        ))
+        Ok(Self {
+            receiver,
+            transmitter,
+            proxy: tx_tx.into(),
+        })
     }
 
     /// Spawns the actor's transmitter and receiver as asynchronous tasks.
-    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>)
+    ///
+    /// # Returns
+    ///
+    /// Returns a tuple of the transmitter task's join handle, the receiver task's join handle
+    /// and the proxy.
+    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>, Proxy)
     where
         T: Sync + 'static,
     {
-        (spawn(self.transmitter.run()), spawn(self.receiver.run()))
+        (
+            spawn(self.transmitter.run()),
+            spawn(self.receiver.run()),
+            self.proxy,
+        )
     }
 }
