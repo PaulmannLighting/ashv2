@@ -19,6 +19,7 @@ bitflags = "2.11"
 clap = { version = "4.5", optional = true }
 const_env = "0.1"
 crc = "3.4"
+either = "1.15"
 heapless = "0.9"
 log = "0.4"
 num-derive = "0.4"

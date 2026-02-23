@@ -1,17 +1,18 @@
 use serialport::SerialPort;
-use tokio::spawn;
 use tokio::sync::mpsc::{Sender, channel};
-use tokio::task::JoinHandle;
 
 pub use self::proxy::Proxy;
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::TryCloneNative;
+use crate::actor::message::Message;
+use crate::actor::tasks::Tasks;
 use crate::types::Payload;
 
 mod message;
 mod proxy;
 mod receiver;
+mod tasks;
 mod transmitter;
 
 /// Actor that manages serial port communication.
@@ -19,7 +20,7 @@ mod transmitter;
 pub struct Actor<T> {
     receiver: Receiver<T>,
     transmitter: Transmitter<T>,
-    proxy: Proxy,
+    sender: Sender<Message>,
 }
 
 impl<T> Actor<T>
@@ -45,7 +46,7 @@ where
         Ok(Self {
             receiver,
             transmitter,
-            proxy: tx_tx.into(),
+            sender: tx_tx,
         })
     }
 
@@ -53,16 +54,14 @@ where
     ///
     /// # Returns
     ///
-    /// Returns a tuple of the transmitter task's join handle, the receiver task's join handle
-    /// and the proxy.
-    pub fn spawn(self) -> (JoinHandle<()>, JoinHandle<()>, Proxy)
+    /// Returns a tuple of the tasks handler and the proxy.
+    pub fn spawn(self) -> (Tasks, Proxy)
     where
         T: Sync + 'static,
     {
         (
-            spawn(self.transmitter.run()),
-            spawn(self.receiver.run()),
-            self.proxy,
+            Tasks::spawn(self.transmitter, self.receiver, self.sender.clone()),
+            self.sender.into(),
         )
     }
 }

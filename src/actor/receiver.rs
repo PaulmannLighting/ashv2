@@ -1,3 +1,7 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
+
 use log::{debug, error, info, trace, warn};
 use serialport::SerialPort;
 use tokio::sync::mpsc::Sender;
@@ -42,10 +46,10 @@ where
     T: SerialPort + Sync,
 {
     /// Runs the receiver loop.
-    pub async fn run(mut self) {
+    pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");
 
-        loop {
+        while running.load(Relaxed) {
             let maybe_frame = match self.buffer.read_frame().await {
                 Ok(maybe_frame) => maybe_frame,
                 Err(error) => {
@@ -63,6 +67,8 @@ where
                 }
             }
         }
+
+        debug!("Receiver loop terminated.");
     }
 
     /// Returns the ACK number.
