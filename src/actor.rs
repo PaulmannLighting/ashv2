@@ -7,7 +7,6 @@ pub use self::proxy::Proxy;
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::TryCloneNative;
-use crate::actor::message::Message;
 use crate::types::Payload;
 
 mod message;
@@ -35,7 +34,7 @@ where
         serial_port: T,
         response: Sender<Payload>,
         message_queue_len: usize,
-    ) -> Result<(Self, Sender<Message>), serialport::Error>
+    ) -> Result<(Self, Proxy), serialport::Error>
     where
         T: TryCloneNative,
     {
@@ -47,7 +46,7 @@ where
                 receiver,
                 transmitter,
             },
-            tx_tx,
+            tx_tx.into(),
         ))
     }
 

@@ -38,3 +38,9 @@ impl Proxy {
         Ok(response_rx)
     }
 }
+
+impl From<Sender<Message>> for Proxy {
+    fn from(inner: Sender<Message>) -> Self {
+        Self { inner }
+    }
+}
