@@ -12,8 +12,7 @@ at [silabs.com](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-refe
 This library provides the `Actor` struct which implements the [actor model](https://en.wikipedia.org/wiki/Actor_model)
 for the ASHv2 protocol.
 
-It is to be initialized with the underlying serial port and returns the request and response channels used to send and
-receive data via the ASHv2 protocol.
+It is to be initialized with the underlying serial port ASH transmitter and response channel size.
 
 ```rust
 use ashv2::{Actor, BaudRate, FlowControl, open};
