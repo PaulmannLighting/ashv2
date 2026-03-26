@@ -43,17 +43,41 @@ criteria = "safe-to-deploy"
 version = "3.4.0"
 notes = "Reviewed diff from 3.3.0. Changes are minimal, bumping MSRV and making the update function const. No security vulnerabilities introduced."
 
+[[audits.crc-catalog]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "2.4.0"
+notes = "Reviewed source code. This crate provides a catalog of CRC algorithms. It contains no unsafe code and has no dependencies. It is safe to deploy."
+
+[[audits.hash32]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.3.1"
+notes = "Reviewed source code. This crate provides a `Hash32` trait and implementations for a few hash functions. It contains no unsafe code. It is safe to deploy."
+
 [[audits.heapless]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.9.2"
 notes = "Reviewed diff from 0.8.0. This is a large diff with many changes, including the introduction of const generics and new data structures. The crate contains a significant amount of unsafe code, which is necessary for a low-level data structure library. The code appears to be well-written and the unsafe blocks are well-documented. Given the complexity of the changes, a full audit is not feasible, but the crate is widely used and maintained by experienced developers."
 
+[[audits.io-kit-sys]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.4.1"
+notes = "Reviewed source code. This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
+
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.3"
 notes = "Reviewed diff from 0.4.2. The changes add new modules for dyld, loader, and time_value, which include FFI bindings to standard macOS APIs. The new unsafe code is limited to extern C function declarations, which is standard for FFI. The changes are safe."
+
+[[audits.nix]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.26.4"
+notes = "Reviewed source code. This crate provides friendly bindings to Unix APIs. The crate contains a lot of unsafe code, which is necessary for FFI. The crate is widely used and has a good reputation. The unsafe code is well-documented and appears to be correct. It is safe to deploy."
 
 [[audits.once_cell_polyfill]]
 who = "Richard Neumann <neumann@paulmann.de>"

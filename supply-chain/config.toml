@@ -1,10 +1,8 @@
+
 # cargo-vet config file
 
 [cargo-vet]
 version = "0.10"
-
-[policy.ashv2]
-audit-as-crates-io = true
 
 [imports.bytecode-alliance]
 url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-chain/audits.toml"
@@ -15,38 +13,5 @@ url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
 [imports.mozilla]
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 
-[[exemptions.crc]]
-version = "3.3.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.crc-catalog]]
-version = "2.4.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.hash32]]
-version = "0.3.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.heapless]]
-version = "0.8.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.io-kit-sys]]
-version = "0.4.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.log]]
-version = "0.4.27"
-criteria = "safe-to-deploy"
-
-[[exemptions.nix]]
-version = "0.26.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.serialport]]
-version = "4.7.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.unescaper]]
-version = "0.1.6"
-criteria = "safe-to-deploy"
+[policy.ashv2]
+audit-as-crates-io = true
