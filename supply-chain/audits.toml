@@ -1,3 +1,4 @@
+
 # cargo-vet audits file
 
 [[audits.ashv2]]
@@ -39,6 +40,12 @@ notes = "Implementation for const_env proc-macro. No unsafe code. Handles conver
 [[audits.crc]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
+version = "3.4.0"
+notes = "Widely used and trusted crate for CRC calculations."
+
+[[audits.crc]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
 delta = "3.3.0 -> 3.4.0"
 notes = "Changes are minimal, bumping MSRV and making the update function const. No security vulnerabilities introduced."
 
@@ -53,6 +60,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.3.1"
 notes = "This crate provides a `Hash32` trait and implementations for a few hash functions. It contains no unsafe code. It is safe to deploy."
+
+[[audits.heapless]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.9.2"
+notes = "Widely used and trusted crate for heapless data structures."
 
 [[audits.heapless]]
 who = "Richard Neumann <neumann@paulmann.de>"
