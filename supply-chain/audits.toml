@@ -1,4 +1,3 @@
-
 # cargo-vet audits file
 
 [[audits.ashv2]]
@@ -10,20 +9,20 @@ notes = "Audited the crate for security vulnerabilities. No unsafe code that cou
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "1.5.0"
-notes = "Reviewed diff from 1.4.0. The changes are minor and relate to improving detection of compiler features. No unsafe code, no I/O. Build-time dependency."
+delta = "1.4.0 -> 1.5.0"
+notes = "The changes are minor and relate to improving detection of compiler features. No unsafe code, no I/O. Build-time dependency."
 
 [[audits.bitflags]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "2.11.0"
-notes = "Reviewed diff from 2.10.0. Changes add a new `UnsafeBitflags` trait and are well-documented. No security vulnerabilities introduced."
+delta = "2.10.0 -> 2.11.0"
+notes = "Changes add a new `UnsafeBitflags` trait and are well-documented. No security vulnerabilities introduced."
 
 [[audits.cfg-if]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "1.0.4"
-notes = "Reviewed diff from 1.0.0. Changes are minor and relate to documentation, CI configuration and bug fixes. No unsafe code."
+delta = "1.0.0 -> 1.0.4"
+notes = "Changes are minor and relate to documentation, CI configuration and bug fixes. No unsafe code."
 
 [[audits.const_env]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -35,13 +34,13 @@ notes = "Reviewed source code. A proc-macro for embedding environment variables 
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.1.5"
-notes = "Reviewed source code. Implementation for const_env proc-macro. No unsafe code. Handles conversion of environment variables to literals."
+notes = "Implementation for const_env proc-macro. No unsafe code. Handles conversion of environment variables to literals."
 
 [[audits.crc]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "3.4.0"
-notes = "Reviewed diff from 3.3.0. Changes are minimal, bumping MSRV and making the update function const. No security vulnerabilities introduced."
+delta = "3.3.0 -> 3.4.0"
+notes = "Changes are minimal, bumping MSRV and making the update function const. No security vulnerabilities introduced."
 
 [[audits.crc-catalog]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -53,25 +52,25 @@ notes = "Reviewed source code. This crate provides a catalog of CRC algorithms. 
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.3.1"
-notes = "Reviewed source code. This crate provides a `Hash32` trait and implementations for a few hash functions. It contains no unsafe code. It is safe to deploy."
+notes = "This crate provides a `Hash32` trait and implementations for a few hash functions. It contains no unsafe code. It is safe to deploy."
 
 [[audits.heapless]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "0.9.2"
-notes = "Reviewed diff from 0.8.0. This is a large diff with many changes, including the introduction of const generics and new data structures. The crate contains a significant amount of unsafe code, which is necessary for a low-level data structure library. The code appears to be well-written and the unsafe blocks are well-documented. Given the complexity of the changes, a full audit is not feasible, but the crate is widely used and maintained by experienced developers."
+delta = "0.8.0 -> 0.9.2"
+notes = "This is a large diff with many changes, including the introduction of const generics and new data structures. The crate contains a significant amount of unsafe code, which is necessary for a low-level data structure library. The code appears to be well-written and the unsafe blocks are well-documented. Given the complexity of the changes, a full audit is not feasible, but the crate is widely used and maintained by experienced developers."
 
 [[audits.io-kit-sys]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.1"
-notes = "Reviewed source code. This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
+notes = "This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
 
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "0.4.3"
-notes = "Reviewed diff from 0.4.2. The changes add new modules for dyld, loader, and time_value, which include FFI bindings to standard macOS APIs. The new unsafe code is limited to extern C function declarations, which is standard for FFI. The changes are safe."
+delta = "0.4.2 -> 0.4.3"
+notes = "The changes add new modules for dyld, loader, and time_value, which include FFI bindings to standard macOS APIs. The new unsafe code is limited to extern C function declarations, which is standard for FFI. The changes are safe."
 
 [[audits.nix]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -89,31 +88,31 @@ notes = "This crate is a polyfill for `std::cell::OnceCell` and `std.cell::LazyC
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "4.8.1"
-notes = "Reviewed source code. This crate provides cross-platform serial port access and contains a significant amount of unsafe code for FFI and low-level hardware interaction. The crate is widely used and maintained. The unsafe code is necessary for its functionality and appears to be handled correctly. No obvious security vulnerabilities were found."
+notes = "This crate provides cross-platform serial port access and contains a significant amount of unsafe code for FFI and low-level hardware interaction. The crate is widely used and maintained. The unsafe code is necessary for its functionality and appears to be handled correctly. No obvious security vulnerabilities were found."
 
 [[audits.stable_deref_trait]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "1.2.1"
-notes = "Reviewed diff from 1.2.0. The changes add `StableDeref` implementations for `Cow` and other standard library types, which is safe. The change to `Arc` is a conditional compilation flag, which is also safe."
+delta = "1.2.0 -> 1.2.1"
+notes = "The changes add `StableDeref` implementations for `Cow` and other standard library types, which is safe. The change to `Arc` is a conditional compilation flag, which is also safe."
 
 [[audits.unescaper]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.1.8"
-notes = "Reviewed source code. This is a small crate for unescaping strings. It contains no unsafe code and has no dependencies. It is safe to deploy."
+notes = "This is a small crate for unescaping strings. It contains no unsafe code and has no dependencies. It is safe to deploy."
 
 [[audits.unicode-ident]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "1.0.24"
-notes = "Reviewed diff from 1.0.18. Changes are mostly related to updating the Unicode tables to a newer version. The core logic of the crate has not changed. No unsafe code."
+delta = "1.0.18 -> 1.0.24"
+notes = "Changes are mostly related to updating the Unicode tables to a newer version. The core logic of the crate has not changed. No unsafe code."
 
 [[audits.windows-link]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "0.2.1"
-notes = "Reviewed diff from 0.2.0. The only changes are a version bump and a change in the readme file name. This is a safe change."
+delta = "0.2.0 -> 0.2.1"
+notes = "The only changes are a version bump and a change in the readme file name. This is a safe change."
 
 [[trusted.anstream]]
 criteria = "safe-to-deploy"
