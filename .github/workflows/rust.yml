@@ -51,8 +51,4 @@ jobs:
         run: cargo vet check
 
       - name: Check for supply-chain changes
-        run: |
-          git diff --exit-code supply-chain/
-          if [ $? -ne 0 ]; then
-            echo "::warning::Supply chain files have changed"
-          fi
+        run: git diff --exit-code supply-chain/
