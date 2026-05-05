@@ -8,6 +8,8 @@ const MASK: u8 = 0b0000_0111;
 const UNUSED_BITS: u8 = !MASK;
 
 /// A three bit number.
+// The inner `NonZero<u8>` type is used in conjunction with `#[repr(transparent)]`
+// to allow niche optimizations of this type when used in e.g. an option.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct WrappingU3(NonZero<u8>);
