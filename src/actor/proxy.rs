@@ -10,7 +10,6 @@ use crate::actor::message::Message;
 use crate::utils::HexSlice;
 
 type Response = Receiver<io::Result<()>>;
-type Error = SendError<Message>;
 
 /// `ASHv2` actor proxy.
 #[derive(Clone, Debug)]
@@ -23,8 +22,8 @@ impl Proxy {
     ///
     /// # Errors
     ///
-    /// Returns an [`Error`] if sending the message fails.
-    pub async fn send(&self, payload: Payload) -> Result<Response, Error> {
+    /// Returns an [`SendError<Message>`] if sending the message fails.
+    pub async fn send(&self, payload: Payload) -> Result<Response, SendError<Message>> {
         let (response_tx, response_rx) = channel();
 
         trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
