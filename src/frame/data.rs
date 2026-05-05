@@ -32,7 +32,7 @@ impl Data {
 
     /// Creates a new data frame.
     #[must_use]
-    pub fn new(frame_num: WrappingU3, mut payload: Payload, ack_num: WrappingU3) -> Self {
+    pub fn new(frame_num: WrappingU3, ack_num: WrappingU3, mut payload: Payload) -> Self {
         let header = Header::new(frame_num, false, ack_num);
         payload.mask();
 

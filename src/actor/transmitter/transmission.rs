@@ -89,8 +89,8 @@ mod tests {
     fn test_new() {
         let data = Data::new(
             WrappingU3::default(),
-            heapless::Vec::new(),
             WrappingU3::default(),
+            heapless::Vec::new(),
         );
         let transmission: Transmission = data.into();
         assert_eq!(transmission.transmits, 0);
@@ -101,8 +101,8 @@ mod tests {
     fn test_transmit() {
         let data = Data::new(
             WrappingU3::default(),
-            heapless::Vec::new(),
             WrappingU3::default(),
+            heapless::Vec::new(),
         );
         let mut transmission: Transmission = data.into();
         let data = transmission.data_for_transmit().unwrap();
@@ -114,8 +114,8 @@ mod tests {
     fn test_retransmit() {
         let data = Data::new(
             WrappingU3::default(),
-            heapless::Vec::new(),
             WrappingU3::default(),
+            heapless::Vec::new(),
         );
         let mut transmission: Transmission = data.into();
         let _transmit = transmission.data_for_transmit().unwrap();

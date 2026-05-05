@@ -151,7 +151,7 @@ where
             return;
         }
 
-        let data = Data::new(self.next_frame_number(), *payload, self.ack_number);
+        let data = Data::new(self.next_frame_number(), self.ack_number, *payload);
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
         self.ack_number += 1;
