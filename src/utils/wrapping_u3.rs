@@ -5,7 +5,7 @@ use core::num::NonZero;
 use core::ops::{Add, AddAssign};
 
 const MASK: u8 = 0b0000_0111;
-const NON_ZERO_BIT: u8 = 0b0000_1000;
+const UNUSED_BITS: u8 = !MASK;
 const MODULO: usize = 7;
 
 /// A three bit number.
@@ -22,8 +22,8 @@ impl WrappingU3 {
     pub const fn from_u8_lossy(n: u8) -> Self {
         #[expect(unsafe_code)]
         // SAFETY: We create a three bit number by applying `MASK` to `n`.
-        // Finally, we OR the result with `NON_ZERO_BIT`, which makes the number non-zero.
-        Self(unsafe { NonZero::new_unchecked(n & MASK | NON_ZERO_BIT) })
+        // Finally, we OR the result with `UNUSED_BITS`, which makes the number non-zero.
+        Self(unsafe { NonZero::new_unchecked(n & MASK | UNUSED_BITS) })
     }
 
     /// Returns the number as an u8.
