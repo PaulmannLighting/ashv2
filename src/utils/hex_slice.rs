@@ -2,7 +2,7 @@
 
 use core::fmt::{Formatter, LowerHex, Result, UpperHex};
 
-/// A wrapper around a slice of bytes to format it with hexadecimal bytes.
+/// A view of a slice of bytes to format it as an inline list of hexadecimal numbers.
 pub struct HexSlice<'a>(&'a [u8]);
 
 impl<'a> HexSlice<'a> {
