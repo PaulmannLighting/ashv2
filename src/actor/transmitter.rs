@@ -15,19 +15,16 @@ use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
 use crate::status::Status;
 use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::utils::WrappingU3;
+use crate::{REQUEUE_DELAY_MILLIS, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
 
 mod buffer;
 mod transmission;
 
 /// Maximum time to wait for RST ACK frame after sending RST frame.
-const T_RSTACK_MAX: Duration = Duration::from_millis(3200);
+const T_RSTACK_MAX: Duration = Duration::from_millis(T_RSTACK_MAX_MILLIS);
 
-/// The amount of maximum unacknowledged frames that the NCP (or Host) can hold.
-/// Also amounts to the so-called *sliding window size*.
-const TX_K: usize = 5;
-
-const T_RX_ACK_MAX: Duration = Duration::from_millis(3200);
-const REQUEUE_DELAY: Duration = Duration::from_millis(100);
+const T_RX_ACK_MAX: Duration = Duration::from_millis(T_RX_ACK_MAX_MILLIS);
+const REQUEUE_DELAY: Duration = Duration::from_millis(REQUEUE_DELAY_MILLIS);
 
 /// `ASHv2` transmitter.
 #[derive(Debug)]
