@@ -36,7 +36,7 @@ impl Add for WrappingU3 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::from_u8_lossy(self.as_u8().wrapping_add(rhs.as_u8()))
+        self.add(rhs.as_u8())
     }
 }
 
@@ -50,7 +50,7 @@ impl Add<u8> for WrappingU3 {
 
 impl AddAssign for WrappingU3 {
     fn add_assign(&mut self, rhs: Self) {
-        *self = Self::from_u8_lossy(self.as_u8().wrapping_add(rhs.as_u8()));
+        self.add_assign(rhs.as_u8());
     }
 }
 
@@ -75,12 +75,6 @@ impl Display for WrappingU3 {
 impl PartialEq<u8> for WrappingU3 {
     fn eq(&self, other: &u8) -> bool {
         self.as_u8() == *other
-    }
-}
-
-impl From<WrappingU3> for u8 {
-    fn from(value: WrappingU3) -> Self {
-        value.as_u8()
     }
 }
 
