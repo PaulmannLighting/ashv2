@@ -84,20 +84,6 @@ impl From<WrappingU3> for u8 {
     }
 }
 
-impl TryFrom<u8> for WrappingU3 {
-    type Error = u8;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        let u3 = Self::from_u8_lossy(value);
-
-        if u3.as_u8() == value {
-            Ok(u3)
-        } else {
-            Err(value)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::WrappingU3;
