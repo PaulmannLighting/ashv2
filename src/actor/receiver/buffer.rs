@@ -10,6 +10,7 @@ use tokio::time::sleep;
 
 use crate::frame::Frame;
 use crate::protocol::{ControlByte, Unstuff};
+use crate::types::MAX_FRAME_SIZE;
 use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
@@ -30,7 +31,7 @@ where
     pub fn new(serial_port: T, timeout: Option<Duration>) -> Self {
         Self {
             reader: BufReader::new(serial_port),
-            frame: Vec::new(),
+            frame: Vec::with_capacity(MAX_FRAME_SIZE),
             timeout,
         }
     }
