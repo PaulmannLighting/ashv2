@@ -24,13 +24,14 @@ async fn main() {
     let serial_port = open("/dev/ttymxc3", BaudRate::RstCts, FlowControl::Hardware)
         .expect("Failed to open serial port");
 
-    // Crate a communication channel with a specified size.
-    let (ash_tx, ash_rx) = channel(64);
+    // Crate a response channel with a specified size.
+    let (response_tx, response_rx) = channel(64);
     // Create the ASHv2 actor, which returns the actor,
     // a proxy to communicate with it, and a receiver for responses.
-    let (actor, proxy) = Actor::new(serial_port, ash_tx, 64).expect("Failed to create actor.");
+    let actor = Actor::new(serial_port, response_tx, 64).expect("Failed to create actor");
     // Spawn the actor's tasks to handle communication.
-    let (_transmitter_task, _receiver_task) = actor.spawn();
+    // This also returns a proxy to communicate with the actor.
+    let (tasks, proxy) = actor.spawn();
 
     // Send a data frame to the NCP using the proxy.
     // Example: EZSP version command
@@ -44,9 +45,11 @@ async fn main() {
         .expect("Actor reported an error");
 
     // Receive a response from the NCP.
-    if let Some(response) = receiver.recv().await {
+    if let Some(response) = response_rx.recv().await {
         println!("Received response: {response:?}");
     }
+
+    let _serial_port = tasks.terminate().await.expect("Actor tasks failed to join");
 }
 ```
 
