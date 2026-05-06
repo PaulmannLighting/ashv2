@@ -7,7 +7,7 @@ use core::ops::{Add, AddAssign};
 const MASK: u8 = 0b0000_0111;
 const UNUSED_BITS: u8 = !MASK;
 
-/// A three bit number which wraps on adding.
+/// A three bit unsigned integer which wraps on adding.
 // The inner `NonZero<u8>` type is used in conjunction with `#[repr(transparent)]`
 // to allow niche optimizations of this type when used in e.g. an `Option.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
