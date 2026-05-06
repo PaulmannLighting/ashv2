@@ -12,7 +12,7 @@ at [silabs.com](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-refe
 This library provides the `Actor` struct which implements the [actor model](https://en.wikipedia.org/wiki/Actor_model)
 for the ASHv2 protocol.
 
-It is to be initialized with the underlying serial port ASH transmitter and response channel size.
+It is to be initialized with the underlying serial port, response channel sender and messaging channel size.
 
 ```rust
 use ashv2::{Actor, BaudRate, FlowControl, open};
@@ -26,7 +26,8 @@ async fn main() {
 
     // Crate a response channel with a specified size.
     let (response_tx, response_rx) = channel(64);
-    // Create the ASHv2 actor.
+    // Create the ASHv2 actor, passing in the response transmitter
+    // and a messaging channel size.
     let actor = Actor::new(serial_port, response_tx, 64).expect("Failed to create actor");
     // Spawn the actor's tasks to handle communication.
     // This also returns a proxy to communicate with the actor.
@@ -48,6 +49,8 @@ async fn main() {
         println!("Received response: {response:?}");
     }
 
+    // Optionally terminate the actor tasks when done.
+    // This will return the original serial port on successful termination.
     let _serial_port = tasks.terminate().await.expect("Actor tasks failed to join");
 }
 ```
