@@ -26,8 +26,7 @@ async fn main() {
 
     // Crate a response channel with a specified size.
     let (response_tx, response_rx) = channel(64);
-    // Create the ASHv2 actor, which returns the actor,
-    // a proxy to communicate with it, and a receiver for responses.
+    // Create the ASHv2 actor.
     let actor = Actor::new(serial_port, response_tx, 64).expect("Failed to create actor");
     // Spawn the actor's tasks to handle communication.
     // This also returns a proxy to communicate with the actor.
