@@ -4,7 +4,7 @@
 [[audits.ashv2]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "6.0.0"
+version = "6.0.1"
 notes = "Audited the crate for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
 [[audits.autocfg]]
@@ -37,6 +37,12 @@ criteria = "safe-to-deploy"
 version = "0.1.5"
 notes = "Implementation for const_env proc-macro. No unsafe code. Handles conversion of environment variables to literals."
 
+[[audits.core-foundation]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.10.1"
+notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
+
 [[audits.crc]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -52,8 +58,8 @@ notes = "Changes are minimal, bumping MSRV and making the update function const.
 [[audits.crc-catalog]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "2.4.0"
-notes = "Reviewed source code. This crate provides a catalog of CRC algorithms. It contains no unsafe code and has no dependencies. It is safe to deploy."
+version = "2.5.0"
+notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
 [[audits.hash32]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -64,14 +70,8 @@ notes = "This crate provides a `Hash32` trait and implementations for a few hash
 [[audits.heapless]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "0.9.2"
-notes = "Widely used and trusted crate for heapless data structures."
-
-[[audits.heapless]]
-who = "Richard Neumann <neumann@paulmann.de>"
-criteria = "safe-to-deploy"
-delta = "0.8.0 -> 0.9.2"
-notes = "This is a large diff with many changes, including the introduction of const generics and new data structures. The crate contains a significant amount of unsafe code, which is necessary for a low-level data structure library. The code appears to be well-written and the unsafe blocks are well-documented. Given the complexity of the changes, a full audit is not feasible, but the crate is widely used and maintained by experienced developers."
+version = "0.9.3"
+notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
 [[audits.io-kit-sys]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -97,11 +97,17 @@ criteria = "safe-to-deploy"
 version = "1.70.2"
 notes = "This crate is a polyfill for `std::cell::OnceCell` and `std.cell::LazyCell`. The `unsafe` code is a copy of the code from the standard library, which is well-vetted. The crate is safe to deploy."
 
+[[audits.pin-project-lite]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.2.17"
+notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
+
 [[audits.serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
-version = "4.8.1"
-notes = "This crate provides cross-platform serial port access and contains a significant amount of unsafe code for FFI and low-level hardware interaction. The crate is widely used and maintained. The unsafe code is necessary for its functionality and appears to be handled correctly. No obvious security vulnerabilities were found."
+version = "4.9.0"
+notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
 [[audits.stable_deref_trait]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -210,6 +216,18 @@ criteria = "safe-to-deploy"
 user-id = 3618 # David Tolnay (dtolnay)
 start = "2019-04-23"
 end = "2026-05-15"
+
+[[trusted.quote]]
+criteria = "safe-to-deploy"
+user-id = 3618 # David Tolnay (dtolnay)
+start = "2019-04-09"
+end = "2027-05-06"
+
+[[trusted.quote]]
+criteria = "safe-to-deploy"
+user-id = 3618 # David Tolnay (dtolnay)
+start = "2019-04-09"
+end = "2027-05-06"
 
 [[trusted.scopeguard]]
 criteria = "safe-to-deploy"
