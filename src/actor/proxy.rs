@@ -33,11 +33,9 @@ impl Proxy {
                 response_tx,
             })
             .await
-            .map_err(|_| Error::other("Failed to send payload to actor"))?;
+            .map_err(Error::other)?;
 
-        response_rx
-            .await
-            .map_err(|_| Error::other("Failed to receive payload to actor"))?
+        response_rx.await.map_err(Error::other)?
     }
 }
 
