@@ -51,9 +51,9 @@ impl<T> Tasks<T> {
     /// - a [`JoinError`] if joining either task fails.
     pub async fn terminate(self) -> Result<T, Either<SendError<Message>, JoinError>> {
         self.running.store(false, Relaxed);
+        self.receiver.await.map_err(Right)?;
         self.sender.send(Message::Terminate).await.map_err(Left)?;
         let serial_port = self.transmitter.await.map_err(Right)?;
-        self.receiver.await.map_err(Right)?;
         Ok(serial_port)
     }
 }
