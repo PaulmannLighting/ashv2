@@ -38,11 +38,7 @@ async fn main() {
     let request_data = vec![0x00, 0x00, 0x00, 0x02];
     proxy
         .send(request_data.into_iter().collect())
-        .await
-        .expect("Failed to send request")
-        .await
-        .expect("Failed to receive response")
-        .expect("Actor reported an error");
+        .expect("Request failed");
 
     // Receive a response from the NCP.
     if let Some(response) = response_rx.recv().await {

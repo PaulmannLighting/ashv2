@@ -1,8 +1,8 @@
 use std::io;
+use std::io::Error;
 
 use log::trace;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot::{Receiver, channel};
 
 use crate::Payload;
@@ -23,7 +23,7 @@ impl Proxy {
     /// # Errors
     ///
     /// Returns an [`SendError<Message>`] if sending the message fails.
-    pub async fn send(&self, payload: Payload) -> Result<Response, SendError<Message>> {
+    pub async fn send(&self, payload: Payload) -> io::Result<()> {
         let (response_tx, response_rx) = channel();
 
         trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
@@ -32,9 +32,12 @@ impl Proxy {
                 payload: Box::new(payload),
                 response_tx,
             })
-            .await?;
+            .await
+            .map_err(|_| Error::other("Failed to send payload to actor"))?;
 
-        Ok(response_rx)
+        response_rx
+            .await
+            .map_err(|_| Error::other("Failed to receive payload to actor"))?
     }
 }
 
