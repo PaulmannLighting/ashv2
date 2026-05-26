@@ -7,11 +7,13 @@ pub use serialport::{FlowControl, SerialPort};
 
 use crate::BaudRate;
 
+/// The native serial port on Unix.
 #[cfg(unix)]
-type NativeSerialPort = serialport::TTYPort;
+pub type NativeSerialPort = serialport::TTYPort;
 
+/// The native serial port on Windows.
 #[cfg(windows)]
-type NativeSerialPort = serialport::COMPort;
+pub type NativeSerialPort = serialport::COMPort;
 
 /// Opens a serial port depending on the local operating system.
 ///

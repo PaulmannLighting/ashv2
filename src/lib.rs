@@ -11,7 +11,7 @@ use const_env::env_item;
 
 pub use self::actor::{Actor, Proxy, Tasks};
 pub use self::baud_rate::BaudRate;
-pub use self::serial_port::{FlowControl, SerialPort, TryCloneNative, open};
+pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, TryCloneNative, open};
 pub use self::types::Payload;
 
 /// Maximum payload size in bytes.
