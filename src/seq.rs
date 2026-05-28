@@ -69,12 +69,6 @@ impl From<u8> for Seq {
     }
 }
 
-impl PartialEq<u8> for Seq {
-    fn eq(&self, other: &u8) -> bool {
-        self.as_u8() == *other
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::Seq;
