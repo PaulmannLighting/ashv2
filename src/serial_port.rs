@@ -23,10 +23,9 @@ pub type NativeSerialPort = serialport::COMPort;
 /// and [`serialport::new()`].
 pub fn open<'a>(
     path: impl Into<Cow<'a, str>>,
-    baud_rate: BaudRate,
     flow_control: FlowControl,
 ) -> Result<NativeSerialPort> {
-    serialport::new(path, baud_rate.into())
+    serialport::new(path, flow_control.baud_rate())
         .flow_control(flow_control)
         .open_native()
 }
