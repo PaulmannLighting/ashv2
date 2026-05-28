@@ -158,31 +158,31 @@ notes = "The only changes are a version bump and a change in the readme file nam
 
 [[trusted.anstream]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-03-16"
 end = "2026-05-15"
 
 [[trusted.anstyle]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2022-05-18"
 end = "2026-05-15"
 
 [[trusted.anstyle-parse]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-03-08"
 end = "2026-05-15"
 
 [[trusted.anstyle-query]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-04-13"
 end = "2026-05-15"
 
 [[trusted.anstyle-wincon]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-03-08"
 end = "2026-05-15"
 
@@ -200,31 +200,31 @@ end = "2026-05-15"
 
 [[trusted.clap]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2021-12-08"
 end = "2026-05-15"
 
 [[trusted.clap_builder]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-03-28"
 end = "2026-05-15"
 
 [[trusted.clap_lex]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2022-04-15"
 end = "2026-05-15"
 
 [[trusted.colorchoice]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2023-04-13"
 end = "2026-05-15"
 
 [[trusted.is_terminal_polyfill]]
 criteria = "safe-to-deploy"
-user-id = 6743 # Ed Page (epage)
+user-id = 6743
 start = "2024-05-02"
 end = "2026-05-15"
 

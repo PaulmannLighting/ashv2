@@ -2,43 +2,8 @@
 # cargo-vet imports lock
 
 [[unpublished.ashv2]]
-version = "7.1.0"
+version = "8.0.0"
 audited_as = "6.0.2"
-
-[[publisher.anstream]]
-version = "1.0.0"
-when = "2026-02-11"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.anstyle]]
-version = "1.0.14"
-when = "2026-03-13"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.anstyle-parse]]
-version = "1.0.0"
-when = "2026-02-11"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.anstyle-query]]
-version = "1.1.5"
-when = "2025-11-13"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.anstyle-wincon]]
-version = "3.0.11"
-when = "2025-11-13"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
 
 [[publisher.autocfg]]
 version = "1.5.1"
@@ -46,41 +11,6 @@ when = "2026-05-22"
 user-id = 539
 user-login = "cuviper"
 user-name = "Josh Stone"
-
-[[publisher.clap]]
-version = "4.6.1"
-when = "2026-04-15"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.clap_builder]]
-version = "4.6.0"
-when = "2026-03-12"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.clap_lex]]
-version = "1.1.0"
-when = "2026-03-12"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.colorchoice]]
-version = "1.0.5"
-when = "2026-03-13"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
-
-[[publisher.is_terminal_polyfill]]
-version = "1.70.2"
-when = "2025-10-21"
-user-id = 6743
-user-login = "epage"
-user-name = "Ed Page"
 
 [[publisher.libc]]
 version = "0.2.186"
@@ -140,13 +70,6 @@ user-name = "Alice Ryhl"
 [[publisher.windows-sys]]
 version = "0.52.0"
 when = "2023-11-15"
-user-id = 64539
-user-login = "kennykerr"
-user-name = "Kenny Kerr"
-
-[[publisher.windows-sys]]
-version = "0.61.2"
-when = "2025-10-06"
 user-id = 64539
 user-login = "kennykerr"
 user-name = "Kenny Kerr"
@@ -310,17 +233,6 @@ version = "1.2.0"
 notes = "Purely a trait, crates using this should be carefully vetted since self-referential stuff can be super tricky around various unsafe rust edges."
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
-[[audits.google.audits.strsim]]
-who = "danakj@chromium.org"
-criteria = "safe-to-deploy"
-version = "0.10.0"
-notes = """
-Reviewed in https://crrev.com/c/5171063
-
-Previously reviewed during security review and the audit is grandparented in.
-"""
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
-
 [[audits.google.audits.unicode-ident]]
 who = "Lukasz Anforowicz <lukasza@chromium.org>"
 criteria = "safe-to-deploy"
@@ -370,13 +282,6 @@ criteria = "safe-to-deploy"
 delta = "1.0.16 -> 1.0.18"
 notes = "Only minor comment and documentation updates."
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
-
-[[audits.google.audits.utf8parse]]
-who = "David Koloski <dkoloski@google.com>"
-criteria = "safe-to-deploy"
-version = "0.2.1"
-notes = "Reviewed on https://fxrev.dev/904811"
-aggregated-from = "https://fuchsia.googlesource.com/fuchsia/+/refs/heads/main/third_party/rust_crates/supply-chain/audits.toml?format=TEXT"
 
 [[audits.mozilla.audits.bitflags]]
 who = "Alex Franchuk <afranchuk@mozilla.com>"
@@ -448,29 +353,4 @@ aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-ch
 who = "Mike Hommey <mh+mozilla@glandium.org>"
 criteria = "safe-to-deploy"
 delta = "0.4.0 -> 0.4.2"
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.strsim]]
-who = "Ben Dean-Kawamura <bdk@mozilla.com>"
-criteria = "safe-to-deploy"
-delta = "0.10.0 -> 0.11.1"
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.utf8parse]]
-who = "Nika Layzell <nika@thelayzells.com>"
-criteria = "safe-to-deploy"
-delta = "0.2.1 -> 0.2.2"
-aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.windows-link]]
-who = "Mark Hammond <mhammond@skippinet.com.au>"
-criteria = "safe-to-deploy"
-version = "0.1.1"
-notes = "A microsoft crate allowing unsafe calls to windows apis."
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.windows-link]]
-who = "Erich Gubler <erichdongubler@gmail.com>"
-criteria = "safe-to-deploy"
-delta = "0.1.1 -> 0.2.0"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
