@@ -7,7 +7,7 @@ use std::iter::Chain;
 use num_traits::FromPrimitive;
 
 use crate::code::Code;
-use crate::utils::HexSlice;
+use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// Error frame.

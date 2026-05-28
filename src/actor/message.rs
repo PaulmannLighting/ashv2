@@ -5,8 +5,8 @@ use tokio::sync::oneshot::Sender;
 
 use crate::Payload;
 use crate::frame::{Error, Rst, RstAck};
+use crate::hex_slice::HexSlice;
 use crate::seq::Seq;
-use crate::utils::HexSlice;
 
 /// Messages sent to the `ASHv2` transmitter.
 #[derive(Debug)]

@@ -4,7 +4,7 @@ use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
-use crate::utils::HexSlice;
+use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
 
 pub const RST: Rst = Rst::new();

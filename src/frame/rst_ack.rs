@@ -8,7 +8,7 @@ use num_traits::FromPrimitive;
 
 use crate::VERSION;
 use crate::code::Code;
-use crate::utils::HexSlice;
+use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// A reset acknowledgment (`RST_ACK`) frame.

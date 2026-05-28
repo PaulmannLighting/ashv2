@@ -9,9 +9,9 @@ use serialport::SerialPort;
 use tokio::time::sleep;
 
 use crate::frame::Frame;
+use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Unstuff};
 use crate::types::MAX_FRAME_SIZE;
-use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]

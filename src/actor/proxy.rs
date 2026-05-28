@@ -7,7 +7,7 @@ use tokio::sync::oneshot::channel;
 
 use crate::Payload;
 use crate::actor::message::Message;
-use crate::utils::HexSlice;
+use crate::hex_slice::HexSlice;
 
 /// `ASHv2` actor proxy.
 #[derive(Clone, Debug)]

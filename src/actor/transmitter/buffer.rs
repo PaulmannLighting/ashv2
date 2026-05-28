@@ -6,9 +6,9 @@ use std::io::{self, Error};
 use log::{debug, trace};
 use serialport::SerialPort;
 
+use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Stuff};
 use crate::types::RawFrame;
-use crate::utils::HexSlice;
 
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]

@@ -5,8 +5,8 @@ use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use super::headers::nak::Header;
+use crate::hex_slice::HexSlice;
 use crate::seq::Seq;
-use crate::utils::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// Negative Acknowledgement (`NAK`) frame.
