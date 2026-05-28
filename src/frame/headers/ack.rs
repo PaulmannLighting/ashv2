@@ -35,7 +35,7 @@ impl Header {
     /// Returns the ACK number.
     #[must_use]
     pub fn ack_num(self) -> Seq {
-        Seq::from(self.bits() & Self::ACK_NUM.bits())
+        Seq::try_from(self.bits() & Self::ACK_NUM.bits()).expect("Seq always fits.")
     }
 }
 
@@ -46,14 +46,14 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let ack = Header::new(Seq::from(3), false);
+        let ack = Header::new(Seq::try_from(3).expect("Seq fits."), false);
         assert_eq!(ack.ack_num().as_u8(), 3);
         assert!(!ack.contains(Header::NOT_READY));
     }
 
     #[test]
     fn test_new_nrdy() {
-        let ack = Header::new(Seq::from(3), true);
+        let ack = Header::new(Seq::try_from(3).expect("Seq fits."), true);
         assert_eq!(ack.ack_num().as_u8(), 3);
         assert!(ack.contains(Header::NOT_READY));
     }

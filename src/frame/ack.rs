@@ -109,7 +109,6 @@ impl LowerHex for Ack {
 #[cfg(test)]
 mod tests {
     use super::{Ack, Header};
-    use crate::seq::Seq;
     use crate::validate::Validate;
 
     const ACK1: Ack = Ack {
@@ -169,15 +168,5 @@ mod tests {
             Ack::try_from(buffer2.as_slice()).expect("Reference frame should be a valid ACK"),
             ACK2
         );
-    }
-
-    #[test]
-    fn from_ack_num() {
-        for ack_num in u8::MIN..=u8::MAX {
-            assert_eq!(
-                Ack::new(Seq::from(ack_num), false).ack_num().as_u8(),
-                ack_num % 8
-            );
-        }
     }
 }

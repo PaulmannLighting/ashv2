@@ -37,13 +37,16 @@ impl Header {
     /// Returns the frame number.
     #[must_use]
     pub fn frame_num(self) -> Seq {
-        Seq::from((self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros())
+        Seq::try_from(
+            (self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros(),
+        )
+        .expect("Seq always fits.")
     }
 
     /// Returns the ACK number.
     #[must_use]
     pub fn ack_num(self) -> Seq {
-        Seq::from(self.bits() & Self::ACK_NUM.bits())
+        Seq::try_from(self.bits() & Self::ACK_NUM.bits()).expect("Seq always fits.")
     }
 }
 

@@ -2,8 +2,6 @@
 
 use core::fmt::Display;
 
-const MOD: u8 = 8;
-
 /// A three bit unsigned integer sequence number.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u8)]
@@ -53,18 +51,20 @@ impl Display for Seq {
     }
 }
 
-impl From<u8> for Seq {
-    fn from(value: u8) -> Self {
-        match value % MOD {
-            0 => Self::Zero,
-            1 => Self::One,
-            2 => Self::Two,
-            3 => Self::Three,
-            4 => Self::Four,
-            5 => Self::Five,
-            6 => Self::Six,
-            7 => Self::Seven,
-            _ => unreachable!(),
+impl TryFrom<u8> for Seq {
+    type Error = u8;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Zero),
+            1 => Ok(Self::One),
+            2 => Ok(Self::Two),
+            3 => Ok(Self::Three),
+            4 => Ok(Self::Four),
+            5 => Ok(Self::Five),
+            6 => Ok(Self::Six),
+            7 => Ok(Self::Seven),
+            _ => Err(value),
         }
     }
 }
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn test_new() {
         for n in u8::MIN..=u8::MAX {
-            let number = Seq::from(n);
+            let number = Seq::try_from(n % 8).unwrap();
             assert_eq!(number.as_u8(), n % 8);
         }
     }
@@ -89,7 +89,7 @@ mod tests {
     #[test]
     fn test_as_u8() {
         for n in u8::MIN..=u8::MAX {
-            let number = Seq::from(n);
+            let number = Seq::try_from(n % 8).unwrap();
             assert_eq!(number.as_u8(), n % 8);
         }
     }
