@@ -3,13 +3,11 @@ use std::io::Error;
 
 use log::trace;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot::{Receiver, channel};
+use tokio::sync::oneshot::channel;
 
 use crate::Payload;
 use crate::actor::message::Message;
 use crate::utils::HexSlice;
-
-type Response = Receiver<io::Result<()>>;
 
 /// `ASHv2` actor proxy.
 #[derive(Clone, Debug)]
