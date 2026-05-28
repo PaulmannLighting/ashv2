@@ -61,6 +61,23 @@ criteria = "safe-to-deploy"
 version = "2.5.0"
 notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
+[[audits.either]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "1.16.0"
+notes = """
+The changes from 1.15.0 to 1.16.0 in the `either` crate are:
+- Add many new methods dealing with each side, by @A4-Tacks:
+  - `inspect_left` and `inspect_right` (#124)
+  - `left_and` and `right_and` (#125)
+  - `is_left_and` and `is_right_and` (#126)
+  - `map_left_or` and `map_right_or` (#127)
+- Add a version of `for_both!` with a single `ident`, by @A4-Tacks (#128)
+- Add a `map_both!` macro, by @JohnScience (#109) and @ronnodas (#137)
+
+The changes are all additions of new features and do not contain any `unsafe` code. The changes are safe.
+"""
+
 [[audits.hash32]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -78,6 +95,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.1"
 notes = "This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
+
+[[audits.log]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.4.30"
+notes = "The `log` dependency has been updated from version 0.4.29 to 0.4.30. This update primarily adds support for capturing `std::net` types as structured values in the key-value logging API. The changes are straightforward, implementing `ToValue` for various `std::net` types by leveraging their `Display` implementations. The diff also includes updates to the CI workflow, documentation, and a bump in the Minimum Supported Rust Version (MSRV) to 1.71.0. No `unsafe` code has been added or modified. The changes are deemed safe."
 
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -163,9 +186,15 @@ user-id = 6743 # Ed Page (epage)
 start = "2023-03-08"
 end = "2026-05-15"
 
+[[trusted.autocfg]]
+criteria = "safe-to-deploy"
+user-id = 539 # Josh Stone (cuviper)
+start = "2019-05-22"
+end = "2027-05-28"
+
 [[trusted.backtrace]]
 criteria = "safe-to-deploy"
-user-id = 539
+user-id = 539 # Josh Stone (cuviper)
 start = "2024-03-21"
 end = "2026-05-15"
 
@@ -305,16 +334,16 @@ end = "2026-05-15"
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2021-10-28"
-end = "2026-05-15"
+end = "2027-05-28"
 
 [[trusted.windows_x86_64_gnullvm]]
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2022-09-01"
-end = "2026-05-15"
+end = "2027-05-28"
 
 [[trusted.windows_x86_64_msvc]]
 criteria = "safe-to-deploy"
 user-id = 64539 # Kenny Kerr (kennykerr)
 start = "2021-10-27"
-end = "2026-05-15"
+end = "2027-05-28"
