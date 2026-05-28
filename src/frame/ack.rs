@@ -5,7 +5,8 @@ use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use super::headers::ack::Header;
-use crate::utils::{HexSlice, Seq};
+use crate::seq::Seq;
+use crate::utils::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
@@ -108,7 +109,7 @@ impl LowerHex for Ack {
 #[cfg(test)]
 mod tests {
     use super::{Ack, Header};
-    use crate::utils::Seq;
+    use crate::seq::Seq;
     use crate::validate::Validate;
 
     const ACK1: Ack = Ack {

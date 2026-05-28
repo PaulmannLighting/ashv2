@@ -2,7 +2,7 @@
 
 use bitflags::bitflags;
 
-use crate::utils::Seq;
+use crate::seq::Seq;
 
 /// Acknowledgement (`ACK`) frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -42,7 +42,7 @@ impl Header {
 #[cfg(test)]
 mod tests {
     use super::Header;
-    use crate::utils::Seq;
+    use crate::seq::Seq;
 
     #[test]
     fn test_new() {

@@ -6,7 +6,7 @@ use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
 use crate::frame::Data;
-use crate::utils::Seq;
+use crate::seq::Seq;
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -83,7 +83,7 @@ impl From<Data> for Transmission {
 mod tests {
     use super::Transmission;
     use crate::frame::Data;
-    use crate::utils::Seq;
+    use crate::seq::Seq;
 
     #[test]
     fn test_new() {

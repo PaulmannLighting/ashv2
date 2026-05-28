@@ -7,8 +7,9 @@ use std::iter::{Chain, Copied, Once, once};
 use super::headers::data::Header;
 use crate::MAX_PAYLOAD_SIZE;
 use crate::protocol::Mask;
+use crate::seq::Seq;
 use crate::types::Payload;
-use crate::utils::{HexSlice, Seq};
+use crate::utils::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// A data frame.

@@ -12,9 +12,9 @@ use self::buffer::Buffer;
 use self::transmission::Transmission;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
+use crate::seq::Seq;
 use crate::status::Status;
 use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::utils::Seq;
 use crate::{REQUEUE_DELAY_MILLIS, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
 
 mod buffer;

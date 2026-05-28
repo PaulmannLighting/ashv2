@@ -11,8 +11,8 @@ use self::buffer::Buffer;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
 use crate::protocol::Mask;
+use crate::seq::Seq;
 use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::utils::Seq;
 use crate::validate::Validate;
 
 mod buffer;

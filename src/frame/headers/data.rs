@@ -2,7 +2,7 @@
 
 use bitflags::bitflags;
 
-use crate::utils::Seq;
+use crate::seq::Seq;
 
 /// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
