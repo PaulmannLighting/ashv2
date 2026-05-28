@@ -8,7 +8,7 @@ use super::headers::data::Header;
 use crate::MAX_PAYLOAD_SIZE;
 use crate::protocol::Mask;
 use crate::types::Payload;
-use crate::utils::{HexSlice, WrappingU3};
+use crate::utils::{HexSlice, Seq};
 use crate::validate::{CRC, Validate};
 
 /// A data frame.
@@ -32,7 +32,7 @@ impl Data {
 
     /// Creates a new data frame.
     #[must_use]
-    pub fn new(frame_num: WrappingU3, ack_num: WrappingU3, mut payload: Payload) -> Self {
+    pub fn new(frame_num: Seq, ack_num: Seq, mut payload: Payload) -> Self {
         let header = Header::new(frame_num, false, ack_num);
         payload.mask();
 
@@ -45,13 +45,13 @@ impl Data {
 
     /// Returns the frame number.
     #[must_use]
-    pub const fn frame_num(&self) -> WrappingU3 {
+    pub fn frame_num(&self) -> Seq {
         self.header.frame_num()
     }
 
     /// Returns the acknowledgment number.
     #[must_use]
-    pub const fn ack_num(&self) -> WrappingU3 {
+    pub fn ack_num(&self) -> Seq {
         self.header.ack_num()
     }
 

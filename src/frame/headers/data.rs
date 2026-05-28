@@ -2,7 +2,7 @@
 
 use bitflags::bitflags;
 
-use crate::utils::WrappingU3;
+use crate::utils::Seq;
 
 /// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -22,7 +22,7 @@ bitflags! {
 impl Header {
     /// Creates a new data header.
     #[must_use]
-    pub const fn new(frame_num: WrappingU3, retransmit: bool, ack_num: WrappingU3) -> Self {
+    pub const fn new(frame_num: Seq, retransmit: bool, ack_num: Seq) -> Self {
         let mut raw = Self::FRAME_NUM.bits()
             & (frame_num.as_u8() << Self::FRAME_NUM.bits().trailing_zeros())
             | Self::ACK_NUM.bits() & ack_num.as_u8();
@@ -36,16 +36,14 @@ impl Header {
 
     /// Returns the frame number.
     #[must_use]
-    pub const fn frame_num(self) -> WrappingU3 {
-        WrappingU3::from_u8_lossy(
-            (self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros(),
-        )
+    pub fn frame_num(self) -> Seq {
+        Seq::from((self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros())
     }
 
     /// Returns the ACK number.
     #[must_use]
-    pub const fn ack_num(self) -> WrappingU3 {
-        WrappingU3::from_u8_lossy(self.bits() & Self::ACK_NUM.bits())
+    pub fn ack_num(self) -> Seq {
+        Seq::from(self.bits() & Self::ACK_NUM.bits())
     }
 }
 

@@ -12,7 +12,7 @@ use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
 use crate::protocol::Mask;
 use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::utils::WrappingU3;
+use crate::utils::Seq;
 use crate::validate::Validate;
 
 mod buffer;
@@ -23,7 +23,7 @@ pub struct Receiver<T> {
     buffer: Buffer<T>,
     response: Sender<Payload>,
     transmitter: Sender<Message>,
-    last_received_frame_num: Option<WrappingU3>,
+    last_received_frame_num: Option<Seq>,
 }
 
 impl<T> Receiver<T>
@@ -74,9 +74,9 @@ where
     /// Returns the ACK number.
     ///
     /// This is equal to the last received frame number plus one.
-    fn ack_number(&self) -> WrappingU3 {
+    fn ack_number(&self) -> Seq {
         self.last_received_frame_num
-            .map_or_else(WrappingU3::default, |ack_number| ack_number + 1u8)
+            .map_or_else(Seq::default, Seq::next)
     }
 
     async fn handle_frame(&mut self, frame: Frame) -> Result<(), SendError<Message>> {
@@ -188,12 +188,12 @@ where
     }
 
     /// Acknowledge sent frames up to `ack_num`.
-    async fn ack_sent_frames(&self, ack_num: WrappingU3) -> Result<(), SendError<Message>> {
+    async fn ack_sent_frames(&self, ack_num: Seq) -> Result<(), SendError<Message>> {
         self.transmitter.send(Message::AckSentFrame(ack_num)).await
     }
 
     /// Negative acknowledge sent frames up to `ack_num`.
-    async fn nak_sent_frames(&self, ack_num: WrappingU3) -> Result<(), SendError<Message>> {
+    async fn nak_sent_frames(&self, ack_num: Seq) -> Result<(), SendError<Message>> {
         self.transmitter.send(Message::NakSentFrame(ack_num)).await
     }
 }

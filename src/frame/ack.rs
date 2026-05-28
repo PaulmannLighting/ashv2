@@ -5,7 +5,7 @@ use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use super::headers::ack::Header;
-use crate::utils::{HexSlice, WrappingU3};
+use crate::utils::{HexSlice, Seq};
 use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
@@ -18,7 +18,7 @@ pub struct Ack {
 impl Ack {
     /// Creates a new ACK frame.
     #[must_use]
-    pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+    pub const fn new(ack_num: Seq, n_rdy: bool) -> Self {
         let header = Header::new(ack_num, n_rdy);
 
         Self {
@@ -35,7 +35,7 @@ impl Ack {
 
     /// Returns the acknowledgement number.
     #[must_use]
-    pub const fn ack_num(&self) -> WrappingU3 {
+    pub fn ack_num(&self) -> Seq {
         self.header.ack_num()
     }
 }
@@ -108,7 +108,7 @@ impl LowerHex for Ack {
 #[cfg(test)]
 mod tests {
     use super::{Ack, Header};
-    use crate::utils::WrappingU3;
+    use crate::utils::Seq;
     use crate::validate::Validate;
 
     const ACK1: Ack = Ack {
@@ -174,9 +174,7 @@ mod tests {
     fn from_ack_num() {
         for ack_num in u8::MIN..=u8::MAX {
             assert_eq!(
-                Ack::new(WrappingU3::from_u8_lossy(ack_num), false)
-                    .ack_num()
-                    .as_u8(),
+                Ack::new(Seq::from(ack_num), false).ack_num().as_u8(),
                 ack_num % 8
             );
         }

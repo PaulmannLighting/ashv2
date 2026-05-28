@@ -14,7 +14,7 @@ use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
 use crate::status::Status;
 use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::utils::WrappingU3;
+use crate::utils::Seq;
 use crate::{REQUEUE_DELAY_MILLIS, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
 
 mod buffer;
@@ -35,8 +35,8 @@ pub struct Transmitter<T> {
     status: Status,
     last_rst_sent: Option<Instant>,
     transmissions: heapless::Vec<Transmission, TX_K>,
-    frame_number: WrappingU3,
-    ack_number: WrappingU3,
+    frame_number: Seq,
+    ack_number: Seq,
 }
 
 impl<T> Transmitter<T> {
@@ -54,8 +54,8 @@ impl<T> Transmitter<T> {
             status: Status::Uninitialized,
             last_rst_sent: None,
             transmissions: heapless::Vec::new(),
-            frame_number: WrappingU3::ZERO,
-            ack_number: WrappingU3::ZERO,
+            frame_number: Seq::Zero,
+            ack_number: Seq::Zero,
         }
     }
 }
@@ -151,7 +151,7 @@ where
         let data = Data::new(self.next_frame_number(), self.ack_number, *payload);
         // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
         // fragmented messages if each DATA frame's ACK number is not increased.
-        self.ack_number += 1;
+        self.ack_number.increment();
         response
             .send(self.transmit(data.into()))
             .unwrap_or_else(|_| {
@@ -159,12 +159,12 @@ where
             });
     }
 
-    fn send_ack(&mut self, ack_num: WrappingU3) -> io::Result<()> {
+    fn send_ack(&mut self, ack_num: Seq) -> io::Result<()> {
         self.ack_number = ack_num;
         self.buffer.write_frame(Ack::new(ack_num, false))
     }
 
-    fn send_nak(&mut self, ack_num: WrappingU3) -> io::Result<()> {
+    fn send_nak(&mut self, ack_num: Seq) -> io::Result<()> {
         self.buffer.write_frame(Nak::new(ack_num, false))
     }
 
@@ -207,7 +207,7 @@ where
     }
 
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
-    fn ack_sent_frames(&mut self, ack_num: WrappingU3) {
+    fn ack_sent_frames(&mut self, ack_num: Seq) {
         // Remove timed-out transmissions.
         self.transmissions
             .retain(|transmission| !transmission.is_timed_out(T_RX_ACK_MAX));
@@ -216,7 +216,7 @@ where
         while let Some(transmission) = self
             .transmissions
             .iter()
-            .position(|transmission| transmission.frame_num() + 1u8 == ack_num)
+            .position(|transmission| transmission.frame_num().next() == ack_num)
             .map(|index| self.transmissions.remove(index))
         {
             trace!(
@@ -227,7 +227,7 @@ where
     }
 
     /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_frames(&mut self, nak_num: WrappingU3) -> io::Result<()> {
+    fn nak_sent_frames(&mut self, nak_num: Seq) -> io::Result<()> {
         // Remove timed-out transmissions.
         self.transmissions
             .retain(|transmission| !transmission.is_timed_out(T_RX_ACK_MAX));
@@ -271,9 +271,9 @@ where
     }
 
     /// Returns the next frame number.
-    pub fn next_frame_number(&mut self) -> WrappingU3 {
+    pub const fn next_frame_number(&mut self) -> Seq {
         let frame_number = self.frame_number;
-        self.frame_number += 1;
+        self.frame_number.increment();
         frame_number
     }
 

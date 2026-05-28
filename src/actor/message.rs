@@ -5,7 +5,7 @@ use tokio::sync::oneshot::Sender;
 
 use crate::Payload;
 use crate::frame::{Error, Rst, RstAck};
-use crate::utils::{HexSlice, WrappingU3};
+use crate::utils::{HexSlice, Seq};
 
 /// Messages sent to the `ASHv2` transmitter.
 #[derive(Debug)]
@@ -19,9 +19,9 @@ pub enum Message {
         response_tx: Sender<io::Result<()>>,
     },
     /// Send an ACK frame with the given ack number.
-    Ack(WrappingU3),
+    Ack(Seq),
     /// Send a NAK frame with the given ack number.
-    Nak(WrappingU3),
+    Nak(Seq),
     /// Received RST frame.
     Rst(Rst),
     /// Received RST-ACK frame.
@@ -29,9 +29,9 @@ pub enum Message {
     /// Received ERROR frame.
     Error(Error),
     /// Acknowledgement sent frames up to the given frame number.
-    AckSentFrame(WrappingU3),
+    AckSentFrame(Seq),
     /// Negative Acknowledgement sent frames up to the given frame number.
-    NakSentFrame(WrappingU3),
+    NakSentFrame(Seq),
     /// Terminate the receiver.
     Terminate,
 }

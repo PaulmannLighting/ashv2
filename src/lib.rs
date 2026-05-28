@@ -39,6 +39,7 @@ mod baud_rate;
 mod code;
 mod frame;
 mod protocol;
+mod seq;
 mod serial_port;
 mod status;
 mod types;

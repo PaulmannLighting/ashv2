@@ -5,7 +5,7 @@ use std::io::{self, Error};
 use std::iter::{Chain, Once, once};
 
 use super::headers::nak::Header;
-use crate::utils::{HexSlice, WrappingU3};
+use crate::utils::{HexSlice, Seq};
 use crate::validate::{CRC, Validate};
 
 /// Negative Acknowledgement (`NAK`) frame.
@@ -18,7 +18,7 @@ pub struct Nak {
 impl Nak {
     /// Creates a new NAK frame.
     #[must_use]
-    pub const fn new(ack_num: WrappingU3, n_rdy: bool) -> Self {
+    pub const fn new(ack_num: Seq, n_rdy: bool) -> Self {
         let header = Header::new(ack_num, n_rdy);
 
         Self {
@@ -35,7 +35,7 @@ impl Nak {
 
     /// Return the acknowledgement number.
     #[must_use]
-    pub const fn ack_num(&self) -> WrappingU3 {
+    pub fn ack_num(&self) -> Seq {
         self.header.ack_num()
     }
 }
