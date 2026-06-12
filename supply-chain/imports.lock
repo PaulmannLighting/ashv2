@@ -1,10 +1,6 @@
 
 # cargo-vet imports lock
 
-[[unpublished.ashv2]]
-version = "8.0.0"
-audited_as = "6.0.2"
-
 [[publisher.autocfg]]
 version = "1.5.1"
 when = "2026-05-22"
@@ -170,12 +166,6 @@ who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
 delta = "2.7.0 -> 2.9.4"
 notes = "Tweaks to the macro, nothing out of order."
-
-[[audits.bytecode-alliance.audits.bitflags]]
-who = "Alex Crichton <alex@alexcrichton.com>"
-criteria = "safe-to-deploy"
-delta = "2.10.0 -> 2.11.1"
-notes = "Minor updates, nothing awry here."
 
 [[audits.bytecode-alliance.audits.cfg-if]]
 who = "Alex Crichton <alex@alexcrichton.com>"

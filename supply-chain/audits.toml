@@ -7,6 +7,12 @@ criteria = "safe-to-deploy"
 version = "6.0.2"
 notes = "Minor update. Changes are minimal and do not introduce any security vulnerabilities."
 
+[[audits.ashv2]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "6.0.2 -> 8.1.0"
+notes = "AI-assisted review: delta 6.0.2 -> 8.1.0. Major internal refactor (new Seq type replacing WrappingU3, module reorganization, API simplification in proxy/open paths, task shutdown ordering changes). Crate enforces deny(unsafe_code); removed previous utility containing NonZero::new_unchecked. No newly introduced ambient-capability surfaces beyond existing serial I/O."
+
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -18,6 +24,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "2.10.0 -> 2.11.0"
 notes = "Changes add a new `UnsafeBitflags` trait and are well-documented. No security vulnerabilities introduced."
+
+[[audits.bitflags]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "2.11.0 -> 2.13.0"
+notes = "AI-assisted review: delta 2.11.0 -> 2.13.0. Changes are primarily macro/docs/test updates plus new named-flag helpers (all_named, iter_equal_names, flag_name attribute processing). No new runtime I/O/network/process behavior and no new unsafe blocks in crate implementation path."
 
 [[audits.cfg-if]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -101,6 +113,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.30"
 notes = "The `log` dependency has been updated from version 0.4.29 to 0.4.30. This update primarily adds support for capturing `std::net` types as structured values in the key-value logging API. The changes are straightforward, implementing `ToValue` for various `std::net` types by leveraging their `Display` implementations. The diff also includes updates to the CI workflow, documentation, and a bump in the Minimum Supported Rust Version (MSRV) to 1.71.0. No `unsafe` code has been added or modified. The changes are deemed safe."
+
+[[audits.log]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "0.4.30 -> 0.4.32"
+notes = "AI-assisted review: delta 0.4.30 -> 0.4.32. Updates are focused on KV key handling (Key static/borrowed support), macro parsing improvements, feature gating adjustments, changelog/docs/tests. Unsafe-sensitive logger globals remain unchanged; no new privileged behavior introduced."
 
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
