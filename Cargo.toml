@@ -15,16 +15,16 @@ exclude = [".gitignore", "TODO.md"]
 all-features = true
 
 [dependencies]
-bitflags = "2.11"
+bitflags = "2"
 const_env = "0.1"
-crc = "3.4"
-either = "1.15"
+crc = "3"
+either = "1"
 heapless = "0.9"
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
-serialport = { version = "4.9", default-features = false }
-tokio = { version = "1.52", default-features = false, features = ["sync", "rt", "rt-multi-thread", "time"] }
+serialport = { version = "4", default-features = false }
+tokio = { version = "1", default-features = false, features = ["sync", "rt", "rt-multi-thread", "time"] }
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"
