@@ -120,6 +120,12 @@ criteria = "safe-to-deploy"
 delta = "0.4.30 -> 0.4.32"
 notes = "AI-assisted review: delta 0.4.30 -> 0.4.32. Updates are focused on KV key handling (Key static/borrowed support), macro parsing improvements, feature gating adjustments, changelog/docs/tests. Unsafe-sensitive logger globals remain unchanged; no new privileged behavior introduced."
 
+[[audits.log]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "0.4.32 -> 0.4.33"
+notes = "AI-assisted review: delta 0.4.32 -> 0.4.33. Changes are narrowly scoped to key equality semantics in structured logging (MaybeStaticStr Eq/Ord/Hash consistency), plus tests/changelog/version bumps. No new unsafe code paths or ambient-capability changes."
+
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -155,6 +161,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "1.2.0 -> 1.2.1"
 notes = "The changes add `StableDeref` implementations for `Cow` and other standard library types, which is safe. The change to `Arc` is a conditional compilation flag, which is also safe."
+
+[[audits.syn]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "2.0.117 -> 2.0.118"
+notes = "AI-assisted review: delta 2.0.117 -> 2.0.118. Changes are minor parser/docs/test maintenance (doc wording, lint attribute updates, small literal parsing match simplification, test fixture sync with rustc AST churn). No new runtime I/O/process/network capability; no new unsafe behavior surfaced for this update."
 
 [[audits.unescaper]]
 who = "Richard Neumann <neumann@paulmann.de>"
