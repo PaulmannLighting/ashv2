@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ashv2"
-version = "8.1.0"
+version = "8.1.1"
 dependencies = [
  "bitflags 2.13.0",
  "const_env",
