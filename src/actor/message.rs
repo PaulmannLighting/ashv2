@@ -19,20 +19,28 @@ pub enum Message {
         /// Response channel to notify when the payload has been sent.
         response_tx: Sender<io::Result<()>>,
     },
+
     /// Send an ACK frame with the given ack number.
     Ack(Seq),
+
     /// Send a NAK frame with the given ack number.
     Nak(Seq),
+
     /// Received RST frame.
     Rst(Rst),
+
     /// Received RST-ACK frame.
     RstAck(RstAck),
+
     /// Received ERROR frame.
     Error(Error),
+
     /// Acknowledgement sent frames up to the given frame number.
     AckSentFrame(Seq),
+
     /// Negative Acknowledgement sent frames up to the given frame number.
     NakSentFrame(Seq),
+
     /// Terminate the receiver.
     Terminate,
 }

@@ -24,14 +24,19 @@ mod rst_ack;
 pub enum Frame {
     /// `ACK` frame
     Ack(Ack),
+
     /// `DATA` frame
     Data(Box<Data>),
+
     /// `ERROR` frame
     Error(Error),
+
     /// `NAK` frame
     Nak(Nak),
+
     /// `RST` frame
     Rst(Rst),
+
     /// `RST_ACK` frame
     RstAck(RstAck),
 }

@@ -6,8 +6,10 @@ pub enum Status {
     #[default]
     /// No connection has been established yet.
     Uninitialized,
+
     /// A connection has been established.
     Connected,
+
     /// The connection has been terminated.
     Failed,
 }

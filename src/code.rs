@@ -10,20 +10,28 @@ use num_derive::FromPrimitive;
 pub enum Code {
     /// Reset: Unknown reason
     UnknownReason = 0x00,
+
     /// Reset: External
     External = 0x01,
+
     /// Reset: Power-on
     PowerOn = 0x02,
+
     /// Reset: Watchdog
     Watchdog = 0x03,
+
     /// Reset: Assert
     Assert = 0x06,
+
     /// Reset: Boot loader
     Bootloader = 0x09,
+
     /// Reset: Software
     Software = 0x0B,
+
     /// Error: Exceeded maximum ACK timeout count
     ExceededMaximumAckTimeoutCount = 0x51,
+
     /// Chip-specific error reset code
     ChipSpecific = 0x80,
 }
