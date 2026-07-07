@@ -8,9 +8,6 @@ pub enum Message {
         buffer: Bytes,
         response: Sender<Result<()>>,
     },
-    Read {
-        buffer: BytesMut,
-        response: Sender<Result<BytesMut>>,
-    },
+    Read(Sender<Result<BytesMut>>),
     Flush(Sender<Result<()>>),
 }

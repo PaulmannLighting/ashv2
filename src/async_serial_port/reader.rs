@@ -10,11 +10,10 @@ pub struct Reader(pub(crate) Sender<Message>);
 
 impl Reader {
     pub async fn read(&self) -> Result<BytesMut> {
-        let buffer = BytesMut::new();
         let (response, rx) = channel();
 
         self.0
-            .send(Message::Read { buffer, response })
+            .send(Message::Read(response))
             .await
             .map_err(|_| ErrorKind::BrokenPipe)?;
 

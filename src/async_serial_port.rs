@@ -1,15 +1,18 @@
+use bytes::BytesMut;
 use log::debug;
 use serialport::SerialPort;
 use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, channel};
 
 use self::message::Message;
-use self::reader::Reader;
-use self::writer::Writer;
+pub use self::reader::Reader;
+pub use self::stream::Stream;
+pub use self::writer::Writer;
 
 mod message;
 mod reader;
 mod split_async;
+mod stream;
 mod writer;
 
 #[derive(Debug)]
@@ -35,12 +38,14 @@ where
                     }
                     .unwrap_or_else(|error| debug!("Failed to send read response: {error:?}"));
                 }
-                Message::Read {
-                    mut buffer,
-                    response,
-                } => response
-                    .send(self.0.read(&mut buffer).map(|_| buffer))
-                    .unwrap_or_else(|error| debug!("Failed to send write response: {error:?}")),
+                Message::Read(response) => match self.0.bytes_to_read() {
+                    Ok(bytes) => {
+                        let mut buffer = BytesMut::zeroed(bytes as usize);
+                        response.send(self.0.read(buffer.as_mut()).map(|_| buffer))
+                    }
+                    Err(error) => response.send(Err(error.into())),
+                }
+                .unwrap_or_else(|error| debug!("Failed to send write response: {error:?}")),
                 Message::Flush(response) => response
                     .send(self.0.flush())
                     .unwrap_or_else(|error| debug!("Failed to send flush response: {error:?}")),
