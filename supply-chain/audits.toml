@@ -13,6 +13,12 @@ criteria = "safe-to-deploy"
 delta = "6.0.2 -> 8.1.0"
 notes = "AI-assisted review: delta 6.0.2 -> 8.1.0. Major internal refactor (new Seq type replacing WrappingU3, module reorganization, API simplification in proxy/open paths, task shutdown ordering changes). Crate enforces deny(unsafe_code); removed previous utility containing NonZero::new_unchecked. No newly introduced ambient-capability surfaces beyond existing serial I/O."
 
+[[audits.ashv2]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "8.1.0 -> 8.1.1"
+notes = "AI-assisted review: delta 8.1.0 -> 8.1.1. Workspace diff is limited to the crate version bump, package exclude metadata, lockfile updates, and removal of the unpublished audited_as entry. No ashv2 source code changed; the unescaper dependency update is audited separately."
+
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -173,6 +179,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.1.8"
 notes = "This is a small crate for unescaping strings. It contains no unsafe code and has no dependencies. It is safe to deploy."
+
+[[audits.unescaper]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.1.10"
+notes = "AI-assisted review: audited unescaper 0.1.10 full source because the 0.1.8 source was not available offline for a local delta review. Small string unescaping library with no build script, no unsafe code, and no filesystem/network/process/FFI behavior. Parser handles strict and lossy escape decoding only; crate tests and clippy passed."
 
 [[audits.unicode-ident]]
 who = "Richard Neumann <neumann@paulmann.de>"
