@@ -35,8 +35,6 @@ const REQUEUE_DELAY_MILLIS: u64 = 100;
 const VERSION: u8 = 0x02;
 
 mod actor;
-#[expect(dead_code)]
-mod async_serial_port;
 mod baud_rate;
 mod code;
 mod frame;

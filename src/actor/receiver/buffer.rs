@@ -1,12 +1,13 @@
 //! Frame buffer for reading and writing ASH frames.
 
-use std::io::Result;
+use std::io::{ErrorKind, Result};
 use std::vec::Drain;
 
-use bytes::BytesMut;
 use log::{debug, trace};
 use serialport::SerialPort;
 
+use crate::actor::receiver::async_buf_stream::AsyncBufStream;
+use crate::actor::receiver::async_serial_port::AsyncSerialPort;
 use crate::frame::Frame;
 use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Unstuff};
@@ -15,19 +16,20 @@ use crate::types::MAX_FRAME_SIZE;
 /// A buffer for reading and writing ASH frames.
 #[derive(Debug)]
 pub struct Buffer<T> {
-    serial_port: T,
-    bytes: <BytesMut as IntoIterator>::IntoIter,
+    serial_port: AsyncBufStream<AsyncSerialPort<T>>,
     frame: Vec<u8>,
 }
 
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
-impl<T> Buffer<T> {
+impl<T> Buffer<T>
+where
+    T: SerialPort + Unpin,
+{
     /// Create a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
     pub fn new(serial_port: T) -> Self {
         Self {
-            serial_port,
-            bytes: BytesMut::new().into_iter(),
+            serial_port: AsyncBufStream::new(AsyncSerialPort(serial_port)),
             frame: Vec::with_capacity(MAX_FRAME_SIZE),
         }
     }
@@ -35,36 +37,23 @@ impl<T> Buffer<T> {
 
 impl<T> Buffer<T>
 where
-    T: SerialPort,
+    T: SerialPort + Unpin,
 {
     /// Read an `ASHv2` [`Frame`].
     ///
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub fn read_frame(&mut self) -> Result<Option<Frame>> {
-        self.read_raw_frame()?.try_into().map(Some)
+    pub async fn read_frame(&mut self) -> Result<Option<Frame>> {
+        self.read_raw_frame().await?.try_into().map(Some)
     }
 
-    fn read_raw_frame(&mut self) -> Result<Drain<'_, u8>> {
+    async fn read_raw_frame(&mut self) -> Result<Drain<'_, u8>> {
         self.frame.clear();
         let mut error = false;
 
-        loop {
-            let Some(byte) = self.bytes.next() else {
-                let len = self.serial_port.bytes_to_read()?;
-
-                if len == 0 {
-                    continue;
-                }
-
-                let mut bytes = BytesMut::zeroed(len as usize);
-                self.serial_port.read_exact(&mut bytes)?;
-                self.bytes = bytes.into_iter();
-                continue;
-            };
-
-            match ControlByte::try_from(byte) {
+        while let Some(byte) = self.serial_port.next().await {
+            match ControlByte::try_from(byte?) {
                 Ok(control_byte) => match control_byte {
                     ControlByte::Cancel => {
                         trace!("Resetting buffer due to cancel byte.");
@@ -111,5 +100,8 @@ where
                 }
             }
         }
+
+        trace!("Buffer state: {:#04X}", HexSlice::new(&self.frame));
+        Err(ErrorKind::UnexpectedEof.into())
     }
 }

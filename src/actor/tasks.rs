@@ -23,7 +23,7 @@ pub struct Tasks<T> {
 
 impl<T> Tasks<T>
 where
-    T: SerialPort + Sync + 'static,
+    T: SerialPort + Sync + Unpin + 'static,
 {
     /// Crate new tasks.
     pub(crate) fn spawn(

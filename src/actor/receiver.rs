@@ -15,6 +15,8 @@ use crate::seq::Seq;
 use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::validate::Validate;
 
+mod async_buf_stream;
+mod async_serial_port;
 mod buffer;
 
 /// `ASHv2` receiver.
@@ -28,7 +30,7 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T>
 where
-    T: SerialPort,
+    T: SerialPort + Unpin,
 {
     /// Creates a new `ASHv2` receiver.
     pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
@@ -43,14 +45,14 @@ where
 
 impl<T> Receiver<T>
 where
-    T: SerialPort + Sync,
+    T: SerialPort + Sync + Unpin,
 {
     /// Runs the receiver loop.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");
 
         while running.load(Relaxed) {
-            let maybe_frame = match self.buffer.read_frame() {
+            let maybe_frame = match self.buffer.read_frame().await {
                 Ok(maybe_frame) => maybe_frame,
                 Err(error) => {
                     error!("Error receiving frame: {error}");
