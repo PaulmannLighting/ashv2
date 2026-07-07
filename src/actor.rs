@@ -38,7 +38,7 @@ where
         message_queue_len: usize,
     ) -> Result<Self, serialport::Error>
     where
-        T: TryCloneNative + Unpin,
+        T: TryCloneNative,
     {
         let (tx_tx, tx_rx) = channel(message_queue_len);
         let receiver = Receiver::new(serial_port.try_clone_native()?, response, tx_tx.clone());
@@ -57,7 +57,7 @@ where
     /// Returns a tuple of the tasks handler and actor handle.
     pub fn spawn(self) -> (Tasks<T>, Handle)
     where
-        T: Sync + Unpin + 'static,
+        T: Sync + 'static,
     {
         (
             Tasks::spawn(self.transmitter, self.receiver, self.sender.clone()),

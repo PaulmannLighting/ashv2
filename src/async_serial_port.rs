@@ -14,11 +14,11 @@ use tokio::io::{AsyncRead, ReadBuf};
 #[derive(Debug)]
 pub struct AsyncSerialPort<T>(pub(crate) T);
 
-impl<T> Unpin for AsyncSerialPort<T> where T: Unpin {}
+impl<T> Unpin for AsyncSerialPort<T> {}
 
 impl<T> AsyncRead for AsyncSerialPort<T>
 where
-    T: SerialPort + Unpin,
+    T: SerialPort,
 {
     fn poll_read(
         self: Pin<&mut Self>,

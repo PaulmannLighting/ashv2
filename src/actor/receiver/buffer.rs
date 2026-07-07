@@ -6,8 +6,8 @@ use std::vec::Drain;
 use log::{debug, trace};
 use serialport::SerialPort;
 
-use crate::actor::receiver::async_buf_stream::AsyncBufStream;
-use crate::actor::receiver::async_serial_port::AsyncSerialPort;
+use crate::async_buf_stream::AsyncBufStream;
+use crate::async_serial_port::AsyncSerialPort;
 use crate::frame::Frame;
 use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Unstuff};
@@ -23,7 +23,7 @@ pub struct Buffer<T> {
 /// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
 impl<T> Buffer<T>
 where
-    T: SerialPort + Unpin,
+    T: SerialPort,
 {
     /// Create a new `FrameBuffer` with the given inner reader and/or writer.
     #[must_use]
@@ -37,7 +37,7 @@ where
 
 impl<T> Buffer<T>
 where
-    T: SerialPort + Unpin,
+    T: SerialPort,
 {
     /// Read an `ASHv2` [`Frame`].
     ///
