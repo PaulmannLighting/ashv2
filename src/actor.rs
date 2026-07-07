@@ -1,7 +1,7 @@
 use serialport::SerialPort;
 use tokio::sync::mpsc::{Sender, channel};
 
-pub use self::proxy::Proxy;
+pub use self::handle::Handle;
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::TryCloneNative;
@@ -9,8 +9,8 @@ use crate::actor::message::Message;
 pub use crate::actor::tasks::Tasks;
 use crate::types::Payload;
 
+mod handle;
 mod message;
-mod proxy;
 mod receiver;
 mod tasks;
 mod transmitter;
@@ -54,8 +54,8 @@ where
     ///
     /// # Returns
     ///
-    /// Returns a tuple of the tasks handler and the proxy.
-    pub fn spawn(self) -> (Tasks<T>, Proxy)
+    /// Returns a tuple of the tasks handler and actor handle.
+    pub fn spawn(self) -> (Tasks<T>, Handle)
     where
         T: Sync + 'static,
     {

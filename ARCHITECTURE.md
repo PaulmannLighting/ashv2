@@ -12,12 +12,12 @@ At runtime, the crate is centered around an actor with two asynchronous tasks:
 - `Transmitter`: owns serial writes and connection state.
 - `Receiver`: owns serial reads and inbound frame handling.
 
-`Proxy` is the user-facing send handle. Incoming payloads are pushed to a user-provided response channel.
+`Handle` is the user-facing send handle. Incoming payloads are pushed to a user-provided response channel.
 
 ```mermaid
 flowchart TD
     App[Application]
-    Proxy[Proxy]
+    Handle[Handle]
     Tasks[Tasks]
     Tx[Transmitter task]
     Rx[Receiver task]
@@ -25,8 +25,8 @@ flowchart TD
     RespQ[(tokio mpsc Payload queue)]
     Serial[(SerialPort clone pair)]
 
-    App -->|send payload| Proxy
-    Proxy -->|Message::Payload| MsgQ
+    App -->|send payload| Handle
+    Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
     Tx -->|write frames| Serial
     Serial -->|read frames| Rx
@@ -73,8 +73,8 @@ stateDiagram-v2
 
 ### Outbound path (App -> NCP)
 
-1. App calls `Proxy::send(payload).await`.
-2. Proxy sends `Message::Payload` into the transmitter queue with a oneshot response channel.
+1. App calls `Handle::send(payload).await`.
+2. Handle sends `Message::Payload` into the transmitter queue with a oneshot response channel.
 3. Transmitter creates a `DATA` frame:
    - sets frame number (`Seq`, modulo 8),
    - sets current ACK number,
@@ -101,14 +101,14 @@ stateDiagram-v2
 ```mermaid
 sequenceDiagram
     participant A as Application
-    participant P as Proxy
+    participant H as Handle
     participant T as Transmitter
     participant S as Serial Link
     participant R as Receiver
     participant Q as Response Channel
 
-    A->>P: send(payload)
-    P->>T: Message::Payload
+    A->>H: send(payload)
+    H->>T: Message::Payload
     T->>S: DATA(frame, masked payload)
     S->>R: inbound frame bytes
     R->>T: Message::AckSentFrame / NakSentFrame

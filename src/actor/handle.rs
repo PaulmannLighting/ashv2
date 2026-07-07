@@ -9,13 +9,13 @@ use crate::Payload;
 use crate::actor::message::Message;
 use crate::hex_slice::HexSlice;
 
-/// `ASHv2` actor proxy.
+/// User-facing handle for sending payloads to the `ASHv2` actor.
 #[derive(Clone, Debug)]
-pub struct Proxy {
+pub struct Handle {
     inner: Sender<Message>,
 }
 
-impl Proxy {
+impl Handle {
     /// Send data to the `ASHv2` actor.
     ///
     /// # Errors
@@ -37,7 +37,7 @@ impl Proxy {
     }
 }
 
-impl From<Sender<Message>> for Proxy {
+impl From<Sender<Message>> for Handle {
     fn from(inner: Sender<Message>) -> Self {
         Self { inner }
     }

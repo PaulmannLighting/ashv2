@@ -22,7 +22,7 @@ The crate currently provides:
 
 Important behavior details:
 
-- `Proxy::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
+- `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
 - Incoming `DATA` payloads are delivered through the response channel passed to `Actor::new(...)`.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
 
@@ -52,11 +52,11 @@ async fn main() {
 
     // Start ASH actor.
     let actor = Actor::new(serial_port, response_tx, 64).expect("Failed to create actor");
-    let (tasks, proxy) = actor.spawn();
+    let (tasks, handle) = actor.spawn();
 
     // Example EZSP "version" request payload.
     let request_payload = [0x00, 0x00, 0x00, 0x02].into_iter().collect();
-    proxy
+    handle
         .send(request_payload)
         .await
         .expect("Failed to transmit request frame");
