@@ -2,7 +2,8 @@
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, Error, ErrorKind};
-use std::iter::{Chain, Copied, Once, once};
+use std::iter::{Chain, Copied, Once, Peekable, once};
+use std::vec::Drain;
 
 use super::headers::data::Header;
 use crate::MAX_PAYLOAD_SIZE;
@@ -141,16 +142,20 @@ impl LowerHex for Data {
     }
 }
 
-impl TryFrom<&[u8]> for Data {
+impl TryFrom<Peekable<Drain<'_, u8>>> for Data {
     type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, payload @ .., crc0, crc1] = buffer else {
-            return Err(Error::new(
-                ErrorKind::UnexpectedEof,
-                "Too few bytes for DATA.",
-            ));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next_back()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next_back()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let payload: Payload = buffer.collect();
 
         if payload.len() < Self::MIN_PAYLOAD_SIZE {
             return Err(Error::new(
@@ -160,9 +165,9 @@ impl TryFrom<&[u8]> for Data {
         }
 
         Ok(Self {
-            header: Header::from_bits_retain(*header),
-            payload: payload.try_into().map_err(Error::other)?,
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header: Header::from_bits_retain(header),
+            payload,
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -324,16 +329,16 @@ mod tests {
     #[test]
     fn test_from_buffer() {
         // EZSP "version" command: 00 00 00 02
-        let buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
+        let mut buffer: Vec<u8> = vec![0x25, 0x00, 0x00, 0x00, 0x02, 0x1A, 0xAD];
         let data = Data {
             header: Header::from_bits_retain(0x25),
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
+        assert_eq!(Data::try_from(buffer.drain(..).peekable()).unwrap(), data);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
-        let buffer: Vec<u8> = vec![0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16];
+        let mut buffer: Vec<u8> = vec![0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16];
         let data = Data {
             header: Header::from_bits_retain(0x53),
             payload: [0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30]
@@ -342,7 +347,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert_eq!(Data::try_from(buffer.as_slice()).unwrap(), data);
+        assert_eq!(Data::try_from(buffer.drain(..).peekable()).unwrap(), data);
     }
 
     #[test]

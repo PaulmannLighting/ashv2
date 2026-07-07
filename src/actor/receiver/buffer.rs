@@ -6,7 +6,6 @@ use std::vec::Drain;
 
 use log::{debug, trace};
 use serialport::SerialPort;
-use tokio::time::sleep;
 
 use crate::frame::Frame;
 use crate::hex_slice::HexSlice;
@@ -18,6 +17,7 @@ use crate::types::MAX_FRAME_SIZE;
 pub struct Buffer<T> {
     reader: BufReader<T>,
     frame: Vec<u8>,
+    #[expect(dead_code)]
     timeout: Option<Duration>,
 }
 
@@ -41,20 +41,8 @@ where
     /// # Errors
     ///
     /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
-    pub async fn read_frame(&mut self) -> io::Result<Option<Frame>> {
-        let error = match self.read_raw_frame() {
-            Ok(raw_frame) => return raw_frame.as_slice().try_into().map(Some),
-            Err(error) => error,
-        };
-
-        if error.kind() == ErrorKind::TimedOut {
-            if let Some(timeout) = self.timeout {
-                sleep(timeout).await;
-            }
-            Ok(None)
-        } else {
-            Err(error)
-        }
+    pub fn read_frame(&mut self) -> io::Result<Option<Frame>> {
+        self.read_raw_frame()?.try_into().map(Some)
     }
 
     fn read_raw_frame(&mut self) -> io::Result<Drain<'_, u8>> {
@@ -167,15 +155,18 @@ mod tests {
             ControlByte::Flag as u8,
         ];
         let mut buffer = Buffer::new(Cursor::new(data), None);
-        let reference = Data::try_from([0x7Eu8, 0x11, 0x13, 0x18, 0x1A, 0x7D].as_slice())
-            .expect("Reference data should be valid.");
+        let reference = Data::try_from(
+            vec![0x7Eu8, 0x11, 0x13, 0x18, 0x1A, 0x7D]
+                .drain(..)
+                .peekable(),
+        )
+        .expect("Reference data should be valid.");
 
         let Frame::Data(data) = buffer
             .read_raw_frame()
-            .expect("A data frame should be read.")
-            .as_slice()
+            .expect("Frame read.")
             .try_into()
-            .expect("A data frame should be read.")
+            .expect("Sufficient bytes.")
         else {
             panic!("Expected a Data frame");
         };
@@ -188,7 +179,6 @@ mod tests {
         let Frame::Data(data) = buffer
             .read_raw_frame()
             .expect("A data frame should be read.")
-            .as_slice()
             .try_into()
             .expect("A data frame should be read.")
         else {

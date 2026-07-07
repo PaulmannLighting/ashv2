@@ -50,7 +50,7 @@ where
         trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");
 
         while running.load(Relaxed) {
-            let maybe_frame = match self.buffer.read_frame().await {
+            let maybe_frame = match self.buffer.read_frame() {
                 Ok(maybe_frame) => maybe_frame,
                 Err(error) => {
                     error!("Error receiving frame: {error}");

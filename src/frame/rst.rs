@@ -1,8 +1,9 @@
 //! Reset (`RST`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error};
-use std::iter::{Chain, Once, once};
+use std::io::{self, Error, ErrorKind};
+use std::iter::{Chain, Once, Peekable, once};
+use std::vec::Drain;
 
 use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
@@ -63,17 +64,23 @@ impl IntoIterator for Rst {
     }
 }
 
-impl TryFrom<&[u8]> for Rst {
+impl TryFrom<Peekable<Drain<'_, u8>>> for Rst {
     type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, crc0, crc1] = buffer else {
-            return Err(Error::other("Invalid RST frame size."));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
 
         Ok(Self {
-            header: *header,
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header,
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -130,9 +137,10 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
+        let mut buffer: Vec<u8> = vec![0xC0, 0x38, 0xBC];
         assert_eq!(
-            Rst::try_from(buffer.as_slice()).expect("Reference frame should be a valid RST."),
+            Rst::try_from(buffer.drain(..).peekable())
+                .expect("Reference frame should be a valid RST."),
             RST
         );
     }

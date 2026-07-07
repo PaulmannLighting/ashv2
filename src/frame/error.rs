@@ -2,7 +2,9 @@
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
 use std::io;
-use std::iter::Chain;
+use std::io::ErrorKind;
+use std::iter::{Chain, Peekable};
+use std::vec::Drain;
 
 use num_traits::FromPrimitive;
 
@@ -74,19 +76,31 @@ impl IntoIterator for Error {
     }
 }
 
-impl TryFrom<&[u8]> for Error {
+impl TryFrom<Peekable<Drain<'_, u8>>> for Error {
     type Error = io::Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, version, code, crc0, crc1] = buffer else {
-            return Err(io::Error::other("Invalid ERROR frame size."));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?;
+        let version = buffer
+            .next()
+            .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?;
+        let code = buffer
+            .next()
+            .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next()
+            .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next()
+            .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?;
 
         Ok(Self {
-            header: *header,
-            version: *version,
-            code: *code,
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header,
+            version,
+            code,
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -164,9 +178,10 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
+        let mut buffer: Vec<u8> = vec![0xC2, 0x02, 0x51, 0xA8, 0xBD];
         assert_eq!(
-            Error::try_from(buffer.as_slice()).expect("Reference frame should be a valid ERROR."),
+            Error::try_from(buffer.drain(..).peekable())
+                .expect("Reference frame should be a valid ERROR."),
             ERROR
         );
     }

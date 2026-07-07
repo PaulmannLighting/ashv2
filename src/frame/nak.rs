@@ -1,8 +1,9 @@
 //! Acknowledgement (`ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error};
-use std::iter::{Chain, Once, once};
+use std::io::{self, Error, ErrorKind};
+use std::iter::{Chain, Once, Peekable, once};
+use std::vec::Drain;
 
 use super::headers::nak::Header;
 use crate::hex_slice::HexSlice;
@@ -71,17 +72,23 @@ impl IntoIterator for Nak {
     }
 }
 
-impl TryFrom<&[u8]> for Nak {
+impl TryFrom<Peekable<Drain<'_, u8>>> for Nak {
     type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, crc0, crc1] = buffer else {
-            return Err(Error::other("Invalid NAK frame size."));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
 
         Ok(Self {
-            header: Header::from_bits_retain(*header),
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header: Header::from_bits_retain(header),
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -158,14 +165,16 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer1 = [0xA6, 0x34, 0xDC];
+        let mut buffer1 = vec![0xA6, 0x34, 0xDC];
         assert_eq!(
-            Nak::try_from(buffer1.as_slice()).expect("Reference frame should be a valid NAK"),
+            Nak::try_from(buffer1.drain(..).peekable())
+                .expect("Reference frame should be a valid NAK"),
             NAK1
         );
-        let buffer2 = [0xAD, 0x85, 0xB7];
+        let mut buffer2 = vec![0xAD, 0x85, 0xB7];
         assert_eq!(
-            Nak::try_from(buffer2.as_slice()).expect("Reference frame should be a valid NAK"),
+            Nak::try_from(buffer2.drain(..).peekable())
+                .expect("Reference frame should be a valid NAK"),
             NAK2
         );
     }

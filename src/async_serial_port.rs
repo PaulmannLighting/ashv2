@@ -6,7 +6,6 @@ use tokio::sync::mpsc::{Receiver, channel};
 
 use self::message::Message;
 pub use self::reader::Reader;
-pub use self::stream::Stream;
 pub use self::writer::Writer;
 
 mod message;

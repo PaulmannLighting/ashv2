@@ -1,8 +1,9 @@
 //! Acknowledgement (`ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error};
-use std::iter::{Chain, Once, once};
+use std::io::{self, Error, ErrorKind};
+use std::iter::{Chain, Once, Peekable, once};
+use std::vec::Drain;
 
 use super::headers::ack::Header;
 use crate::hex_slice::HexSlice;
@@ -71,17 +72,23 @@ impl IntoIterator for Ack {
     }
 }
 
-impl TryFrom<&[u8]> for Ack {
+impl TryFrom<Peekable<Drain<'_, u8>>> for Ack {
     type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, crc0, crc1] = buffer else {
-            return Err(Error::other("Invalid ACK frame size."));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
 
         Ok(Self {
-            header: Header::from_bits_retain(*header),
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header: Header::from_bits_retain(header),
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -158,14 +165,16 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
+        let mut buffer1: Vec<u8> = vec![0x81, 0x60, 0x59];
         assert_eq!(
-            Ack::try_from(buffer1.as_slice()).expect("Reference frame should be a valid ACK"),
+            Ack::try_from(buffer1.drain(..).peekable())
+                .expect("Reference frame should be a valid ACK"),
             ACK1
         );
-        let buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
+        let mut buffer2: Vec<u8> = vec![0x8E, 0x91, 0xB6];
         assert_eq!(
-            Ack::try_from(buffer2.as_slice()).expect("Reference frame should be a valid ACK"),
+            Ack::try_from(buffer2.drain(..).peekable())
+                .expect("Reference frame should be a valid ACK"),
             ACK2
         );
     }

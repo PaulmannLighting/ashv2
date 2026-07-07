@@ -1,8 +1,9 @@
 //! Reset acknowledgment (`RST_ACK`) frame implementation.
 
 use core::fmt::{Display, Formatter, LowerHex, UpperHex};
-use std::io::{self, Error};
-use std::iter::Chain;
+use std::io::{self, Error, ErrorKind};
+use std::iter::{Chain, Peekable};
+use std::vec::Drain;
 
 use num_traits::FromPrimitive;
 
@@ -78,19 +79,31 @@ impl IntoIterator for RstAck {
     }
 }
 
-impl TryFrom<&[u8]> for RstAck {
+impl TryFrom<Peekable<Drain<'_, u8>>> for RstAck {
     type Error = Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
-        let [header, version, reset_code, crc0, crc1] = buffer else {
-            return Err(Error::other("Invalid RST_ACK frame size."));
-        };
+    fn try_from(mut buffer: Peekable<Drain<'_, u8>>) -> io::Result<Self> {
+        let header = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let version = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let reset_code = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc0 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
+        let crc1 = buffer
+            .next()
+            .ok_or_else(|| Error::from(ErrorKind::UnexpectedEof))?;
 
         Ok(Self {
-            header: *header,
-            version: *version,
-            reset_code: *reset_code,
-            crc: u16::from_be_bytes([*crc0, *crc1]),
+            header,
+            version,
+            reset_code,
+            crc: u16::from_be_bytes([crc0, crc1]),
         })
     }
 }
@@ -168,9 +181,10 @@ mod tests {
 
     #[test]
     fn test_from_buffer() {
-        let buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B];
+        let mut buffer: Vec<u8> = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B];
         assert_eq!(
-            RstAck::try_from(buffer.as_slice()).expect("Reference frame should be a valid RSTACK"),
+            RstAck::try_from(buffer.drain(..).peekable())
+                .expect("Reference frame should be a valid RSTACK"),
             RST_ACK
         );
     }

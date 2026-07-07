@@ -2,6 +2,7 @@
 
 use core::fmt::{Debug, Display, Formatter, LowerHex, UpperHex};
 use std::io::{self, ErrorKind};
+use std::vec::Drain;
 
 pub use self::ack::Ack;
 pub use self::data::Data;
@@ -54,12 +55,13 @@ impl Display for Frame {
     }
 }
 
-impl TryFrom<&[u8]> for Frame {
+impl TryFrom<Drain<'_, u8>> for Frame {
     type Error = io::Error;
 
-    fn try_from(buffer: &[u8]) -> io::Result<Self> {
+    fn try_from(buffer: Drain<'_, u8>) -> io::Result<Self> {
+        let mut buffer = buffer.peekable();
         match *buffer
-            .first()
+            .peek()
             .ok_or_else(|| io::Error::new(ErrorKind::UnexpectedEof, "Missing frame header."))?
         {
             Rst::HEADER => Rst::try_from(buffer).map(Self::Rst),
@@ -137,16 +139,16 @@ mod tests {
 
     #[test]
     fn test_rst_try_from_bytes_slice() {
-        const RST: [u8; 4] = [0xC0, 0x38, 0xBC, 0x7E];
-        let packet = Frame::try_from(&RST[..RST.len() - 1]).unwrap();
+        let mut buffer = vec![0xC0, 0x38, 0xBC, 0x7E];
+        let packet = Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap();
         assert_eq!(packet, Frame::Rst(Rst::new()));
     }
 
     #[test]
     fn test_rstack_try_from_bytes_slice() {
-        const RST_ACK: [u8; 6] = [0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
+        let mut buffer = vec![0xC1, 0x02, 0x02, 0x9B, 0x7B, 0x7E];
 
-        match Frame::try_from(&RST_ACK[..RST_ACK.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::RstAck(rst_ack) => {
                 assert!(rst_ack.is_ash_v2());
                 assert_eq!(rst_ack.version(), 2);
@@ -159,9 +161,9 @@ mod tests {
 
     #[test]
     fn test_error_try_from_bytes_slice() {
-        const ERROR: [u8; 6] = [0xC2, 0x02, 0x52, 0x98, 0xDE, 0x7E];
+        let mut buffer = vec![0xC2, 0x02, 0x52, 0x98, 0xDE, 0x7E];
 
-        match Frame::try_from(&ERROR[..ERROR.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Error(error) => {
                 assert_eq!(error.version(), 2);
                 assert_eq!(error.code(), Err(0x52));
@@ -173,15 +175,15 @@ mod tests {
 
     #[test]
     fn test_data_try_from_bytes_slice() {
-        const DATA: [u8; 11] = [
+        let buffer = vec![
             0x53, 0x00, 0x80, 0x00, 0x02, 0x02, 0x11, 0x30, 0x63, 0x16, 0x7E,
         ];
 
-        match Frame::try_from(&DATA[..DATA.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.clone().drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Data(data) => {
                 assert_eq!(data.crc(), 0x6316);
                 let data = data.validate().unwrap();
-                assert_eq!(data.into_payload().as_slice(), &DATA[1..DATA.len() - 3]);
+                assert_eq!(data.into_payload().as_slice(), &buffer[1..buffer.len() - 3]);
             }
             packet => panic!("Expected Data, got {packet:?}"),
         }
@@ -189,9 +191,9 @@ mod tests {
 
     #[test]
     fn test_ack_try_from_bytes_slice() {
-        let ack = [0x81, 0x60, 0x59, 0x7E];
+        let mut buffer = vec![0x81, 0x60, 0x59, 0x7E];
 
-        match Frame::try_from(&ack[..ack.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Ack(ack) => {
                 assert!(!ack.not_ready());
                 assert_eq!(ack.ack_num().as_u8(), 1);
@@ -201,9 +203,9 @@ mod tests {
             packet => panic!("Expected Ack, got {packet:?}"),
         }
 
-        let ack = [0x8E, 0x91, 0xB6, 0x7E];
+        let mut buffer = vec![0x8E, 0x91, 0xB6, 0x7E];
 
-        match Frame::try_from(&ack[..ack.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Ack(ack) => {
                 assert!(ack.not_ready());
                 assert_eq!(ack.ack_num().as_u8(), 0x06);
@@ -216,9 +218,9 @@ mod tests {
 
     #[test]
     fn test_nak_try_from_bytes_slice() {
-        let nak = [0xA6, 0x34, 0xDC, 0x7E];
+        let mut buffer = vec![0xA6, 0x34, 0xDC, 0x7E];
 
-        match Frame::try_from(&nak[..nak.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Nak(nak) => {
                 assert!(!nak.not_ready());
                 assert_eq!(nak.ack_num().as_u8(), 0x06);
@@ -228,9 +230,9 @@ mod tests {
             packet => panic!("Expected Nak, got {packet:?}"),
         }
 
-        let nak = [0xAD, 0x85, 0xB7, 0x7E];
+        let mut buffer = vec![0xAD, 0x85, 0xB7, 0x7E];
 
-        match Frame::try_from(&nak[..nak.len() - 1]).unwrap() {
+        match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Nak(nak) => {
                 assert!(nak.not_ready());
                 assert_eq!(nak.ack_num().as_u8(), 0x05);
