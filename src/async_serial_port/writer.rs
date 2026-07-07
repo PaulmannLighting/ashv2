@@ -8,7 +8,7 @@ use super::message::Message;
 pub struct Writer(pub(crate) Sender<Message>);
 
 impl Writer {
-    pub async fn write(&self, buf: &[u8]) -> Result<usize> {
+    pub async fn write(&self, buf: &[u8]) -> Result<()> {
         let (response, rx) = channel();
 
         self.0
