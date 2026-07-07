@@ -33,7 +33,7 @@ where
     /// Creates a new `ASHv2` receiver.
     pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
         Self {
-            buffer: serial_port.into(),
+            buffer: Buffer::new(serial_port),
             response,
             transmitter,
             last_received_frame_num: None,
