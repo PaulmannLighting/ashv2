@@ -1,15 +1,16 @@
 use std::io::Result;
 
+use bytes::{Bytes, BytesMut};
 use tokio::sync::oneshot::Sender;
 
 pub enum Message {
     Write {
-        buffer: Box<[u8]>,
+        buffer: Bytes,
         response: Sender<Result<()>>,
     },
     Read {
-        buffer: Box<[u8]>,
-        response: Sender<Result<usize>>,
+        buffer: BytesMut,
+        response: Sender<Result<BytesMut>>,
     },
     Flush(Sender<Result<()>>),
 }

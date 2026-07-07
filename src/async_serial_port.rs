@@ -38,7 +38,7 @@ where
                     mut buffer,
                     response,
                 } => response
-                    .send(self.0.read(&mut buffer))
+                    .send(self.0.read(&mut buffer).map(|_| buffer))
                     .unwrap_or_else(|error| debug!("Failed to send write response: {error:?}")),
                 Message::Flush(response) => response
                     .send(self.0.flush())
