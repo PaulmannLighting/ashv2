@@ -10,7 +10,7 @@ use crate::seq::Seq;
 use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Ack {
     header: Header,
     crc: u16,
@@ -30,13 +30,13 @@ impl Ack {
 
     /// Determines whether the not-ready flag is set.
     #[must_use]
-    pub const fn not_ready(&self) -> bool {
+    pub const fn not_ready(self) -> bool {
         self.header.contains(Header::NOT_READY)
     }
 
     /// Returns the acknowledgement number.
     #[must_use]
-    pub fn ack_num(&self) -> Seq {
+    pub fn ack_num(self) -> Seq {
         self.header.ack_num()
     }
 }

@@ -10,7 +10,7 @@ use crate::validate::{CRC, Validate};
 pub const RST: Rst = Rst::new();
 
 /// Requests the NCP to perform a software reset (valid even if the NCP is in the FAILED state).
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Rst {
     header: u8,
     crc: u16,

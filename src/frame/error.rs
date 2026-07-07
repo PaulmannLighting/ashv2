@@ -11,7 +11,7 @@ use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// Error frame.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Error {
     header: u8,
     version: u8,
@@ -27,13 +27,13 @@ impl Error {
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
     #[must_use]
-    pub const fn version(&self) -> u8 {
+    pub const fn version(self) -> u8 {
         self.version
     }
 
     /// Verifies that this is indeed `ASHv2`.
     #[must_use]
-    pub const fn is_ash_v2(&self) -> bool {
+    pub const fn is_ash_v2(self) -> bool {
         self.version == crate::VERSION
     }
 
@@ -42,7 +42,7 @@ impl Error {
     /// # Errors
     ///
     /// Returns an error if the error code is invalid.
-    pub fn code(&self) -> Result<Code, u8> {
+    pub fn code(self) -> Result<Code, u8> {
         Code::from_u8(self.code).ok_or(self.code)
     }
 }

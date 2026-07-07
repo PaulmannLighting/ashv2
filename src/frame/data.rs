@@ -13,7 +13,7 @@ use crate::types::Payload;
 use crate::validate::{CRC, Validate};
 
 /// A data frame.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Data {
     header: Header,
     payload: Payload,

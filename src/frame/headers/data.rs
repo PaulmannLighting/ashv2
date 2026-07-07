@@ -5,15 +5,17 @@ use bitflags::bitflags;
 use crate::seq::Seq;
 
 /// Data frame header.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Header(u8);
 
 bitflags! {
     impl Header: u8 {
         /// The frame number mask.
         const FRAME_NUM = 0b0111_0000;
+
         /// The retransmit flag.
         const RETRANSMIT = 0b0000_1000;
+
         /// The acknowledgement number mask.
         const ACK_NUM = 0b0000_0111;
     }

@@ -5,15 +5,17 @@ use bitflags::bitflags;
 use crate::seq::Seq;
 
 /// Negative Acknowledgement (`NAK`) frame header.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Header(u8);
 
 bitflags! {
     impl Header: u8 {
         /// The default NAK header.
         const DEFAULT = 0b1010_0000;
+
         /// The `nRDY` flag.
         const NOT_READY = 0b0000_1000;
+
         /// The acknowledgement number mask.
         const ACK_NUM = 0b0000_0111;
     }

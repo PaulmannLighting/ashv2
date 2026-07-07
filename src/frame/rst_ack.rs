@@ -12,7 +12,7 @@ use crate::hex_slice::HexSlice;
 use crate::validate::{CRC, Validate};
 
 /// A reset acknowledgment (`RST_ACK`) frame.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RstAck {
     header: u8,
     version: u8,
@@ -28,13 +28,13 @@ impl RstAck {
     ///
     /// This is statically set to `0x02` (2) for `ASHv2`.
     #[must_use]
-    pub const fn version(&self) -> u8 {
+    pub const fn version(self) -> u8 {
         self.version
     }
 
     /// Verifies that this is indeed `ASHv2`.
     #[must_use]
-    pub const fn is_ash_v2(&self) -> bool {
+    pub const fn is_ash_v2(self) -> bool {
         self.version == VERSION
     }
 
@@ -43,7 +43,7 @@ impl RstAck {
     /// # Errors
     ///
     /// Returns an error if the reset code is invalid.
-    pub fn code(&self) -> Result<Code, u8> {
+    pub fn code(self) -> Result<Code, u8> {
         Code::from_u8(self.reset_code).ok_or(self.reset_code)
     }
 }

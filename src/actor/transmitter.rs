@@ -92,7 +92,7 @@ where
     async fn handle_message(&mut self, message: Message) -> io::Result<()> {
         if self.status != Status::Connected {
             if let Message::RstAck(ack) = message {
-                return self.handle_rst_ack(&ack);
+                return self.handle_rst_ack(ack);
             }
 
             // Only log if the connection has failed, not if it hasn't been established yet.
@@ -116,9 +116,9 @@ where
             }
             Message::Ack(ack_num) => self.send_ack(ack_num),
             Message::Nak(ack_num) => self.send_nak(ack_num),
-            Message::Rst(rst) => self.handle_rst(&rst),
-            Message::RstAck(rst_ack) => self.handle_rst_ack(&rst_ack),
-            Message::Error(error) => self.handle_error(&error),
+            Message::Rst(rst) => self.handle_rst(rst),
+            Message::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
+            Message::Error(error) => self.handle_error(error),
             Message::AckSentFrame(frame_num) => {
                 self.ack_sent_frames(frame_num);
                 Ok(())
@@ -169,14 +169,14 @@ where
     }
 
     /// Handle RST frame received from the NCP.
-    fn handle_rst(&mut self, rst: &Rst) -> io::Result<()> {
+    fn handle_rst(&mut self, rst: Rst) -> io::Result<()> {
         error!("Received RST frame: {rst}, resetting connection.");
         self.status = Status::Failed;
         self.reset()
     }
 
     /// Handle RST ACK frame received from the NCP.
-    fn handle_rst_ack(&mut self, rst_ack: &RstAck) -> io::Result<()> {
+    fn handle_rst_ack(&mut self, rst_ack: RstAck) -> io::Result<()> {
         trace!("Received RST ACK frame: {rst_ack}, connection reset acknowledged.");
 
         if !rst_ack.is_ash_v2() {
@@ -200,7 +200,7 @@ where
     }
 
     /// Handle errors received from the NCP.
-    fn handle_error(&mut self, error: &Error) -> io::Result<()> {
+    fn handle_error(&mut self, error: Error) -> io::Result<()> {
         warn!("Transmitter encountered error: {error}, resetting connection.");
         self.status = Status::Failed;
         self.reset()
