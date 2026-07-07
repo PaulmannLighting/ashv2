@@ -9,6 +9,7 @@ use self::writer::Writer;
 
 mod message;
 mod reader;
+mod split_async;
 mod writer;
 
 #[derive(Debug)]
