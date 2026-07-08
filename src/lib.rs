@@ -10,7 +10,7 @@
 
 use const_env::env_item;
 
-pub use self::actor::{Error, Futures, Handle, start};
+pub use self::actor::{Futures, Handle, start};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, open};
 pub use self::types::Payload;

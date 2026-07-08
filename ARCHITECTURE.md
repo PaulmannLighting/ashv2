@@ -182,8 +182,8 @@ flowchart TD
 its main loop, it clears the shared running flag observed by the receiver. The caller owns
 the returned futures and is responsible for joining or otherwise observing them on their
 async runtime. The serial worker future resolves with the original serial port after the
-reader and writer handles have been dropped. Termination failures are reported through the
-crate's custom `Error` type, which wraps message-send failures.
+reader and writer handles have been dropped. Termination failures are reported as Tokio
+message-send errors.
 
 ## Frame Types and Purpose
 

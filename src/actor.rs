@@ -6,16 +6,16 @@ use async_serialport::{AsyncSerialPort, Worker};
 use serialport::SerialPort;
 use tokio::sync::mpsc::{Sender, channel};
 
+pub use self::futures::Futures;
 pub use self::handle::Handle;
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
-pub use crate::actor::tasks::{Error, Futures};
 use crate::types::Payload;
 
+mod futures;
 mod handle;
 mod message;
 mod receiver;
-mod tasks;
 mod transmitter;
 
 /// Create the `ASHv2` actor futures for the given serial port.

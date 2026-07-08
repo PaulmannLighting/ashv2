@@ -2,10 +2,10 @@ use std::io;
 
 use log::trace;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot::channel;
 
 use crate::Payload;
-use crate::actor::Error;
 use crate::actor::message::Message;
 use crate::hex_slice::HexSlice;
 
@@ -41,8 +41,8 @@ impl Handle {
     ///
     /// # Errors
     ///
-    /// Returns [`Error`] if sending the termination message to the transmitter fails.
-    pub async fn terminate(&self) -> Result<(), Error> {
+    /// Returns [`SendError`] if sending the termination message to the transmitter fails.
+    pub async fn terminate(&self) -> Result<(), SendError<Message>> {
         self.inner.send(Message::Terminate).await?;
         Ok(())
     }

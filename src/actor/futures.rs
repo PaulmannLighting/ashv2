@@ -1,7 +1,3 @@
-pub use self::error::Error;
-
-mod error;
-
 /// Futures returned by [`crate::start`] to drive the asynchronous `ASHv2` actor.
 pub struct Futures<W, T, R> {
     /// Future that drives the blocking serial-port worker and returns the serial port.

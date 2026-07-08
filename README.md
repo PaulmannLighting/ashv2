@@ -73,7 +73,7 @@ async fn main() {
         println!("Received response payload: {response_payload:?}");
     }
 
-    // Request graceful shutdown, then join the runtime-owned tasks.
+    // Request graceful shutdown, then join the runtime-owned futures.
     handle
         .terminate()
         .await
