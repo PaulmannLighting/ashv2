@@ -26,7 +26,6 @@ const T_RSTACK_MAX: Duration = Duration::from_millis(T_RSTACK_MAX_MILLIS);
 
 const T_RX_ACK_MAX: Duration = Duration::from_millis(T_RX_ACK_MAX_MILLIS);
 
-const CONNECTION_NOT_ESTABLISHED: &str = "ASHv2 connection is not established";
 const TRANSMITTER_CHANNEL_CLOSED: &str = "ASHv2 transmitter channel is closed";
 
 /// `ASHv2` transmitter.
@@ -101,12 +100,6 @@ impl Transmitter {
             }
 
             self.reset().await?;
-            warn!("Rejecting message while connection is not established: {message}");
-            return Self::reject_message(
-                message,
-                ErrorKind::NotConnected,
-                CONNECTION_NOT_ESTABLISHED,
-            );
         }
 
         match message {
