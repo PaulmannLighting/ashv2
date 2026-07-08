@@ -94,12 +94,15 @@ impl Transmitter {
                 return self.handle_rst_ack(ack).await;
             }
 
+            trace!("Received message before connection was established. Re-queueing.");
+            self.requeue(message).await?;
+
             // Only log if the connection has failed, not if it hasn't been established yet.
             if self.status == Status::Failed {
                 warn!("ASHv2 Connection failed. Resetting...");
             }
 
-            self.reset().await?;
+            return self.reset().await;
         }
 
         match message {
