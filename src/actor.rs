@@ -1,5 +1,9 @@
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+
 use async_serialport::AsyncSerialPort;
 use serialport::SerialPort;
+use tokio::spawn;
 use tokio::sync::mpsc::{Sender, channel};
 use tokio::task::JoinHandle;
 
@@ -7,7 +11,7 @@ pub use self::handle::Handle;
 pub use self::receiver::Receiver;
 pub use self::transmitter::Transmitter;
 use crate::actor::message::Message;
-pub use crate::actor::tasks::Tasks;
+pub use crate::actor::tasks::{Error, Tasks};
 use crate::types::Payload;
 
 mod handle;
@@ -34,37 +38,16 @@ where
     /// # Errors
     ///
     /// Returns a [`serialport::Error`] if the serial port cannot be cloned.
-    pub fn new(
-        serial_port: T,
-        response: Sender<Payload>,
-        message_queue_len: usize,
-    ) -> Result<Self, serialport::Error> {
-        let (tx_tx, tx_rx) = channel(message_queue_len);
-        let (reader, writer, handle) = serial_port.split(message_queue_len);
-        let receiver = Receiver::new(reader, response, tx_tx.clone());
-        let transmitter = Transmitter::new(writer, tx_rx, tx_tx.downgrade());
-        Ok(Self {
-            handle,
-            receiver,
-            transmitter,
-            sender: tx_tx,
-        })
-    }
+    pub fn spawn(serial_port: T, response: Sender<Payload>) -> (Tasks<T>, Handle) {
+        let (sender, inbox) = channel(response.capacity());
+        let (reader, writer, handle) = serial_port.split(response.capacity());
+        let running = Arc::new(AtomicBool::new(true));
+        let receiver = spawn(Receiver::new(reader, response, sender.clone()).run(running.clone()));
+        let transmitter = spawn(Transmitter::new(writer, inbox, sender.downgrade()).run());
 
-    /// Spawns the actor's transmitter and receiver as asynchronous tasks.
-    ///
-    /// # Returns
-    ///
-    /// Returns a tuple of the tasks handler and actor handle.
-    pub fn spawn(self) -> (Tasks<T>, Handle) {
         (
-            Tasks::spawn(
-                self.handle,
-                self.transmitter,
-                self.receiver,
-                self.sender.clone(),
-            ),
-            self.sender.into(),
+            Tasks::new(handle, transmitter, receiver, sender.downgrade(), running),
+            sender.into(),
         )
     }
 }
