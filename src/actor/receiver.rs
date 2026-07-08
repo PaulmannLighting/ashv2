@@ -7,7 +7,6 @@ use log::{debug, error, info, trace, warn};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
-use self::async_buf_stream::AsyncBufStream;
 use self::buffer::Buffer;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
@@ -16,7 +15,6 @@ use crate::seq::Seq;
 use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::validate::Validate;
 
-mod async_buf_stream;
 mod buffer;
 
 /// `ASHv2` receiver.

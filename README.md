@@ -16,7 +16,7 @@ The crate currently provides:
 - CRC-16 validation/generation for all supported frame types.
 - Byte stuffing/unstuffing and ASH payload randomization (masking/unmasking).
 - An async actor runtime started with `start(...)`, with separate transmitter/receiver tasks.
-- Async serial I/O through `async-serialport`, with receiver-side byte streaming via `AsyncBufStream`.
+- Async serial I/O through `async-serialport`, with receiver-side chunking via `ReaderStream`.
 - Automatic initial reset handshake (`RST` -> `RST-ACK`) before normal traffic.
 - Automatic handling of inbound `ACK`/`NAK` and retransmission of queued `DATA` frames.
 - Automatic reset/recovery on protocol errors (`ERROR`, `RST`, and selected I/O failures).

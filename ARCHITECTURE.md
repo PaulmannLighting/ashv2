@@ -27,7 +27,7 @@ flowchart TD
     Tx[Transmitter task]
     Rx[Receiver task]
     Split[async-serialport split]
-    Reader[Reader + AsyncBufStream]
+    Reader[Reader + ReaderStream]
     Writer[Writer]
     Join[Serial join handle]
     MsgQ[(tokio mpsc Message queue)]
@@ -60,10 +60,8 @@ flowchart TD
 
 - `src/actor/*`
   - `start(...)`, internal message bus, task lifecycle, graceful termination.
-- `src/actor/receiver/async_buf_stream.rs`
-  - Byte-at-a-time stream wrapper around Tokio's chunked reader stream.
 - `src/actor/receiver/buffer.rs`
-  - Receive-side byte scanning, control-byte handling, unstuffing, and frame parsing.
+  - Receive-side chunk buffering, byte scanning, control-byte handling, unstuffing, and frame parsing.
 - `src/actor/transmitter/buffer.rs`
   - Transmit-side frame serialization, byte stuffing, frame termination, and serial writes.
 - `src/frame/*`
@@ -115,7 +113,7 @@ stateDiagram-v2
 ### Inbound path (NCP -> App)
 
 1. `async-serialport` provides the receiver's async `Reader`.
-2. `AsyncBufStream` converts async read chunks into a byte-at-a-time stream.
+2. `ReaderStream` provides chunks, and the receiver buffer retains any unconsumed bytes.
 3. Receiver reads serial bytes until `FLAG`.
 4. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
 5. Parsed bytes are converted into a typed frame and CRC-validated.
@@ -147,9 +145,9 @@ sequenceDiagram
 
 The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a join
 handle that yields the original serial port during shutdown. The receiver side wraps the
-`Reader` in `AsyncBufStream`, turning chunked async reads into individual bytes for the
-ASHv2 control-byte parser. The transmitter side writes fully encoded and stuffed frames
-through the async `Writer`.
+`Reader` in `ReaderStream` and stores the current chunk iterator in the receive buffer, so
+bytes after a completed frame remain available for the next read. The transmitter side
+writes fully encoded and stuffed frames through the async `Writer`.
 
 ```mermaid
 flowchart TD
@@ -158,7 +156,7 @@ flowchart TD
     Reader[Reader]
     Writer[Writer]
     Join[JoinHandle]
-    Bytes[AsyncBufStream]
+    Chunks[ReaderStream]
     RxBuffer[Receiver Buffer]
     TxBuffer[Transmitter Buffer]
     Receiver[Receiver task]
@@ -168,8 +166,8 @@ flowchart TD
     Split --> Reader
     Split --> Writer
     Split --> Join
-    Reader --> Bytes
-    Bytes --> RxBuffer
+    Reader --> Chunks
+    Chunks --> RxBuffer
     RxBuffer --> Receiver
     Transmitter --> TxBuffer
     TxBuffer --> Writer
