@@ -11,7 +11,10 @@ use crate::actor::message::Message;
 
 mod error;
 
-/// Sender and receiver tasks wrapper to allow termination.
+/// Running `ASHv2` actor tasks.
+///
+/// `Tasks` owns the spawned receiver, transmitter, and serial worker handles. Use
+/// [`Tasks::terminate`] to shut them down and recover the original serial port.
 #[derive(Debug)]
 pub struct Tasks<T> {
     handle: JoinHandle<T>,
@@ -44,13 +47,11 @@ where
 }
 
 impl<T> Tasks<T> {
-    /// Terminate the tasks.
+    /// Terminate the actor tasks and return the original serial port.
     ///
     /// # Errors
     ///
-    /// Returns either
-    /// - a [`SendError`] if sending the termination message fails, or
-    /// - a [`JoinError`] if joining either task fails.
+    /// Returns [`Error`] if sending the termination message fails or joining any task fails.
     pub async fn terminate(self) -> Result<T, Error> {
         self.running.store(false, Relaxed);
         self.receiver.await?;

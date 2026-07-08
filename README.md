@@ -15,7 +15,7 @@ The crate currently provides:
 - Frame parsing/encoding for `DATA`, `ACK`, `NAK`, `RST`, `RST-ACK`, and `ERROR`.
 - CRC-16 validation/generation for all supported frame types.
 - Byte stuffing/unstuffing and ASH payload randomization (masking/unmasking).
-- An async actor runtime (`Actor`) with separate transmitter/receiver tasks.
+- An async actor runtime started with `start(...)`, with separate transmitter/receiver tasks.
 - Async serial I/O through `async-serialport`, with receiver-side byte streaming via `AsyncBufStream`.
 - Automatic initial reset handshake (`RST` -> `RST-ACK`) before normal traffic.
 - Automatic handling of inbound `ACK`/`NAK` and retransmission of queued `DATA` frames.
@@ -23,9 +23,9 @@ The crate currently provides:
 
 Important behavior details:
 
-- `Actor::new(...)` splits the native serial port into an async reader, writer, and join handle.
+- `start(...)` splits the native serial port into an async reader, writer, and join handle and starts the actor tasks.
 - `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
-- Incoming `DATA` payloads are delivered through the response channel passed to `Actor::new(...)`.
+- Incoming `DATA` payloads are delivered through the response channel passed to `start(...)`.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
 
 Compile-time tunables (via `const_env`):
@@ -39,7 +39,7 @@ Compile-time tunables (via `const_env`):
 ## Usage
 
 ```rust
-use ashv2::{Actor, FlowControl, open};
+use ashv2::{FlowControl, open, start};
 use tokio::sync::mpsc::channel;
 
 #[tokio::main]
@@ -52,9 +52,8 @@ async fn main() {
     // Channel for inbound ASH DATA payloads from the NCP.
     let (response_tx, mut response_rx) = channel(64);
 
-    // Start ASH actor.
-    let actor = Actor::new(serial_port, response_tx, 64).expect("Failed to create actor");
-    let (tasks, handle) = actor.spawn();
+    // Start ASH actor tasks.
+    let (tasks, handle) = start(serial_port, response_tx);
 
     // Example EZSP "version" request payload.
     let request_payload = [0x00, 0x00, 0x00, 0x02].into_iter().collect();

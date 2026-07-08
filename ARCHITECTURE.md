@@ -7,18 +7,21 @@ The crate implements the host side of ASHv2 over a serial link to an NCP.
 
 ## High-Level Runtime Structure
 
-At runtime, the crate is centered around an actor with two asynchronous tasks:
+At runtime, the crate is centered around `start(...)`, which starts two asynchronous
+actor tasks:
 
 - `Transmitter`: owns serial writes and connection state.
 - `Receiver`: owns serial reads and inbound frame handling.
 
-`Actor::new(...)` splits the native serial port into an `async-serialport` reader,
-writer, and join handle. `Handle` is the user-facing send handle. Incoming payloads are
-pushed to a user-provided response channel.
+`start(...)` splits the native serial port into an `async-serialport` reader, writer,
+and join handle. It returns `Tasks`, which owns task shutdown and serial-port recovery,
+and `Handle`, the user-facing send handle. Incoming payloads are pushed to a
+user-provided response channel.
 
 ```mermaid
 flowchart TD
     App[Application]
+    Start[start]
     Handle[Handle]
     Tasks[Tasks]
     Tx[Transmitter task]
@@ -31,8 +34,11 @@ flowchart TD
     RespQ[(tokio mpsc Payload queue)]
     Serial[(SerialPort)]
 
+    App -->|serial port + response channel| Start
+    Start -->|returns| Handle
+    Start -->|returns| Tasks
+    Start --> Serial
     App -->|send payload| Handle
-    App -->|construct actor| Serial
     Serial --> Split
     Split --> Reader
     Split --> Writer
@@ -53,7 +59,7 @@ flowchart TD
 ## Core Modules and Responsibilities
 
 - `src/actor/*`
-  - Concurrency model, internal message bus, task lifecycle, graceful termination.
+  - `start(...)`, internal message bus, task lifecycle, graceful termination.
 - `src/actor/receiver/async_buf_stream.rs`
   - Byte-at-a-time stream wrapper around Tokio's chunked reader stream.
 - `src/actor/receiver/buffer.rs`
@@ -93,7 +99,7 @@ stateDiagram-v2
 ### Outbound path (App -> NCP)
 
 1. App calls `Handle::send(payload).await`.
-2. Handle sends `Message::Payload` into the transmitter queue with a oneshot response channel.
+2. `Handle` sends `Message::Payload` into the transmitter queue with a oneshot response channel.
 3. Transmitter creates a `DATA` frame:
    - sets frame number (`Seq`, modulo 8),
    - sets current ACK number,
@@ -168,6 +174,13 @@ flowchart TD
     Transmitter --> TxBuffer
     TxBuffer --> Writer
 ```
+
+## Shutdown Path
+
+`Tasks::terminate().await` stops the receiver loop, asks the transmitter to terminate, joins
+both actor tasks, and then joins the `async-serialport` handle to return the original serial
+port. Termination failures are reported through the crate's custom `Error` type, which wraps
+message-send failures and Tokio join failures.
 
 ## Frame Types and Purpose
 

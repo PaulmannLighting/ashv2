@@ -18,11 +18,10 @@ mod receiver;
 mod tasks;
 mod transmitter;
 
-/// Creates a new actor with the given serial port and queue lengths.
+/// Start the `ASHv2` actor tasks for the given serial port.
 ///
-/// # Errors
-///
-/// Returns a [`serialport::Error`] if the serial port cannot be cloned.
+/// The response channel receives inbound `DATA` payloads from the NCP. Its capacity is also
+/// used for the actor's internal message queue.
 pub fn start<T>(serial_port: T, response: Sender<Payload>) -> (Tasks<T>, Handle)
 where
     T: SerialPort + 'static,

@@ -5,9 +5,12 @@ use tokio::task::JoinError;
 
 use crate::actor::message::Message;
 
+/// Error returned when terminating actor tasks fails.
 #[derive(Debug)]
 pub enum Error {
+    /// Sending the termination message to the transmitter failed.
     Send(SendError<Message>),
+    /// Joining one of the actor or serial worker tasks failed.
     Join(JoinError),
 }
 
