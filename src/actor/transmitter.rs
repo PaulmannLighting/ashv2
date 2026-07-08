@@ -2,9 +2,10 @@ use std::io;
 use std::io::ErrorKind;
 use std::time::{Duration, Instant};
 
+use async_serialport::Writer;
 use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::spawn;
+use tokio::sync::mpsc::{Receiver, WeakSender};
 use tokio::sync::oneshot;
 use tokio::time::sleep;
 
@@ -28,10 +29,10 @@ const REQUEUE_DELAY: Duration = Duration::from_millis(REQUEUE_DELAY_MILLIS);
 
 /// `ASHv2` transmitter.
 #[derive(Debug)]
-pub struct Transmitter<T> {
-    buffer: Buffer<T>,
+pub struct Transmitter {
+    buffer: Buffer<Writer>,
     messages: Receiver<Message>,
-    requeue: Sender<Message>,
+    requeue: WeakSender<Message>,
     status: Status,
     last_rst_sent: Option<Instant>,
     transmissions: heapless::Vec<Transmission, TX_K>,
@@ -39,16 +40,16 @@ pub struct Transmitter<T> {
     ack_number: Seq,
 }
 
-impl<T> Transmitter<T> {
+impl Transmitter {
     /// Creates a new `ASHv2` transmitter.
     #[must_use]
     pub const fn new(
-        serial_port: T,
+        writer: Writer,
         messages: Receiver<Message>,
-        requeue: Sender<Message>,
+        requeue: WeakSender<Message>,
     ) -> Self {
         Self {
-            buffer: Buffer::new(serial_port),
+            buffer: Buffer::new(writer),
             messages,
             requeue,
             status: Status::Uninitialized,
@@ -60,14 +61,11 @@ impl<T> Transmitter<T> {
     }
 }
 
-impl<T> Transmitter<T>
-where
-    T: SerialPort + Sync,
-{
+impl Transmitter {
     /// Runs the transmitter, processing messages from the channel.
-    pub async fn run(mut self) -> T {
+    pub async fn run(mut self) {
         trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");
-        self.reset().unwrap_or_else(|error| {
+        self.reset().await.unwrap_or_else(|error| {
             error!("Failed to send initial RST frame: {error}");
         });
 
@@ -76,7 +74,7 @@ where
 
             if matches!(message, Message::Terminate) {
                 debug!("Terminating transmitter");
-                return self.buffer.into_inner();
+                return;
             }
 
             if let Err(error) = self.handle_message(message).await {
@@ -86,13 +84,12 @@ where
         }
 
         info!("Message channel closed, transmitter exiting.");
-        self.buffer.into_inner()
     }
 
     async fn handle_message(&mut self, message: Message) -> io::Result<()> {
         if self.status != Status::Connected {
             if let Message::RstAck(ack) = message {
-                return self.handle_rst_ack(ack);
+                return self.handle_rst_ack(ack).await;
             }
 
             // Only log if the connection has failed, not if it hasn't been established yet.
@@ -100,9 +97,9 @@ where
                 warn!("ASHv2 Connection failed. Resetting...");
             }
 
-            self.reset()?;
+            self.reset().await?;
             trace!("Re-queuing message: {message:?}");
-            self.requeue(message).await;
+            self.requeue(message);
             return Ok(());
         }
 
@@ -114,16 +111,16 @@ where
                 self.handle_payload(payload, response).await;
                 Ok(())
             }
-            Message::Ack(ack_num) => self.send_ack(ack_num),
-            Message::Nak(ack_num) => self.send_nak(ack_num),
-            Message::Rst(rst) => self.handle_rst(rst),
-            Message::RstAck(rst_ack) => self.handle_rst_ack(rst_ack),
-            Message::Error(error) => self.handle_error(error),
+            Message::Ack(ack_num) => self.send_ack(ack_num).await,
+            Message::Nak(ack_num) => self.send_nak(ack_num).await,
+            Message::Rst(rst) => self.handle_rst(rst).await,
+            Message::RstAck(rst_ack) => self.handle_rst_ack(rst_ack).await,
+            Message::Error(error) => self.handle_error(error).await,
             Message::AckSentFrame(frame_num) => {
                 self.ack_sent_frames(frame_num);
                 Ok(())
             }
-            Message::NakSentFrame(frame_num) => self.nak_sent_frames(frame_num),
+            Message::NakSentFrame(frame_num) => self.nak_sent_frames(frame_num).await,
             Message::Terminate => {
                 error!(
                     "Termination signal received. This should have already been handed in the main loop ."
@@ -143,8 +140,7 @@ where
             self.requeue(Message::Payload {
                 payload,
                 response_tx: response,
-            })
-            .await;
+            });
             return;
         }
 
@@ -153,30 +149,30 @@ where
         // fragmented messages if each DATA frame's ACK number is not increased.
         self.ack_number.increment();
         response
-            .send(self.transmit(data.into()))
+            .send(self.transmit(data.into()).await)
             .unwrap_or_else(|_| {
                 error!("Failed to send transmit result through response channel.");
             });
     }
 
-    fn send_ack(&mut self, ack_num: Seq) -> io::Result<()> {
+    async fn send_ack(&mut self, ack_num: Seq) -> io::Result<()> {
         self.ack_number = ack_num;
-        self.buffer.write_frame(Ack::new(ack_num, false))
+        self.buffer.write_frame(Ack::new(ack_num, false)).await
     }
 
-    fn send_nak(&mut self, ack_num: Seq) -> io::Result<()> {
-        self.buffer.write_frame(Nak::new(ack_num, false))
+    async fn send_nak(&mut self, ack_num: Seq) -> io::Result<()> {
+        self.buffer.write_frame(Nak::new(ack_num, false)).await
     }
 
     /// Handle RST frame received from the NCP.
-    fn handle_rst(&mut self, rst: Rst) -> io::Result<()> {
+    async fn handle_rst(&mut self, rst: Rst) -> io::Result<()> {
         error!("Received RST frame: {rst}, resetting connection.");
         self.status = Status::Failed;
-        self.reset()
+        self.reset().await
     }
 
     /// Handle RST ACK frame received from the NCP.
-    fn handle_rst_ack(&mut self, rst_ack: RstAck) -> io::Result<()> {
+    async fn handle_rst_ack(&mut self, rst_ack: RstAck) -> io::Result<()> {
         trace!("Received RST ACK frame: {rst_ack}, connection reset acknowledged.");
 
         if !rst_ack.is_ash_v2() {
@@ -191,7 +187,7 @@ where
                 Ok(())
             } else {
                 warn!("RST ACK received after timeout. Resetting connection again.");
-                self.reset()
+                self.reset().await
             }
         } else {
             warn!("Received unexpected RST ACK frame: {rst_ack}.");
@@ -200,10 +196,10 @@ where
     }
 
     /// Handle errors received from the NCP.
-    fn handle_error(&mut self, error: Error) -> io::Result<()> {
+    async fn handle_error(&mut self, error: Error) -> io::Result<()> {
         warn!("Transmitter encountered error: {error}, resetting connection.");
         self.status = Status::Failed;
-        self.reset()
+        self.reset().await
     }
 
     /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
@@ -227,7 +223,7 @@ where
     }
 
     /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    fn nak_sent_frames(&mut self, nak_num: Seq) -> io::Result<()> {
+    async fn nak_sent_frames(&mut self, nak_num: Seq) -> io::Result<()> {
         // Remove timed-out transmissions.
         self.transmissions
             .retain(|transmission| !transmission.is_timed_out(T_RX_ACK_MAX));
@@ -240,24 +236,24 @@ where
             .map(|index| self.transmissions.remove(index))
         {
             debug!("Retransmitting NAK'ed frame #{}", transmission.frame_num());
-            self.transmit(transmission)?;
+            self.transmit(transmission).await?;
         }
 
         Ok(())
     }
 
     /// Send a `DATA` frame.
-    fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
+    async fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
         let data = transmission.data_for_transmit()?;
         trace!("Transmitting frame {data:#04X}");
-        self.buffer.write_frame(data)?;
+        self.buffer.write_frame(data).await?;
         self.transmissions
             .insert(0, transmission)
             .map_err(|_| io::Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
     }
 
     /// Send RST frame to reset the connection.
-    fn reset(&mut self) -> io::Result<()> {
+    async fn reset(&mut self) -> io::Result<()> {
         if let Some(timestamp) = self.last_rst_sent.take()
             && timestamp.elapsed() < T_RSTACK_MAX
         {
@@ -267,7 +263,7 @@ where
         }
 
         self.last_rst_sent.replace(Instant::now());
-        self.buffer.write_frame(RST)
+        self.buffer.write_frame(RST).await
     }
 
     /// Returns the next frame number.
@@ -277,10 +273,17 @@ where
         frame_number
     }
 
-    async fn requeue(&self, message: Message) {
-        sleep(REQUEUE_DELAY).await;
-        self.requeue.send(message).await.unwrap_or_else(|error| {
-            error!("Failed to requeue payload message: {error}");
+    fn requeue(&self, message: Message) {
+        let requeue = self.requeue.clone();
+
+        spawn(async move {
+            sleep(REQUEUE_DELAY).await;
+
+            if let Some(sender) = requeue.upgrade() {
+                sender.send(message).await.unwrap_or_else(|error| {
+                    error!("Failed to requeue payload message: {error}");
+                });
+            }
         });
     }
 }

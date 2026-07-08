@@ -12,7 +12,7 @@ use const_env::env_item;
 
 pub use self::actor::{Actor, Handle, Tasks};
 pub use self::baud_rate::BaudRate;
-pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, TryCloneNative, open};
+pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, open};
 pub use self::types::Payload;
 
 /// Maximum payload size in bytes.
@@ -36,8 +36,6 @@ const REQUEUE_DELAY_MILLIS: u64 = 100;
 const VERSION: u8 = 0x02;
 
 mod actor;
-mod async_buf_stream;
-mod async_serial_port;
 mod baud_rate;
 mod code;
 mod frame;

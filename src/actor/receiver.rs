@@ -2,11 +2,12 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
+use async_serialport::Reader;
 use log::{debug, error, info, trace, warn};
-use serialport::SerialPort;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
+use self::async_buf_stream::AsyncBufStream;
 use self::buffer::Buffer;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
@@ -15,25 +16,23 @@ use crate::seq::Seq;
 use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::validate::Validate;
 
+mod async_buf_stream;
 mod buffer;
 
 /// `ASHv2` receiver.
 #[derive(Debug)]
-pub struct Receiver<T> {
-    buffer: Buffer<T>,
+pub struct Receiver {
+    buffer: Buffer<Reader>,
     response: Sender<Payload>,
     transmitter: Sender<Message>,
     last_received_frame_num: Option<Seq>,
 }
 
-impl<T> Receiver<T>
-where
-    T: SerialPort,
-{
+impl Receiver {
     /// Creates a new `ASHv2` receiver.
-    pub fn new(serial_port: T, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
+    pub fn new(reader: Reader, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
         Self {
-            buffer: Buffer::new(serial_port),
+            buffer: Buffer::new(reader),
             response,
             transmitter,
             last_received_frame_num: None,
@@ -41,10 +40,7 @@ where
     }
 }
 
-impl<T> Receiver<T>
-where
-    T: SerialPort + Sync,
-{
+impl Receiver {
     /// Runs the receiver loop.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");

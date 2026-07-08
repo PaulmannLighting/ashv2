@@ -8,10 +8,9 @@ use std::io::{ErrorKind, Result};
 use std::vec::Drain;
 
 use log::{debug, trace};
-use serialport::SerialPort;
+use tokio::io::AsyncRead;
 
-use crate::async_buf_stream::AsyncBufStream;
-use crate::async_serial_port::AsyncSerialPort;
+use super::AsyncBufStream;
 use crate::frame::Frame;
 use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Unstuff};
@@ -21,20 +20,20 @@ use crate::types::MAX_FRAME_SIZE;
 #[derive(Debug)]
 pub struct Buffer<T> {
     /// Byte stream backed by the receiver's serial port clone.
-    serial_port: AsyncBufStream<AsyncSerialPort<T>>,
+    serial_port: AsyncBufStream<T>,
     /// Accumulates the current raw frame until a `FLAG` byte terminates it.
     frame: Vec<u8>,
 }
 
 impl<T> Buffer<T>
 where
-    T: SerialPort,
+    T: AsyncRead,
 {
     /// Create a new receive buffer around a serial port.
     #[must_use]
     pub fn new(serial_port: T) -> Self {
         Self {
-            serial_port: AsyncBufStream::new(AsyncSerialPort(serial_port)),
+            serial_port: AsyncBufStream::new(serial_port),
             frame: Vec::with_capacity(MAX_FRAME_SIZE),
         }
     }
@@ -42,7 +41,7 @@ where
 
 impl<T> Buffer<T>
 where
-    T: SerialPort,
+    T: AsyncRead + Unpin,
 {
     /// Read the next complete `ASHv2` [`Frame`].
     ///

@@ -4,7 +4,7 @@ use core::fmt::{Display, UpperHex};
 use std::io::{self, Error};
 
 use log::{debug, trace};
-use serialport::SerialPort;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Stuff};
@@ -26,23 +26,18 @@ impl<T> Buffer<T> {
             frame: RawFrame::new(),
         }
     }
-
-    /// Return the inner serial port.
-    pub fn into_inner(self) -> T {
-        self.inner
-    }
 }
 
 impl<T> Buffer<T>
 where
-    T: SerialPort,
+    T: AsyncWrite + Unpin,
 {
     /// Write an `ASHv2` frame into the buffer.
     ///
     /// # Errors
     ///
     /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
-    pub fn write_frame<F>(&mut self, frame: F) -> io::Result<()>
+    pub async fn write_frame<F>(&mut self, frame: F) -> io::Result<()>
     where
         F: IntoIterator<Item = u8> + Display + UpperHex,
     {
@@ -57,7 +52,7 @@ where
             .push(ControlByte::Flag.into())
             .map_err(|byte| Error::other(format!("Frame buffer overflow: {byte:#04X}")))?;
         trace!("Writing bytes: {:#04X}", HexSlice::new(&self.frame));
-        self.inner.write_all(&self.frame)?;
-        self.inner.flush()
+        self.inner.write_all(&self.frame).await?;
+        self.inner.flush().await
     }
 }

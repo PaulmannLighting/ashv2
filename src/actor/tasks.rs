@@ -15,7 +15,8 @@ use crate::actor::{Receiver, Transmitter};
 /// Sender and receiver tasks wrapper to allow termination.
 #[derive(Debug)]
 pub struct Tasks<T> {
-    transmitter: JoinHandle<T>,
+    handle: JoinHandle<T>,
+    transmitter: JoinHandle<()>,
     receiver: JoinHandle<()>,
     sender: Sender<Message>,
     running: Arc<AtomicBool>,
@@ -23,16 +24,18 @@ pub struct Tasks<T> {
 
 impl<T> Tasks<T>
 where
-    T: SerialPort + Sync + 'static,
+    T: SerialPort + Send + 'static,
 {
     /// Crate new tasks.
     pub(crate) fn spawn(
-        transmitter: Transmitter<T>,
-        receiver: Receiver<T>,
+        handle: JoinHandle<T>,
+        transmitter: Transmitter,
+        receiver: Receiver,
         sender: Sender<Message>,
     ) -> Self {
         let running = Arc::new(AtomicBool::new(true));
         Self {
+            handle,
             transmitter: spawn(transmitter.run()),
             receiver: spawn(receiver.run(running.clone())),
             sender,
@@ -53,7 +56,8 @@ impl<T> Tasks<T> {
         self.running.store(false, Relaxed);
         self.receiver.await.map_err(Right)?;
         self.sender.send(Message::Terminate).await.map_err(Left)?;
-        let serial_port = self.transmitter.await.map_err(Right)?;
+        self.transmitter.await.map_err(Right)?;
+        let serial_port = self.handle.await.map_err(Right)?;
         Ok(serial_port)
     }
 }
