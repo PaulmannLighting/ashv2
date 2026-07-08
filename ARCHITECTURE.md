@@ -14,16 +14,18 @@ actor futures:
 - `Receiver`: owns serial reads and inbound frame handling.
 
 `start(...)` splits the native serial port into an `async-serialport` reader, writer,
-and worker future. It returns the worker, transmitter, and receiver futures, which the
-caller must spawn or poll on their async runtime, and `Handle`, the user-facing send
-handle. Incoming payloads are pushed to a user-provided response channel.
+and worker future. It returns `Handle`, the user-facing send handle, and a `Futures`
+container with the worker, transmitter, and receiver futures that the caller must spawn
+or poll on their async runtime. Incoming payloads are pushed to a user-provided response
+channel.
 
 ```mermaid
 flowchart TD
     App[Application]
     Start[start]
     Handle[Handle]
-    WorkerFuture[Serial worker future]
+    Futures[Futures]
+    Worker[Serial worker future]
     Tx[Transmitter future]
     Rx[Receiver future]
     Split[async-serialport split]
@@ -35,15 +37,16 @@ flowchart TD
 
     App -->|serial port + response channel| Start
     Start -->|returns| Handle
-    Start -->|returns| WorkerFuture
-    Start -->|returns| Tx
-    Start -->|returns| Rx
+    Start -->|returns| Futures
+    Futures --> Worker
+    Futures --> Tx
+    Futures --> Rx
     Start --> Serial
     App -->|send payload| Handle
     Serial --> Split
     Split --> Reader
     Split --> Writer
-    Split --> WorkerFuture
+    Split --> Worker
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
     Writer --> Tx
@@ -77,7 +80,7 @@ flowchart TD
 - `src/seq.rs`
   - 3-bit sequence number type with modulo-8 wraparound.
 
-## Connection and Task Lifecycle
+## Connection and Future Lifecycle
 
 The transmitter is the owner of connection state (`Uninitialized`, `Connected`, `Failed`).
 On startup it sends `RST`, waits for `RST-ACK`, and only then handles payload traffic normally.
@@ -143,11 +146,11 @@ sequenceDiagram
 
 ## Async Serial I/O Path
 
-The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a worker
+The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a `Worker`
 future that yields the original serial port when the worker command channel closes. The
-receiver side wraps the `Reader` in `ReaderStream` and stores the current chunk iterator
-in the receive buffer, so bytes after a completed frame remain available for the next read.
-The transmitter side writes fully encoded and stuffed frames through the async `Writer`.
+receiver side wraps the `Reader` in `ReaderStream` and stores the current chunk iterator in
+the receive buffer, so bytes after a completed frame remain available for the next read. The
+transmitter side writes fully encoded and stuffed frames through the async `Writer`.
 
 ```mermaid
 flowchart TD
@@ -155,7 +158,7 @@ flowchart TD
     Split[async-serialport split]
     Reader[Reader]
     Writer[Writer]
-    Worker[WorkerFuture]
+    Worker[Worker]
     Chunks[ReaderStream]
     RxBuffer[Receiver Buffer]
     TxBuffer[Transmitter Buffer]

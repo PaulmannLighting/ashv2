@@ -1,7 +1,7 @@
 //! Asynchronous Serial Host version 2 (`ASHv2`)
 //!
 //! This library implements the Asynchronous Serial Host version 2, `ASHv2` for short.
-//! It provides frame parsing and an actor runtime that manages the host-side serial link.
+//! It provides frame parsing and actor futures that manage the host-side serial link.
 //!
 //! You can find the protocol's definition on [siliconlabs.com](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-reference/).
 //!
@@ -10,7 +10,7 @@
 
 use const_env::env_item;
 
-pub use self::actor::{ActorFuture, Error, Handle, start};
+pub use self::actor::{Error, Futures, Handle, start};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, open};
 pub use self::types::Payload;

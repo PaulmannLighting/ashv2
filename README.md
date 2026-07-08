@@ -23,7 +23,8 @@ The crate currently provides:
 
 Important behavior details:
 
-- `start(...)` splits the native serial port into an async reader, writer, and worker future, then returns the worker, transmitter, and receiver futures for the caller to spawn or poll.
+- `start(...)` splits the native serial port into async worker, transmitter, and receiver futures, then returns them in
+  a named `Futures` container for the caller to spawn or poll.
 - The crate does not spawn Tokio tasks internally.
 - `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
 - `Handle::send(payload).await` returns `ErrorKind::NotConnected` while the ASH link is not established.
@@ -55,10 +56,10 @@ async fn main() {
     let (response_tx, mut response_rx) = channel(64);
 
     // Create ASH actor futures and spawn them on this application's runtime.
-    let (serial_worker, transmitter, receiver, handle) = start(serial_port, response_tx);
-    let serial_worker = tokio::spawn(serial_worker);
-    let transmitter = tokio::spawn(transmitter);
-    let receiver = tokio::spawn(receiver);
+    let (handle, futures) = start(serial_port, response_tx);
+    let serial_worker = tokio::spawn(futures.serial_worker);
+    let transmitter = tokio::spawn(futures.transmitter);
+    let receiver = tokio::spawn(futures.receiver);
 
     // Example EZSP "version" request payload.
     let request_payload = [0x00, 0x00, 0x00, 0x02].into_iter().collect();
