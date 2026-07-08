@@ -7,7 +7,7 @@ repository = "https://github.com/PaulmannLighting/ashv2"
 keywords = ["ASH", "async", "serial", "host"]
 categories = ["hardware-support", "network-programming"]
 documentation = "https://docs.rs/ashv2"
-version = "9.0.1"
+version = "10.0.0"
 edition = "2024"
 exclude = [".gitignore", ".github", "ARCHITECTURE.md", "TODO.md"]
 
@@ -15,7 +15,7 @@ exclude = [".gitignore", ".github", "ARCHITECTURE.md", "TODO.md"]
 all-features = true
 
 [dependencies]
-async-serialport = { version = "0.2" }
+async-serialport = { version = "0.3" }
 bitflags = "2"
 bytes = "1.12.0"
 const_env = "0.1"

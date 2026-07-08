@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use async_serialport::{AsyncSerialPort, WorkerFuture};
+use async_serialport::{AsyncSerialPort, Worker};
 use serialport::SerialPort;
 use tokio::sync::mpsc::{Sender, channel};
 
@@ -24,7 +24,7 @@ mod transmitter;
 pub fn start<T>(
     serial_port: T,
     response: Sender<Payload>,
-) -> (WorkerFuture<T>, ActorFuture<()>, ActorFuture<()>, Handle)
+) -> (Worker<T>, ActorFuture<()>, ActorFuture<()>, Handle)
 where
     T: SerialPort + 'static,
 {
