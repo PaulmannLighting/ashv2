@@ -19,6 +19,12 @@ criteria = "safe-to-deploy"
 delta = "8.1.0 -> 8.1.1"
 notes = "AI-assisted review: delta 8.1.0 -> 8.1.1. Workspace diff is limited to the crate version bump, package exclude metadata, lockfile updates, and removal of the unpublished audited_as entry. No ashv2 source code changed; the unescaper dependency update is audited separately."
 
+[[audits.async-serialport]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.1.0"
+notes = "AI-assisted review: audited async-serialport 0.1.0 full source from the local Cargo registry. Small Tokio adapter for serialport with no unsafe code and no build script. Runtime behavior is limited to spawning a worker task that owns the blocking serial port and services read, write, and flush requests over Tokio channels; no filesystem, network, process, or unrelated ambient capabilities."
+
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
