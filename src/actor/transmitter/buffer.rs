@@ -1,4 +1,4 @@
-//! Frame buffer for reading and writing ASH frames.
+//! Transmit-side frame buffer for `ASHv2` serial output.
 
 use core::fmt::{Display, UpperHex};
 use std::io::{self, Error};
@@ -10,15 +10,17 @@ use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Stuff};
 use crate::types::RawFrame;
 
-/// A buffer for reading and writing ASH frames.
+/// Transmit-side buffer that encodes `ASHv2` frames for serial writes.
 #[derive(Debug)]
 pub struct Buffer<T> {
+    /// Async writer for the serial transmit path.
     inner: T,
+    /// Reusable frame buffer used for stuffing and termination.
     frame: RawFrame,
 }
 
 impl<T> Buffer<T> {
-    /// Create a new `FrameBuffer` with the given inner reader and/or writer.
+    /// Create a new transmit buffer around an async writer.
     #[must_use]
     pub const fn new(inner: T) -> Self {
         Self {
@@ -36,7 +38,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns an [Error] if the write operation failed or a buffer overflow occurred.
+    /// Returns an error if the write operation failed or the frame buffer overflowed.
     pub async fn write_frame<F>(&mut self, frame: F) -> io::Result<()>
     where
         F: IntoIterator<Item = u8> + Display + UpperHex,

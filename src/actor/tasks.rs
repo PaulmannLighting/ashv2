@@ -26,7 +26,7 @@ impl<T> Tasks<T>
 where
     T: SerialPort + Send + 'static,
 {
-    /// Crate new tasks.
+    /// Create new tasks from a split serial port handle and actor components.
     pub(crate) fn spawn(
         handle: JoinHandle<T>,
         transmitter: Transmitter,

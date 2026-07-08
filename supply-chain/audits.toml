@@ -37,6 +37,12 @@ criteria = "safe-to-deploy"
 delta = "2.11.0 -> 2.13.0"
 notes = "AI-assisted review: delta 2.11.0 -> 2.13.0. Changes are primarily macro/docs/test updates plus new named-flag helpers (all_named, iter_equal_names, flag_name attribute processing). No new runtime I/O/network/process behavior and no new unsafe blocks in crate implementation path."
 
+[[audits.bytes]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "1.12.0"
+notes = "AI-assisted review: audited bytes 1.12.0 full source from the local Cargo registry. Widely used byte buffer crate; no build script or runtime filesystem/network/process behavior. Unsafe code is concentrated in documented buffer ownership, refcounting, slice, and MaybeUninit conversions for Bytes/BytesMut/BufMut; patterns preserve allocation ownership and initialized-length invariants."
+
 [[audits.cfg-if]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -96,6 +102,18 @@ The changes from 1.15.0 to 1.16.0 in the `either` crate are:
 The changes are all additions of new features and do not contain any `unsafe` code. The changes are safe.
 """
 
+[[audits.futures-core]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "AI-assisted review: audited futures-core 0.3.32 full source from the local Cargo registry. Core futures traits and AtomicWaker implementation only; no build script and no filesystem/network/process behavior. Unsafe code is limited to AtomicWaker synchronization, pinned stream projection, and Send/Sync impls with documented atomic-state invariants."
+
+[[audits.futures-sink]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "AI-assisted review: audited futures-sink 0.3.32 full source from the local Cargo registry. Defines the Sink trait and standard container impls; no build script and no filesystem/network/process behavior. Unsafe code is limited to pinned Vec/VecDeque get_unchecked_mut uses where those containers do not rely on pinning."
+
 [[audits.hash32]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -113,6 +131,18 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.1"
 notes = "This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
+
+[[audits.libudev]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.3.0"
+notes = "AI-assisted review: audited libudev 0.3.0 full source from the local Cargo registry. Safe wrapper over libudev FFI with explicit Context !Send/!Sync model, reference-counted handle ownership, CString conversion for inputs, null checks on returned pointers, and errno-to-Result mapping. Ambient behavior is limited to expected /sys/libudev device enumeration and monitor APIs."
+
+[[audits.libudev-sys]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.1.4"
+notes = "AI-assisted review: audited libudev-sys 0.1.4 full source from the local Cargo registry. Crate is direct FFI bindings to system libudev with opaque repr(C) handle types and extern declarations. Build script uses pkg-config to locate libudev and compiles a tiny rustc probe for optional hwdb support; no network behavior or code generation beyond the local probe."
 
 [[audits.log]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -156,6 +186,12 @@ criteria = "safe-to-deploy"
 version = "0.2.17"
 notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
+[[audits.pkg-config]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.3.33"
+notes = "AI-assisted review: audited pkg-config 0.3.33 full source from the local Cargo registry. Build-time helper that reads Cargo/pkg-config environment variables and invokes pkg-config/pkgconf as documented; no unsafe code. Command execution is the crate's intended behavior and is constrained to configured pkg-config probes."
+
 [[audits.serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -173,6 +209,18 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "2.0.117 -> 2.0.118"
 notes = "AI-assisted review: delta 2.0.117 -> 2.0.118. Changes are minor parser/docs/test maintenance (doc wording, lint attribute updates, small literal parsing match simplification, test fixture sync with rustc AST churn). No new runtime I/O/process/network capability; no new unsafe behavior surfaced for this update."
+
+[[audits.tokio-stream]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.1.18"
+notes = "AI-assisted review: audited tokio-stream 0.1.18 full source from the local Cargo registry. Tokio stream adapters and wrappers; no build script and no direct filesystem/process behavior in the enabled dependency path. Unsafe code is limited to marker Send/Sync impls for zero-state empty/pending stream types; network wrappers are thin adapters over Tokio types behind features."
+
+[[audits.tokio-util]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+version = "0.7.18"
+notes = "AI-assisted review: audited tokio-util 0.7.18 full source from the local Cargo registry. Tokio utility crate with no build script; enabled dependency path uses io utilities such as ReaderStream. Unsafe code reviewed in buffer initialization, Arc read initialization, manual pin projection, cancellation/reusable future helpers, and mpsc glue; unsafe blocks are localized and paired with documented pinning/initialization/ownership invariants. No unexpected filesystem/network/process behavior beyond feature-gated Tokio adapters."
 
 [[audits.unescaper]]
 who = "Richard Neumann <neumann@paulmann.de>"

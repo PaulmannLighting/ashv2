@@ -12,7 +12,9 @@ At runtime, the crate is centered around an actor with two asynchronous tasks:
 - `Transmitter`: owns serial writes and connection state.
 - `Receiver`: owns serial reads and inbound frame handling.
 
-`Handle` is the user-facing send handle. Incoming payloads are pushed to a user-provided response channel.
+`Actor::new(...)` splits the native serial port into an `async-serialport` reader,
+writer, and join handle. `Handle` is the user-facing send handle. Incoming payloads are
+pushed to a user-provided response channel.
 
 ```mermaid
 flowchart TD
@@ -21,31 +23,38 @@ flowchart TD
     Tasks[Tasks]
     Tx[Transmitter task]
     Rx[Receiver task]
-    AsyncSerial[AsyncSerialPort + AsyncBufStream]
+    Split[async-serialport split]
+    Reader[Reader + AsyncBufStream]
+    Writer[Writer]
+    Join[Serial join handle]
     MsgQ[(tokio mpsc Message queue)]
     RespQ[(tokio mpsc Payload queue)]
-    Serial[(SerialPort clone pair)]
+    Serial[(SerialPort)]
 
     App -->|send payload| Handle
+    App -->|construct actor| Serial
+    Serial --> Split
+    Split --> Reader
+    Split --> Writer
+    Split --> Join
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
-    Tx -->|write frames| Serial
-    Serial -->|read bytes| AsyncSerial
-    AsyncSerial -->|read frames| Rx
+    Writer --> Tx
+    Tx -->|write frames| Writer
+    Reader -->|read frames| Rx
     Rx -->|inbound payload| RespQ
     RespQ --> App
     Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
     Tasks --> Tx
     Tasks --> Rx
+    Tasks --> Join
 ```
 
 ## Core Modules and Responsibilities
 
 - `src/actor/*`
   - Concurrency model, internal message bus, task lifecycle, graceful termination.
-- `src/async_serial_port.rs`
-  - Tokio `AsyncRead` adapter for the receiver's cloned serial port.
-- `src/async_buf_stream.rs`
+- `src/actor/receiver/async_buf_stream.rs`
   - Byte-at-a-time stream wrapper around Tokio's chunked reader stream.
 - `src/actor/receiver/buffer.rs`
   - Receive-side byte scanning, control-byte handling, unstuffing, and frame parsing.
@@ -99,7 +108,7 @@ stateDiagram-v2
 
 ### Inbound path (NCP -> App)
 
-1. Receiver wraps its cloned serial port in `AsyncSerialPort`.
+1. `async-serialport` provides the receiver's async `Reader`.
 2. `AsyncBufStream` converts async read chunks into a byte-at-a-time stream.
 3. Receiver reads serial bytes until `FLAG`.
 4. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
@@ -128,28 +137,36 @@ sequenceDiagram
     Q->>A: Payload
 ```
 
-## Async Serial Receive Path
+## Async Serial I/O Path
 
-The receiver side adapts the cloned serial port into Tokio's async read model before frame
-parsing. `AsyncSerialPort` polls the serial port for available bytes, copies those bytes
-directly into Tokio's read buffer, and wakes the task again when no bytes are currently
-available. `AsyncBufStream` then turns the chunked async reads into individual bytes for
-the ASHv2 control-byte parser.
+The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a join
+handle that yields the original serial port during shutdown. The receiver side wraps the
+`Reader` in `AsyncBufStream`, turning chunked async reads into individual bytes for the
+ASHv2 control-byte parser. The transmitter side writes fully encoded and stuffed frames
+through the async `Writer`.
 
 ```mermaid
 flowchart TD
-    Port[(Receiver SerialPort clone)]
-    Adapter[AsyncSerialPort]
-    Reader[ReaderStream]
+    Port[(SerialPort)]
+    Split[async-serialport split]
+    Reader[Reader]
+    Writer[Writer]
+    Join[JoinHandle]
     Bytes[AsyncBufStream]
-    Buffer[Receiver Buffer]
+    RxBuffer[Receiver Buffer]
+    TxBuffer[Transmitter Buffer]
     Receiver[Receiver task]
+    Transmitter[Transmitter task]
 
-    Port --> Adapter
-    Adapter --> Reader
+    Port --> Split
+    Split --> Reader
+    Split --> Writer
+    Split --> Join
     Reader --> Bytes
-    Bytes --> Buffer
-    Buffer --> Receiver
+    Bytes --> RxBuffer
+    RxBuffer --> Receiver
+    Transmitter --> TxBuffer
+    TxBuffer --> Writer
 ```
 
 ## Frame Types and Purpose
