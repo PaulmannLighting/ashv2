@@ -14,36 +14,36 @@ actor futures:
 - `Receiver`: owns serial reads and inbound frame handling.
 
 `start(...)` splits the native serial port into an `async-serialport` reader, writer,
-and worker future. It returns `Futures`, which the caller must spawn or poll on their
-async runtime, and `Handle`, the user-facing send handle. Incoming payloads are pushed
-to a user-provided response channel.
+and worker future. It returns the worker, transmitter, and receiver futures, which the
+caller must spawn or poll on their async runtime, and `Handle`, the user-facing send
+handle. Incoming payloads are pushed to a user-provided response channel.
 
 ```mermaid
 flowchart TD
     App[Application]
     Start[start]
     Handle[Handle]
-    Futures[Futures]
-    Shutdown[Shutdown]
+    WorkerFuture[Serial worker future]
     Tx[Transmitter future]
     Rx[Receiver future]
     Split[async-serialport split]
     Reader[Reader + ReaderStream]
     Writer[Writer]
-    Worker[Serial worker future]
     MsgQ[(tokio mpsc Message queue)]
     RespQ[(tokio mpsc Payload queue)]
     Serial[(SerialPort)]
 
     App -->|serial port + response channel| Start
     Start -->|returns| Handle
-    Start -->|returns| Futures
+    Start -->|returns| WorkerFuture
+    Start -->|returns| Tx
+    Start -->|returns| Rx
     Start --> Serial
     App -->|send payload| Handle
     Serial --> Split
     Split --> Reader
     Split --> Writer
-    Split --> Worker
+    Split --> WorkerFuture
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
     Writer --> Tx
@@ -52,11 +52,8 @@ flowchart TD
     Rx -->|inbound payload| RespQ
     RespQ --> App
     Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
-    Futures --> Tx
-    Futures --> Rx
-    Futures --> Worker
-    Futures --> Shutdown
-    Shutdown -->|Message::Terminate| MsgQ
+    Handle -->|Message::Terminate| MsgQ
+    Tx -->|sets running=false on exit| Rx
 ```
 
 ## Core Modules and Responsibilities
@@ -178,11 +175,12 @@ flowchart TD
 
 ## Shutdown Path
 
-`Shutdown::terminate().await` stops the receiver loop and asks the transmitter to terminate.
-The caller owns the returned futures and is responsible for joining or otherwise observing
-them on their async runtime. The serial worker future resolves with the original serial port
-after the reader and writer handles have been dropped. Termination failures are reported
-through the crate's custom `Error` type, which wraps message-send failures.
+`Handle::terminate().await` asks the transmitter to terminate. When the transmitter exits
+its main loop, it clears the shared running flag observed by the receiver. The caller owns
+the returned futures and is responsible for joining or otherwise observing them on their
+async runtime. The serial worker future resolves with the original serial port after the
+reader and writer handles have been dropped. Termination failures are reported through the
+crate's custom `Error` type, which wraps message-send failures.
 
 ## Frame Types and Purpose
 

@@ -1,11 +1,11 @@
 use std::io;
-use std::io::Error;
 
 use log::trace;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::oneshot::channel;
 
 use crate::Payload;
+use crate::actor::Error;
 use crate::actor::message::Message;
 use crate::hex_slice::HexSlice;
 
@@ -32,9 +32,19 @@ impl Handle {
                 response_tx,
             })
             .await
-            .map_err(Error::other)?;
+            .map_err(io::Error::other)?;
 
-        response_rx.await.map_err(Error::other)?
+        response_rx.await.map_err(io::Error::other)?
+    }
+
+    /// Request actor termination.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error`] if sending the termination message to the transmitter fails.
+    pub async fn terminate(&self) -> Result<(), Error> {
+        self.inner.send(Message::Terminate).await?;
+        Ok(())
     }
 }
 

@@ -1,5 +1,8 @@
 use std::io;
 use std::io::ErrorKind;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 
 use async_serialport::Writer;
@@ -62,7 +65,7 @@ impl Transmitter {
 
 impl Transmitter {
     /// Runs the transmitter, processing messages from the channel.
-    pub async fn run(mut self) {
+    pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");
         self.reset().await.unwrap_or_else(|error| {
             error!("Failed to send initial RST frame: {error}");
@@ -73,7 +76,7 @@ impl Transmitter {
 
             if matches!(message, Message::Terminate) {
                 debug!("Terminating transmitter");
-                return;
+                break;
             }
 
             if let Err(error) = self.handle_message(message).await {
@@ -82,7 +85,8 @@ impl Transmitter {
             }
         }
 
-        info!("Message channel closed, transmitter exiting.");
+        running.store(false, Relaxed);
+        info!("Transmitter loop terminated.");
     }
 
     async fn handle_message(&mut self, message: Message) -> io::Result<()> {
