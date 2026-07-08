@@ -1,4 +1,8 @@
-//! Frame buffer for reading and writing ASH frames.
+//! Receive-side frame buffer for `ASHv2` serial input.
+//!
+//! The buffer consumes one byte at a time from the async serial stream, applies `ASHv2`
+//! control-byte handling, un-stuffs completed frames, and converts the resulting bytes into
+//! typed [`Frame`] values.
 
 use std::io::{ErrorKind, Result};
 use std::vec::Drain;
@@ -13,19 +17,20 @@ use crate::hex_slice::HexSlice;
 use crate::protocol::{ControlByte, Unstuff};
 use crate::types::MAX_FRAME_SIZE;
 
-/// A buffer for reading and writing ASH frames.
+/// Receive-side buffer that reconstructs `ASHv2` frames from serial bytes.
 #[derive(Debug)]
 pub struct Buffer<T> {
+    /// Byte stream backed by the receiver's serial port clone.
     serial_port: AsyncBufStream<AsyncSerialPort<T>>,
+    /// Accumulates the current raw frame until a `FLAG` byte terminates it.
     frame: Vec<u8>,
 }
 
-/// The `FrameBuffer` can read `ASHv2` frames if `T` implements [`Read`].
 impl<T> Buffer<T>
 where
     T: SerialPort,
 {
-    /// Create a new `FrameBuffer` with the given inner reader and/or writer.
+    /// Create a new receive buffer around a serial port.
     #[must_use]
     pub fn new(serial_port: T) -> Self {
         Self {
@@ -39,11 +44,15 @@ impl<T> Buffer<T>
 where
     T: SerialPort,
 {
-    /// Read an `ASHv2` [`Frame`].
+    /// Read the next complete `ASHv2` [`Frame`].
+    ///
+    /// The method waits until a complete frame is terminated by `FLAG`, then applies byte
+    /// unstuffing and frame parsing before returning.
     ///
     /// # Errors
     ///
-    /// Returns an [`Error`] if any I/O, protocol or parsing error occurs.
+    /// Returns an error if serial I/O fails, the byte stream ends before another frame is
+    /// available, or the completed frame cannot be parsed.
     pub async fn read_frame(&mut self) -> Result<Option<Frame>> {
         self.read_raw_frame().await?.try_into().map(Some)
     }

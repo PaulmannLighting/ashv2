@@ -21,6 +21,7 @@ flowchart TD
     Tasks[Tasks]
     Tx[Transmitter task]
     Rx[Receiver task]
+    AsyncSerial[AsyncSerialPort + AsyncBufStream]
     MsgQ[(tokio mpsc Message queue)]
     RespQ[(tokio mpsc Payload queue)]
     Serial[(SerialPort clone pair)]
@@ -29,7 +30,8 @@ flowchart TD
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
     Tx -->|write frames| Serial
-    Serial -->|read frames| Rx
+    Serial -->|read bytes| AsyncSerial
+    AsyncSerial -->|read frames| Rx
     Rx -->|inbound payload| RespQ
     RespQ --> App
     Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
@@ -41,6 +43,14 @@ flowchart TD
 
 - `src/actor/*`
   - Concurrency model, internal message bus, task lifecycle, graceful termination.
+- `src/async_serial_port.rs`
+  - Tokio `AsyncRead` adapter for the receiver's cloned serial port.
+- `src/async_buf_stream.rs`
+  - Byte-at-a-time stream wrapper around Tokio's chunked reader stream.
+- `src/actor/receiver/buffer.rs`
+  - Receive-side byte scanning, control-byte handling, unstuffing, and frame parsing.
+- `src/actor/transmitter/buffer.rs`
+  - Transmit-side frame serialization, byte stuffing, frame termination, and serial writes.
 - `src/frame/*`
   - Frame data structures and binary conversion for `DATA`, `ACK`, `NAK`, `RST`, `RST-ACK`, `ERROR`.
 - `src/frame/headers/*`
@@ -89,10 +99,12 @@ stateDiagram-v2
 
 ### Inbound path (NCP -> App)
 
-1. Receiver reads serial bytes until `FLAG`.
-2. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
-3. Parsed bytes are converted into a typed frame and CRC-validated.
-4. Receiver behavior by frame type:
+1. Receiver wraps its cloned serial port in `AsyncSerialPort`.
+2. `AsyncBufStream` converts async read chunks into a byte-at-a-time stream.
+3. Receiver reads serial bytes until `FLAG`.
+4. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
+5. Parsed bytes are converted into a typed frame and CRC-validated.
+6. Receiver behavior by frame type:
    - `DATA`: sequence check, send `ACK` or `NAK`, unmask payload, forward to response channel.
    - `ACK`: notify transmitter to retire sent frames up to ACK number.
    - `NAK`: notify transmitter to retransmit matching sent frame.
@@ -114,6 +126,30 @@ sequenceDiagram
     R->>T: Message::AckSentFrame / NakSentFrame
     R->>Q: unmasked payload
     Q->>A: Payload
+```
+
+## Async Serial Receive Path
+
+The receiver side adapts the cloned serial port into Tokio's async read model before frame
+parsing. `AsyncSerialPort` polls the serial port for available bytes, copies those bytes
+directly into Tokio's read buffer, and wakes the task again when no bytes are currently
+available. `AsyncBufStream` then turns the chunked async reads into individual bytes for
+the ASHv2 control-byte parser.
+
+```mermaid
+flowchart TD
+    Port[(Receiver SerialPort clone)]
+    Adapter[AsyncSerialPort]
+    Reader[ReaderStream]
+    Bytes[AsyncBufStream]
+    Buffer[Receiver Buffer]
+    Receiver[Receiver task]
+
+    Port --> Adapter
+    Adapter --> Reader
+    Reader --> Bytes
+    Bytes --> Buffer
+    Buffer --> Receiver
 ```
 
 ## Frame Types and Purpose

@@ -1,7 +1,9 @@
-//! Tokio `AsyncRead` adapter for serial ports used by the receiver.
+//! Tokio [`AsyncRead`] adapter for serial ports used by the receiver.
 //!
-//! The adapter polls the underlying blocking [`SerialPort`] for the number of available bytes and
-//! copies those bytes into Tokio's [`ReadBuf`] when data is ready.
+//! The receiver owns a cloned serial port handle and wraps it in [`AsyncSerialPort`] so the
+//! inbound path can use Tokio I/O utilities. The adapter checks the underlying blocking
+//! [`SerialPort`] for the number of available bytes and copies those bytes directly into
+//! Tokio's [`ReadBuf`] when data is ready.
 
 use std::io::Result;
 use std::pin::Pin;
@@ -10,9 +12,16 @@ use std::task::{Context, Poll};
 use serialport::SerialPort;
 use tokio::io::{AsyncRead, ReadBuf};
 
-/// `AsyncRead` wrapper around a serial port.
+/// Async read wrapper around a serial port.
+///
+/// This type is internal to the actor runtime. It does not make the wrapped serial port
+/// itself non-blocking; it adapts the port's readiness query and read operation to
+/// Tokio's [`AsyncRead`] polling interface.
 #[derive(Debug)]
-pub struct AsyncSerialPort<T>(pub(crate) T);
+pub struct AsyncSerialPort<T>(
+    /// Wrapped serial port handle.
+    pub(crate) T,
+);
 
 impl<T> Unpin for AsyncSerialPort<T> {}
 

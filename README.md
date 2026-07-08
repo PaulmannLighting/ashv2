@@ -16,12 +16,14 @@ The crate currently provides:
 - CRC-16 validation/generation for all supported frame types.
 - Byte stuffing/unstuffing and ASH payload randomization (masking/unmasking).
 - An async actor runtime (`Actor`) with separate transmitter/receiver tasks.
+- An internal async serial receive path built from `AsyncSerialPort` and `AsyncBufStream`.
 - Automatic initial reset handshake (`RST` -> `RST-ACK`) before normal traffic.
 - Automatic handling of inbound `ACK`/`NAK` and retransmission of queued `DATA` frames.
 - Automatic reset/recovery on protocol errors (`ERROR`, `RST`, and selected I/O failures).
 
 Important behavior details:
 
+- `Actor::new(...)` clones the native serial port so the transmitter owns writes while the receiver owns reads.
 - `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
 - Incoming `DATA` payloads are delivered through the response channel passed to `Actor::new(...)`.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
