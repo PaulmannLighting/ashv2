@@ -8,7 +8,7 @@ use std::io::{ErrorKind, Result};
 use std::vec::Drain;
 
 use bytes::Bytes;
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
@@ -62,7 +62,7 @@ where
     }
 
     async fn read_raw_frame(&mut self) -> Result<Drain<'_, u8>> {
-        self.frame.clear();
+        self.reset_frame();
         let mut error = false;
 
         while let Some(byte) = self.next_byte().await? {
@@ -70,7 +70,7 @@ where
                 Ok(control_byte) => match control_byte {
                     ControlByte::Cancel => {
                         trace!("Resetting buffer due to cancel byte.");
-                        self.frame.clear();
+                        self.reset_frame();
                         error = false;
                     }
                     ControlByte::Flag => {
@@ -81,13 +81,14 @@ where
                             trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
                             self.frame.unstuff();
                             trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.frame));
+                            self.warn_if_frame_exceeds_max_frame_size();
                             return Ok(self.frame.drain(..));
                         }
 
                         trace!("Resetting buffer due to error or empty buffer.");
                         trace!("Error condition was: {error}");
                         trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
-                        self.frame.clear();
+                        self.reset_frame();
                         error = false;
                     }
                     ControlByte::Substitute => {
@@ -115,6 +116,7 @@ where
         }
 
         trace!("Buffer state: {:#04X}", HexSlice::new(&self.frame));
+        self.warn_if_frame_exceeds_max_frame_size();
         Err(ErrorKind::UnexpectedEof.into())
     }
 
@@ -133,6 +135,17 @@ where
             }
         }
     }
+
+    fn reset_frame(&mut self) {
+        self.frame.clear();
+        self.frame.shrink_to(MAX_FRAME_SIZE);
+    }
+
+    fn warn_if_frame_exceeds_max_frame_size(&self) {
+        if self.frame.len() > MAX_FRAME_SIZE {
+            warn!("Receiver frame buffer exceeded maximum frame size of {MAX_FRAME_SIZE} bytes.");
+        }
+    }
 }
 
 #[cfg(test)]
@@ -145,6 +158,7 @@ mod tests {
 
     const FIRST_FRAME_BYTE: u8 = 0x01;
     const SECOND_FRAME_BYTE: u8 = 0x02;
+    const EXTRA_FRAME_BYTES: usize = 1;
 
     #[test]
     fn read_raw_frame_keeps_remaining_chunk_bytes() {
@@ -169,6 +183,36 @@ mod tests {
 
                 assert_eq!(first_frame, [FIRST_FRAME_BYTE]);
                 assert_eq!(second_frame, [SECOND_FRAME_BYTE]);
+            });
+    }
+
+    #[test]
+    fn read_raw_frame_shrinks_before_reading_again() {
+        Builder::new_current_thread()
+            .build()
+            .expect("runtime should build")
+            .block_on(async {
+                let flag = u8::from(ControlByte::Flag);
+                let mut input = vec![FIRST_FRAME_BYTE; MAX_FRAME_SIZE + EXTRA_FRAME_BYTES];
+                input.push(flag);
+                input.push(SECOND_FRAME_BYTE);
+                input.push(flag);
+                let mut buffer = Buffer::new(Cursor::new(input));
+
+                let oversized_frame: Vec<_> = buffer
+                    .read_raw_frame()
+                    .await
+                    .expect("oversized frame should be readable")
+                    .collect();
+                let second_frame: Vec<_> = buffer
+                    .read_raw_frame()
+                    .await
+                    .expect("second frame should be readable")
+                    .collect();
+
+                assert_eq!(oversized_frame.len(), MAX_FRAME_SIZE + EXTRA_FRAME_BYTES);
+                assert_eq!(second_frame, [SECOND_FRAME_BYTE]);
+                assert!(buffer.frame.capacity() <= MAX_FRAME_SIZE);
             });
     }
 }
