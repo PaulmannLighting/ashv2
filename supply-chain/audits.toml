@@ -31,6 +31,12 @@ criteria = "safe-to-deploy"
 delta = "9.0.1 -> 10.0.0"
 notes = "AI-assisted review: delta 9.0.1 -> 10.0.0. This release updates to async-serialport 0.3.0, removes internal Tokio spawning from the public start path, and makes start return a Handle plus a named Futures container containing the serial Worker and opaque transmitter/receiver futures for caller-owned spawning. It removes the old Tasks/Shutdown/custom termination error API, moves termination signaling to Handle::terminate, has the transmitter clear the receiver running flag on exit, keeps full transmission-window requests requeued without delay, and confines Tokio rt usage to dev tests. The crate still denies unsafe code; no new ambient capability beyond the existing serial I/O path. async-serialport 0.3.0 is audited separately."
 
+[[audits.ashv2]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "10.0.0 -> 10.0.2"
+notes = "AI-assisted review: delta 10.0.0 -> 10.0.2. Changes are limited to the crate version bump and transmitter behavior before connection establishment: non-RST-ACK messages are requeued immediately and the reset path is driven instead of rejecting them with NotConnected. No dependency changes, unsafe code, build script changes, filesystem/network/process behavior, or new ambient capabilities were introduced."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
