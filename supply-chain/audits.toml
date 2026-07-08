@@ -25,6 +25,12 @@ criteria = "safe-to-deploy"
 delta = "8.1.1 -> 9.0.1"
 notes = "AI-assisted review: delta 8.1.1 -> 9.0.1. This release removes the public Actor constructor in favor of exported start(), moves serial I/O to the external async-serialport worker-future split, adapts task shutdown to a custom termination error, and rewrites the receiver buffering path to use ReaderStream chunks directly while preserving bytes after frame boundaries and shrinking the frame buffer before reads. Crate still denies unsafe code; no new ambient capability beyond the existing serial I/O path. Dependency updates to async-serialport 0.2.0 and bytes 1.12.1 are audited separately."
 
+[[audits.ashv2]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "9.0.1 -> 10.0.0"
+notes = "AI-assisted review: delta 9.0.1 -> 10.0.0. This release updates to async-serialport 0.3.0, removes internal Tokio spawning from the public start path, and makes start return a Handle plus a named Futures container containing the serial Worker and opaque transmitter/receiver futures for caller-owned spawning. It removes the old Tasks/Shutdown/custom termination error API, moves termination signaling to Handle::terminate, has the transmitter clear the receiver running flag on exit, keeps full transmission-window requests requeued without delay, and confines Tokio rt usage to dev tests. The crate still denies unsafe code; no new ambient capability beyond the existing serial I/O path. async-serialport 0.3.0 is audited separately."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -36,6 +42,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "0.1.0 -> 0.2.0"
 notes = "AI-assisted review: delta 0.1.0 -> 0.2.0. The crate becomes runtime-agnostic by returning a WorkerFuture from split instead of calling tokio::spawn, and narrows Tokio library features to sync/io-util with runtime only in dev-deps. Reader/writer/worker protocol remains the same; no unsafe code, build script, filesystem/network/process behavior, or new ambient capabilities."
+
+[[audits.async-serialport]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "0.2.0 -> 0.3.0"
+notes = "AI-assisted review: delta 0.2.0 -> 0.3.0. The crate replaces the boxed WorkerFuture alias with a public concrete Worker<T> future that owns the serial port and command receiver, implements Future by polling the existing mpsc receiver directly, and returns the serial port when senders close. Reader/writer message handling remains equivalent; no unsafe code, build script, filesystem/network/process behavior, or new ambient capabilities were introduced."
 
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
