@@ -25,9 +25,12 @@ log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
 serialport = { version = "4", default-features = false }
-tokio = { version = "1", default-features = false, features = ["io-util", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", default-features = false, features = ["io-util", "sync"] }
 tokio-stream = "0.1.18"
 tokio-util = { version = "0.7.18", features = ["io"] }
+
+[dev-dependencies]
+tokio = { version = "1", default-features = false, features = ["rt"] }
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

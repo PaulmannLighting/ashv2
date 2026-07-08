@@ -7,42 +7,43 @@ The crate implements the host side of ASHv2 over a serial link to an NCP.
 
 ## High-Level Runtime Structure
 
-At runtime, the crate is centered around `start(...)`, which starts two asynchronous
-actor tasks:
+At runtime, the crate is centered around `start(...)`, which creates two asynchronous
+actor futures:
 
 - `Transmitter`: owns serial writes and connection state.
 - `Receiver`: owns serial reads and inbound frame handling.
 
 `start(...)` splits the native serial port into an `async-serialport` reader, writer,
-and join handle. It returns `Tasks`, which owns task shutdown and serial-port recovery,
-and `Handle`, the user-facing send handle. Incoming payloads are pushed to a
-user-provided response channel.
+and worker future. It returns `Futures`, which the caller must spawn or poll on their
+async runtime, and `Handle`, the user-facing send handle. Incoming payloads are pushed
+to a user-provided response channel.
 
 ```mermaid
 flowchart TD
     App[Application]
     Start[start]
     Handle[Handle]
-    Tasks[Tasks]
-    Tx[Transmitter task]
-    Rx[Receiver task]
+    Futures[Futures]
+    Shutdown[Shutdown]
+    Tx[Transmitter future]
+    Rx[Receiver future]
     Split[async-serialport split]
     Reader[Reader + ReaderStream]
     Writer[Writer]
-    Join[Serial join handle]
+    Worker[Serial worker future]
     MsgQ[(tokio mpsc Message queue)]
     RespQ[(tokio mpsc Payload queue)]
     Serial[(SerialPort)]
 
     App -->|serial port + response channel| Start
     Start -->|returns| Handle
-    Start -->|returns| Tasks
+    Start -->|returns| Futures
     Start --> Serial
     App -->|send payload| Handle
     Serial --> Split
     Split --> Reader
     Split --> Writer
-    Split --> Join
+    Split --> Worker
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
     Writer --> Tx
@@ -51,15 +52,17 @@ flowchart TD
     Rx -->|inbound payload| RespQ
     RespQ --> App
     Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
-    Tasks --> Tx
-    Tasks --> Rx
-    Tasks --> Join
+    Futures --> Tx
+    Futures --> Rx
+    Futures --> Worker
+    Futures --> Shutdown
+    Shutdown -->|Message::Terminate| MsgQ
 ```
 
 ## Core Modules and Responsibilities
 
 - `src/actor/*`
-  - `start(...)`, internal message bus, task lifecycle, graceful termination.
+  - `start(...)`, internal message bus, future lifecycle, graceful termination signaling.
 - `src/actor/receiver/buffer.rs`
   - Receive-side chunk buffering, byte scanning, control-byte handling, unstuffing, and frame parsing.
 - `src/actor/transmitter/buffer.rs`
@@ -86,7 +89,7 @@ On startup it sends `RST`, waits for `RST-ACK`, and only then handles payload tr
 stateDiagram-v2
     [*] --> Uninitialized
     Uninitialized --> Connected: valid RST-ACK (version=2, in time)
-    Uninitialized --> Uninitialized: resend RST / requeue messages
+    Uninitialized --> Uninitialized: resend RST / reject messages
     Connected --> Failed: I/O error or inbound RST/ERROR
     Failed --> Uninitialized: reset() sends RST
     Connected --> Connected: DATA/ACK/NAK exchange
@@ -143,11 +146,11 @@ sequenceDiagram
 
 ## Async Serial I/O Path
 
-The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a join
-handle that yields the original serial port during shutdown. The receiver side wraps the
-`Reader` in `ReaderStream` and stores the current chunk iterator in the receive buffer, so
-bytes after a completed frame remain available for the next read. The transmitter side
-writes fully encoded and stuffed frames through the async `Writer`.
+The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a worker
+future that yields the original serial port when the worker command channel closes. The
+receiver side wraps the `Reader` in `ReaderStream` and stores the current chunk iterator
+in the receive buffer, so bytes after a completed frame remain available for the next read.
+The transmitter side writes fully encoded and stuffed frames through the async `Writer`.
 
 ```mermaid
 flowchart TD
@@ -155,17 +158,17 @@ flowchart TD
     Split[async-serialport split]
     Reader[Reader]
     Writer[Writer]
-    Join[JoinHandle]
+    Worker[WorkerFuture]
     Chunks[ReaderStream]
     RxBuffer[Receiver Buffer]
     TxBuffer[Transmitter Buffer]
-    Receiver[Receiver task]
-    Transmitter[Transmitter task]
+    Receiver[Receiver future]
+    Transmitter[Transmitter future]
 
     Port --> Split
     Split --> Reader
     Split --> Writer
-    Split --> Join
+    Split --> Worker
     Reader --> Chunks
     Chunks --> RxBuffer
     RxBuffer --> Receiver
@@ -175,10 +178,11 @@ flowchart TD
 
 ## Shutdown Path
 
-`Tasks::terminate().await` stops the receiver loop, asks the transmitter to terminate, joins
-both actor tasks, and then joins the `async-serialport` handle to return the original serial
-port. Termination failures are reported through the crate's custom `Error` type, which wraps
-message-send failures and Tokio join failures.
+`Shutdown::terminate().await` stops the receiver loop and asks the transmitter to terminate.
+The caller owns the returned futures and is responsible for joining or otherwise observing
+them on their async runtime. The serial worker future resolves with the original serial port
+after the reader and writer handles have been dropped. Termination failures are reported
+through the crate's custom `Error` type, which wraps message-send failures.
 
 ## Frame Types and Purpose
 
@@ -207,6 +211,8 @@ message-send failures and Tokio join failures.
 ## Reliability and Retransmission Model
 
 - Sliding window capacity is `TX_K` (default `5`), stored in a fixed-capacity queue.
+- Payload requests are requeued without delay when the sliding window is full.
+- Payload sends fail with `ErrorKind::NotConnected` until the initial reset handshake completes.
 - Each queued transmission tracks:
   - send time (`Instant`),
   - frame number,
@@ -289,7 +295,6 @@ Compile-time environment overridable constants:
 - `ASHV2_T_RSTACK_MAX_MILLIS` (default `3200`)
 - `ASHV2_TX_K` (default `5`)
 - `ASHV2_T_RX_ACK_MAX_MILLIS` (default `3200`)
-- `ASHV2_REQUEUE_DELAY_MILLIS` (default `100`)
 
 ## CI and Quality Gates
 

@@ -1,67 +1,77 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
-use serialport::SerialPort;
+use async_serialport::WorkerFuture;
 use tokio::sync::mpsc::WeakSender;
-use tokio::task::JoinHandle;
 
 pub use self::error::Error;
 use crate::actor::message::Message;
 
 mod error;
 
-/// Running `ASHv2` actor tasks.
+/// Boxed actor future returned by [`crate::start`].
+pub type ActorFuture<T> = Pin<Box<dyn Future<Output = T> + Send + 'static>>;
+
+/// `ASHv2` futures that must be driven by the caller's async runtime.
 ///
-/// `Tasks` owns the spawned receiver, transmitter, and serial worker handles. Use
-/// [`Tasks::terminate`] to shut them down and recover the original serial port.
-#[derive(Debug)]
-pub struct Tasks<T> {
-    handle: JoinHandle<T>,
-    transmitter: JoinHandle<()>,
-    receiver: JoinHandle<()>,
-    sender: WeakSender<Message>,
-    running: Arc<AtomicBool>,
+/// Spawn or otherwise poll all three futures to run the serial worker, transmitter,
+/// and receiver. Use [`Shutdown`] to request graceful termination.
+pub struct Futures<T> {
+    /// Future that drives the blocking serial-port worker and returns the serial port.
+    pub serial_port: WorkerFuture<T>,
+    /// Future that drives outbound `ASHv2` frame transmission.
+    pub transmitter: ActorFuture<()>,
+    /// Future that drives inbound `ASHv2` frame reception.
+    pub receiver: ActorFuture<()>,
+    /// Handle used to request graceful termination of the receiver and transmitter.
+    pub shutdown: Shutdown,
 }
 
-impl<T> Tasks<T>
-where
-    T: SerialPort + Send + 'static,
-{
-    /// Create new tasks from a split serial port handle and actor components.
+impl<T> Futures<T> {
+    /// Create actor futures from split serial port and actor components.
     pub(crate) const fn new(
-        handle: JoinHandle<T>,
-        transmitter: JoinHandle<()>,
-        receiver: JoinHandle<()>,
-        sender: WeakSender<Message>,
-        running: Arc<AtomicBool>,
+        serial_port: WorkerFuture<T>,
+        transmitter: ActorFuture<()>,
+        receiver: ActorFuture<()>,
+        shutdown: Shutdown,
     ) -> Self {
         Self {
-            handle,
+            serial_port,
             transmitter,
             receiver,
-            sender,
-            running,
+            shutdown,
         }
     }
 }
 
-impl<T> Tasks<T> {
-    /// Terminate the actor tasks and return the original serial port.
+/// Handle used to request graceful termination of the actor futures.
+#[derive(Clone, Debug)]
+pub struct Shutdown {
+    sender: WeakSender<Message>,
+    running: Arc<AtomicBool>,
+}
+
+impl Shutdown {
+    /// Create a new shutdown handle.
+    pub(crate) const fn new(sender: WeakSender<Message>, running: Arc<AtomicBool>) -> Self {
+        Self { sender, running }
+    }
+
+    /// Request actor termination.
     ///
     /// # Errors
     ///
-    /// Returns [`Error`] if sending the termination message fails or joining any task fails.
-    pub async fn terminate(self) -> Result<T, Error> {
+    /// Returns [`Error`] if sending the termination message to the transmitter fails.
+    pub async fn terminate(&self) -> Result<(), Error> {
         self.running.store(false, Relaxed);
-        self.receiver.await?;
 
         if let Some(sender) = self.sender.upgrade() {
             sender.send(Message::Terminate).await?;
         }
 
-        self.transmitter.await?;
-        let serial_port = self.handle.await?;
-        Ok(serial_port)
+        Ok(())
     }
 }

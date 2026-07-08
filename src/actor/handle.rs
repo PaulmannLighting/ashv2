@@ -20,7 +20,7 @@ impl Handle {
     ///
     /// # Errors
     ///
-    /// Returns an error if the actor task is no longer accepting messages or if the
+    /// Returns an error if the actor futures are no longer accepting messages or if the
     /// transmitter fails to write the payload.
     pub async fn send(&self, payload: Payload) -> io::Result<()> {
         let (response_tx, response_rx) = channel();

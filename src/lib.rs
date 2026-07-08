@@ -10,7 +10,7 @@
 
 use const_env::env_item;
 
-pub use self::actor::{Error, Handle, Tasks, start};
+pub use self::actor::{ActorFuture, Error, Futures, Handle, Shutdown, start};
 pub use self::baud_rate::BaudRate;
 pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, open};
 pub use self::types::Payload;
@@ -29,9 +29,6 @@ const TX_K: usize = 5;
 
 #[env_item("ASHV2_T_RX_ACK_MAX_MILLIS")]
 const T_RX_ACK_MAX_MILLIS: u64 = 3200;
-
-#[env_item("ASHV2_REQUEUE_DELAY_MILLIS")]
-const REQUEUE_DELAY_MILLIS: u64 = 100;
 
 const VERSION: u8 = 0x02;
 

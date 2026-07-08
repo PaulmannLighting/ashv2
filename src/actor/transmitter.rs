@@ -4,10 +4,7 @@ use std::time::{Duration, Instant};
 
 use async_serialport::Writer;
 use log::{debug, error, info, trace, warn};
-use tokio::spawn;
 use tokio::sync::mpsc::{Receiver, WeakSender};
-use tokio::sync::oneshot;
-use tokio::time::sleep;
 
 use self::buffer::Buffer;
 use self::transmission::Transmission;
@@ -16,7 +13,7 @@ use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
 use crate::seq::Seq;
 use crate::status::Status;
 use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::{REQUEUE_DELAY_MILLIS, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
+use crate::{T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
 
 mod buffer;
 mod transmission;
@@ -25,7 +22,9 @@ mod transmission;
 const T_RSTACK_MAX: Duration = Duration::from_millis(T_RSTACK_MAX_MILLIS);
 
 const T_RX_ACK_MAX: Duration = Duration::from_millis(T_RX_ACK_MAX_MILLIS);
-const REQUEUE_DELAY: Duration = Duration::from_millis(REQUEUE_DELAY_MILLIS);
+
+const CONNECTION_NOT_ESTABLISHED: &str = "ASHv2 connection is not established";
+const TRANSMITTER_CHANNEL_CLOSED: &str = "ASHv2 transmitter channel is closed";
 
 /// `ASHv2` transmitter.
 #[derive(Debug)]
@@ -98,19 +97,19 @@ impl Transmitter {
             }
 
             self.reset().await?;
-            trace!("Re-queuing message: {message:?}");
-            self.requeue(message);
-            return Ok(());
+            warn!("Rejecting message while connection is not established: {message}");
+            return Self::reject_message(
+                message,
+                ErrorKind::NotConnected,
+                CONNECTION_NOT_ESTABLISHED,
+            );
         }
 
         match message {
             Message::Payload {
                 payload,
                 response_tx: response,
-            } => {
-                self.handle_payload(payload, response).await;
-                Ok(())
-            }
+            } => self.handle_payload(payload, response).await,
             Message::Ack(ack_num) => self.send_ack(ack_num).await,
             Message::Nak(ack_num) => self.send_nak(ack_num).await,
             Message::Rst(rst) => self.handle_rst(rst).await,
@@ -133,15 +132,16 @@ impl Transmitter {
     async fn handle_payload(
         &mut self,
         payload: Box<Payload>,
-        response: oneshot::Sender<io::Result<()>>,
-    ) {
+        response: tokio::sync::oneshot::Sender<io::Result<()>>,
+    ) -> io::Result<()> {
         if self.transmissions.is_full() {
-            warn!("Insufficient space in transmission queue for payload, requeuing...");
-            self.requeue(Message::Payload {
-                payload,
-                response_tx: response,
-            });
-            return;
+            warn!("Insufficient space in transmission queue for payload, requeueing.");
+            return self
+                .requeue(Message::Payload {
+                    payload,
+                    response_tx: response,
+                })
+                .await;
         }
 
         let data = Data::new(self.next_frame_number(), self.ack_number, *payload);
@@ -153,6 +153,7 @@ impl Transmitter {
             .unwrap_or_else(|_| {
                 error!("Failed to send transmit result through response channel.");
             });
+        Ok(())
     }
 
     async fn send_ack(&mut self, ack_num: Seq) -> io::Result<()> {
@@ -273,17 +274,41 @@ impl Transmitter {
         frame_number
     }
 
-    fn requeue(&self, message: Message) {
-        let requeue = self.requeue.clone();
-
-        spawn(async move {
-            sleep(REQUEUE_DELAY).await;
-
-            if let Some(sender) = requeue.upgrade() {
-                sender.send(message).await.unwrap_or_else(|error| {
-                    error!("Failed to requeue payload message: {error}");
+    fn reject_message(message: Message, kind: ErrorKind, reason: &'static str) -> io::Result<()> {
+        if let Message::Payload { response_tx, .. } = message {
+            response_tx
+                .send(Err(io::Error::new(kind, reason)))
+                .unwrap_or_else(|_| {
+                    error!("Failed to send transmit result through response channel.");
                 });
+        }
+
+        Err(io::Error::new(kind, reason))
+    }
+
+    async fn requeue(&self, message: Message) -> io::Result<()> {
+        let Some(sender) = self.requeue.upgrade() else {
+            return Self::reject_message(
+                message,
+                ErrorKind::BrokenPipe,
+                TRANSMITTER_CHANNEL_CLOSED,
+            );
+        };
+
+        sender.send(message).await.map_err(|error| {
+            let message = error.0;
+            if let Message::Payload { response_tx, .. } = message {
+                response_tx
+                    .send(Err(io::Error::new(
+                        ErrorKind::BrokenPipe,
+                        TRANSMITTER_CHANNEL_CLOSED,
+                    )))
+                    .unwrap_or_else(|_| {
+                        error!("Failed to send transmit result through response channel.");
+                    });
             }
-        });
+
+            io::Error::new(ErrorKind::BrokenPipe, TRANSMITTER_CHANNEL_CLOSED)
+        })
     }
 }
