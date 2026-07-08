@@ -19,11 +19,23 @@ criteria = "safe-to-deploy"
 delta = "8.1.0 -> 8.1.1"
 notes = "AI-assisted review: delta 8.1.0 -> 8.1.1. Workspace diff is limited to the crate version bump, package exclude metadata, lockfile updates, and removal of the unpublished audited_as entry. No ashv2 source code changed; the unescaper dependency update is audited separately."
 
+[[audits.ashv2]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "8.1.1 -> 9.0.1"
+notes = "AI-assisted review: delta 8.1.1 -> 9.0.1. This release removes the public Actor constructor in favor of exported start(), moves serial I/O to the external async-serialport worker-future split, adapts task shutdown to a custom termination error, and rewrites the receiver buffering path to use ReaderStream chunks directly while preserving bytes after frame boundaries and shrinking the frame buffer before reads. Crate still denies unsafe code; no new ambient capability beyond the existing serial I/O path. Dependency updates to async-serialport 0.2.0 and bytes 1.12.1 are audited separately."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.1.0"
 notes = "AI-assisted review: audited async-serialport 0.1.0 full source from the local Cargo registry. Small Tokio adapter for serialport with no unsafe code and no build script. Runtime behavior is limited to spawning a worker task that owns the blocking serial port and services read, write, and flush requests over Tokio channels; no filesystem, network, process, or unrelated ambient capabilities."
+
+[[audits.async-serialport]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "0.1.0 -> 0.2.0"
+notes = "AI-assisted review: delta 0.1.0 -> 0.2.0. The crate becomes runtime-agnostic by returning a WorkerFuture from split instead of calling tokio::spawn, and narrows Tokio library features to sync/io-util with runtime only in dev-deps. Reader/writer/worker protocol remains the same; no unsafe code, build script, filesystem/network/process behavior, or new ambient capabilities."
 
 [[audits.autocfg]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -48,6 +60,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "1.12.0"
 notes = "AI-assisted review: audited bytes 1.12.0 full source from the local Cargo registry. Widely used byte buffer crate; no build script or runtime filesystem/network/process behavior. Unsafe code is concentrated in documented buffer ownership, refcounting, slice, and MaybeUninit conversions for Bytes/BytesMut/BufMut; patterns preserve allocation ownership and initialized-length invariants."
+
+[[audits.bytes]]
+who = "Richard Neumann <neumann@paulmann.de>"
+criteria = "safe-to-deploy"
+delta = "1.12.0 -> 1.12.1"
+notes = "AI-assisted review: delta 1.12.0 -> 1.12.1. Changes are focused on panic-safety for vector-backed shared state by allocating MaybeUninit<Shared> before rebuilding/owning vector buffers, then initializing in place. No new ambient filesystem/network/process/FFI behavior; unsafe changes remain localized to existing buffer ownership/allocation invariants."
 
 [[audits.cfg-if]]
 who = "Richard Neumann <neumann@paulmann.de>"

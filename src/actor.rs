@@ -33,7 +33,13 @@ where
     let transmitter = spawn(Transmitter::new(writer, inbox, sender.downgrade()).run());
 
     (
-        Tasks::new(handle, transmitter, receiver, sender.downgrade(), running),
+        Tasks::new(
+            spawn(handle),
+            transmitter,
+            receiver,
+            sender.downgrade(),
+            running,
+        ),
         sender.into(),
     )
 }
