@@ -5,8 +5,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::{Duration, Instant};
 
-use async_serialport::Writer;
 use log::{debug, error, info, trace, warn};
+use tokio::io::AsyncWrite;
 use tokio::sync::mpsc::{Receiver, WeakSender};
 
 use self::buffer::Buffer;
@@ -30,8 +30,8 @@ const TRANSMITTER_CHANNEL_CLOSED: &str = "ASHv2 transmitter channel is closed";
 
 /// `ASHv2` transmitter.
 #[derive(Debug)]
-pub struct Transmitter {
-    buffer: Buffer<Writer>,
+pub struct Transmitter<T> {
+    buffer: Buffer<T>,
     messages: Receiver<Message>,
     requeue: WeakSender<Message>,
     status: Status,
@@ -41,14 +41,10 @@ pub struct Transmitter {
     ack_number: Seq,
 }
 
-impl Transmitter {
+impl<T> Transmitter<T> {
     /// Creates a new `ASHv2` transmitter.
     #[must_use]
-    pub const fn new(
-        writer: Writer,
-        messages: Receiver<Message>,
-        requeue: WeakSender<Message>,
-    ) -> Self {
+    pub const fn new(writer: T, messages: Receiver<Message>, requeue: WeakSender<Message>) -> Self {
         Self {
             buffer: Buffer::new(writer),
             messages,
@@ -62,7 +58,10 @@ impl Transmitter {
     }
 }
 
-impl Transmitter {
+impl<T> Transmitter<T>
+where
+    T: AsyncWrite + Sync + Unpin,
+{
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");

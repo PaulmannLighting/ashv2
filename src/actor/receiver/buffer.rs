@@ -35,9 +35,9 @@ where
 {
     /// Create a new receive buffer around a serial port.
     #[must_use]
-    pub fn new(serial_port: T) -> Self {
+    pub fn new(reader: T) -> Self {
         Self {
-            reader: ReaderStream::new(serial_port),
+            reader: ReaderStream::new(reader),
             chunk: Bytes::new().into_iter(),
             frame: Vec::with_capacity(MAX_FRAME_SIZE),
         }

@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
-use async_serialport::Reader;
 use log::{debug, error, info, trace, warn};
+use tokio::io::AsyncRead;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
@@ -19,16 +19,19 @@ mod buffer;
 
 /// `ASHv2` receiver.
 #[derive(Debug)]
-pub struct Receiver {
-    buffer: Buffer<Reader>,
+pub struct Receiver<R> {
+    buffer: Buffer<R>,
     response: Sender<Payload>,
     transmitter: Sender<Message>,
     last_received_frame_num: Option<Seq>,
 }
 
-impl Receiver {
+impl<R> Receiver<R>
+where
+    R: AsyncRead,
+{
     /// Creates a new `ASHv2` receiver.
-    pub fn new(reader: Reader, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
+    pub fn new(reader: R, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
         Self {
             buffer: Buffer::new(reader),
             response,
@@ -38,7 +41,10 @@ impl Receiver {
     }
 }
 
-impl Receiver {
+impl<R> Receiver<R>
+where
+    R: AsyncRead + Sync + Unpin,
+{
     /// Runs the receiver loop.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
         trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");

@@ -11,8 +11,6 @@
 use const_env::env_item;
 
 pub use self::actor::{Futures, Handle, start};
-pub use self::baud_rate::BaudRate;
-pub use self::serial_port::{FlowControl, NativeSerialPort, SerialPort, open};
 pub use self::types::Payload;
 
 /// Maximum payload size in bytes.
@@ -33,13 +31,11 @@ const T_RX_ACK_MAX_MILLIS: u64 = 3200;
 const VERSION: u8 = 0x02;
 
 mod actor;
-mod baud_rate;
 mod code;
 mod frame;
 mod hex_slice;
 mod protocol;
 mod seq;
-mod serial_port;
 mod status;
 mod types;
 mod validate;
