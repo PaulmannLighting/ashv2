@@ -2,8 +2,6 @@
 
 use bitflags::bitflags;
 
-use crate::seq::Seq;
-
 /// Data frame header.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Header(u8);
@@ -24,10 +22,10 @@ bitflags! {
 impl Header {
     /// Creates a new data header.
     #[must_use]
-    pub const fn new(frame_num: Seq, retransmit: bool, ack_num: Seq) -> Self {
+    pub const fn new(frame_num: u8, retransmit: bool, ack_num: u8) -> Self {
         let mut raw = Self::FRAME_NUM.bits()
-            & (frame_num.as_u8() << Self::FRAME_NUM.bits().trailing_zeros())
-            | Self::ACK_NUM.bits() & ack_num.as_u8();
+            & (frame_num << Self::FRAME_NUM.bits().trailing_zeros())
+            | Self::ACK_NUM.bits() & ack_num;
 
         if retransmit {
             raw |= Self::RETRANSMIT.bits();
@@ -38,17 +36,14 @@ impl Header {
 
     /// Returns the frame number.
     #[must_use]
-    pub fn frame_num(self) -> Seq {
-        Seq::try_from(
-            (self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros(),
-        )
-        .expect("Seq always fits.")
+    pub const fn frame_num(self) -> u8 {
+        (self.bits() & Self::FRAME_NUM.bits()) >> Self::FRAME_NUM.bits().trailing_zeros()
     }
 
     /// Returns the ACK number.
     #[must_use]
-    pub fn ack_num(self) -> Seq {
-        Seq::try_from(self.bits() & Self::ACK_NUM.bits()).expect("Seq always fits.")
+    pub const fn ack_num(self) -> u8 {
+        self.bits() & Self::ACK_NUM.bits()
     }
 }
 

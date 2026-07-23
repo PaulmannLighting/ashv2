@@ -30,12 +30,13 @@ const T_RX_ACK_MAX_MILLIS: u64 = 3200;
 
 const VERSION: u8 = 0x02;
 
+const SEQ_MASK: u8 = 0b0000_0111;
+
 mod actor;
 mod code;
 mod frame;
 mod hex_slice;
 mod protocol;
-mod seq;
 mod status;
 mod types;
 mod validate;

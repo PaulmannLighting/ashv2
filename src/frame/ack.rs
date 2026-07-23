@@ -7,7 +7,6 @@ use std::vec::Drain;
 
 use super::headers::ack::Header;
 use crate::hex_slice::HexSlice;
-use crate::seq::Seq;
 use crate::validate::{CRC, Validate};
 
 /// Acknowledgement (`ACK`) frame.
@@ -20,7 +19,7 @@ pub struct Ack {
 impl Ack {
     /// Creates a new ACK frame.
     #[must_use]
-    pub const fn new(ack_num: Seq, n_rdy: bool) -> Self {
+    pub const fn new(ack_num: u8, n_rdy: bool) -> Self {
         let header = Header::new(ack_num, n_rdy);
 
         Self {
@@ -37,7 +36,7 @@ impl Ack {
 
     /// Returns the acknowledgement number.
     #[must_use]
-    pub fn ack_num(self) -> Seq {
+    pub const fn ack_num(self) -> u8 {
         self.header.ack_num()
     }
 }
@@ -135,8 +134,8 @@ mod tests {
 
     #[test]
     fn test_ack_num() {
-        assert_eq!(ACK1.ack_num().as_u8(), 1);
-        assert_eq!(ACK2.ack_num().as_u8(), 6);
+        assert_eq!(ACK1.ack_num(), 1);
+        assert_eq!(ACK2.ack_num(), 6);
     }
 
     #[test]

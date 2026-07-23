@@ -6,7 +6,6 @@ use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
 use crate::frame::Data;
-use crate::seq::Seq;
 
 const ACK_TIMEOUTS: usize = 4;
 
@@ -21,7 +20,7 @@ pub struct Transmission {
 impl Transmission {
     /// Return the frame number of the transmitted data.
     #[must_use]
-    pub fn frame_num(&self) -> Seq {
+    pub const fn frame_num(&self) -> u8 {
         self.data.frame_num()
     }
 
@@ -83,11 +82,10 @@ impl From<Data> for Transmission {
 mod tests {
     use super::Transmission;
     use crate::frame::Data;
-    use crate::seq::Seq;
 
     #[test]
     fn test_new() {
-        let data = Data::new(Seq::default(), Seq::default(), heapless::Vec::new());
+        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
         let transmission: Transmission = data.into();
         assert_eq!(transmission.transmits, 0);
         assert!(!transmission.data.is_retransmission());
@@ -95,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_transmit() {
-        let data = Data::new(Seq::default(), Seq::default(), heapless::Vec::new());
+        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
         let mut transmission: Transmission = data.into();
         let data = transmission.data_for_transmit().unwrap();
         assert!(!data.is_retransmission());
@@ -104,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_retransmit() {
-        let data = Data::new(Seq::default(), Seq::default(), heapless::Vec::new());
+        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
         let mut transmission: Transmission = data.into();
         let _transmit = transmission.data_for_transmit().unwrap();
         let retransmit = transmission.data_for_transmit().unwrap();

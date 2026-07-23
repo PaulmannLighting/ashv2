@@ -1,3 +1,4 @@
+use std::ops::BitAnd;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
@@ -8,10 +9,10 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::SendError;
 
 use self::buffer::Buffer;
+use crate::SEQ_MASK;
 use crate::actor::message::Message;
 use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
 use crate::protocol::Mask;
-use crate::seq::Seq;
 use crate::types::{MAX_FRAME_SIZE, Payload};
 use crate::validate::Validate;
 
@@ -23,7 +24,7 @@ pub struct Receiver<R> {
     buffer: Buffer<R>,
     response: Sender<Payload>,
     transmitter: Sender<Message>,
-    last_received_frame_num: Option<Seq>,
+    last_received_frame_num: Option<u8>,
 }
 
 impl<R> Receiver<R>
@@ -74,9 +75,10 @@ where
     /// Returns the ACK number.
     ///
     /// This is equal to the last received frame number plus one.
-    fn ack_number(&self) -> Seq {
+    fn ack_number(&self) -> u8 {
         self.last_received_frame_num
-            .map_or_else(Seq::default, Seq::next)
+            .map_or(0x00, |frame_num| frame_num.wrapping_add(1))
+            .bitand(SEQ_MASK)
     }
 
     async fn handle_frame(&mut self, frame: Frame) -> Result<(), SendError<Message>> {
@@ -188,12 +190,12 @@ where
     }
 
     /// Acknowledge sent frames up to `ack_num`.
-    async fn ack_sent_frames(&self, ack_num: Seq) -> Result<(), SendError<Message>> {
+    async fn ack_sent_frames(&self, ack_num: u8) -> Result<(), SendError<Message>> {
         self.transmitter.send(Message::AckSentFrame(ack_num)).await
     }
 
     /// Negative acknowledge sent frames up to `ack_num`.
-    async fn nak_sent_frames(&self, ack_num: Seq) -> Result<(), SendError<Message>> {
+    async fn nak_sent_frames(&self, ack_num: u8) -> Result<(), SendError<Message>> {
         self.transmitter.send(Message::NakSentFrame(ack_num)).await
     }
 }

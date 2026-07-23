@@ -196,7 +196,7 @@ mod tests {
         match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Ack(ack) => {
                 assert!(!ack.not_ready());
-                assert_eq!(ack.ack_num().as_u8(), 1);
+                assert_eq!(ack.ack_num(), 1);
                 assert_eq!(ack.crc(), 0x6059);
                 assert!(ack.validate().is_ok());
             }
@@ -208,7 +208,7 @@ mod tests {
         match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Ack(ack) => {
                 assert!(ack.not_ready());
-                assert_eq!(ack.ack_num().as_u8(), 0x06);
+                assert_eq!(ack.ack_num(), 0x06);
                 assert_eq!(ack.crc(), 0x91B6);
                 assert!(ack.validate().is_ok());
             }
@@ -223,7 +223,7 @@ mod tests {
         match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Nak(nak) => {
                 assert!(!nak.not_ready());
-                assert_eq!(nak.ack_num().as_u8(), 0x06);
+                assert_eq!(nak.ack_num(), 0x06);
                 assert_eq!(nak.crc(), 0x34DC);
                 assert!(nak.validate().is_ok());
             }
@@ -235,7 +235,7 @@ mod tests {
         match Frame::try_from(buffer.drain(..buffer.len().saturating_sub(1))).unwrap() {
             Frame::Nak(nak) => {
                 assert!(nak.not_ready());
-                assert_eq!(nak.ack_num().as_u8(), 0x05);
+                assert_eq!(nak.ack_num(), 0x05);
                 assert_eq!(nak.crc(), 0x85B7);
                 assert!(nak.validate().is_ok());
             }

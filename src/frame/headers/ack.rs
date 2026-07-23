@@ -2,8 +2,6 @@
 
 use bitflags::bitflags;
 
-use crate::seq::Seq;
-
 /// Acknowledgement (`ACK`) frame header.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Header(u8);
@@ -24,8 +22,8 @@ bitflags! {
 impl Header {
     /// Creates a new ACK header.
     #[must_use]
-    pub const fn new(ack_num: Seq, n_rdy: bool) -> Self {
-        let mut raw = Self::DEFAULT.bits() | Self::ACK_NUM.bits() & ack_num.as_u8();
+    pub const fn new(ack_num: u8, n_rdy: bool) -> Self {
+        let mut raw = Self::DEFAULT.bits() | Self::ACK_NUM.bits() & ack_num;
 
         if n_rdy {
             raw |= Self::NOT_READY.bits();
@@ -36,27 +34,26 @@ impl Header {
 
     /// Returns the ACK number.
     #[must_use]
-    pub fn ack_num(self) -> Seq {
-        Seq::try_from(self.bits() & Self::ACK_NUM.bits()).expect("Seq always fits.")
+    pub const fn ack_num(self) -> u8 {
+        self.bits() & Self::ACK_NUM.bits()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Header;
-    use crate::seq::Seq;
 
     #[test]
     fn test_new() {
-        let ack = Header::new(Seq::try_from(3).expect("Seq fits."), false);
-        assert_eq!(ack.ack_num().as_u8(), 3);
+        let ack = Header::new(3, false);
+        assert_eq!(ack.ack_num(), 3);
         assert!(!ack.contains(Header::NOT_READY));
     }
 
     #[test]
     fn test_new_nrdy() {
-        let ack = Header::new(Seq::try_from(3).expect("Seq fits."), true);
-        assert_eq!(ack.ack_num().as_u8(), 3);
+        let ack = Header::new(3, true);
+        assert_eq!(ack.ack_num(), 3);
         assert!(ack.contains(Header::NOT_READY));
     }
 }

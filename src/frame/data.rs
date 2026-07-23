@@ -9,7 +9,6 @@ use super::headers::data::Header;
 use crate::MAX_PAYLOAD_SIZE;
 use crate::hex_slice::HexSlice;
 use crate::protocol::Mask;
-use crate::seq::Seq;
 use crate::types::Payload;
 use crate::validate::{CRC, Validate};
 
@@ -34,7 +33,7 @@ impl Data {
 
     /// Creates a new data frame.
     #[must_use]
-    pub fn new(frame_num: Seq, ack_num: Seq, mut payload: Payload) -> Self {
+    pub fn new(frame_num: u8, ack_num: u8, mut payload: Payload) -> Self {
         let header = Header::new(frame_num, false, ack_num);
         payload.mask();
 
@@ -47,13 +46,13 @@ impl Data {
 
     /// Returns the frame number.
     #[must_use]
-    pub fn frame_num(&self) -> Seq {
+    pub const fn frame_num(&self) -> u8 {
         self.header.frame_num()
     }
 
     /// Returns the acknowledgment number.
     #[must_use]
-    pub fn ack_num(&self) -> Seq {
+    pub const fn ack_num(&self) -> u8 {
         self.header.ack_num()
     }
 
@@ -196,7 +195,7 @@ mod tests {
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert_eq!(data.frame_num().as_u8(), 2);
+        assert_eq!(data.frame_num(), 2);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
@@ -207,7 +206,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert_eq!(data.frame_num().as_u8(), 5);
+        assert_eq!(data.frame_num(), 5);
     }
 
     #[test]
@@ -218,7 +217,7 @@ mod tests {
             payload: [0x00, 0x00, 0x00, 0x02].as_slice().try_into().unwrap(),
             crc: 0x1AAD,
         };
-        assert_eq!(data.ack_num().as_u8(), 5);
+        assert_eq!(data.ack_num(), 5);
 
         // EZSP "version" response: 00 80 00 02 02 11 30
         let data = Data {
@@ -229,7 +228,7 @@ mod tests {
                 .unwrap(),
             crc: 0x6316,
         };
-        assert_eq!(data.ack_num().as_u8(), 3);
+        assert_eq!(data.ack_num(), 3);
     }
 
     #[test]
