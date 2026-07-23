@@ -19,11 +19,11 @@ bitflags = "2"
 bytes = "1"
 const_env = "0.1"
 crc = "3"
-ezsp = { version = "13", path = "../ezsp", optional = true }
+ezsp = { version = "13", optional = true }
 heapless = "0.9"
 le-stream = { version = "10", optional = true }
 log = "0.4"
-num-derive = "0.4"
+num-derive = "0.5"
 num-traits = "0.2"
 tokio = { version = "1", default-features = false, features = ["io-util", "sync"] }
 tokio-stream = "0.1"
