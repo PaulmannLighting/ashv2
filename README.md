@@ -33,8 +33,12 @@ Important behavior details:
 - `start(...)` returns transmitter and receiver futures in a named `Futures` container for the
   caller to spawn or poll.
 - The crate does not spawn Tokio tasks internally.
+- The transmitter terminates after every `Handle` clone has been dropped and the outbound message
+  queue has been drained. There is no terminate message.
+- When the transmitter terminates, it signals the receiver to terminate as well.
 - `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
-- `Handle::send(payload).await` returns `ErrorKind::NotConnected` while the ASH link is not established.
+- Payload requests made before the ASH link is established remain queued while the initial reset
+  handshake is driven.
 - When the transmit window is full, the transmitter requeues the payload request without delay.
 - Incoming `DATA` payloads are delivered through the response channel passed to `start(...)`.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
@@ -79,11 +83,9 @@ where
         println!("Received response payload: {response_payload:?}");
     }
 
-    // Request actor shutdown. The application owns the spawned tasks.
-    handle
-        .terminate()
-        .await
-        .expect("Failed to request actor termination");
+    // Dropping the final Handle closes the outbound queue. The transmitter
+    // drains that queue, terminates, and signals the receiver to terminate.
+    drop(handle);
     transmitter.await.expect("Transmitter task failed");
     receiver.await.expect("Receiver task failed");
 }
@@ -93,21 +95,26 @@ The reader and writer can come from any transport integration. For a bidirection
 implements both traits, use that transport's split operation (for example,
 `tokio::io::split`) before calling `start(...)`.
 
+Every clone of `Handle`, including a handle used through the optional EZSP transmitter adapter,
+must be dropped before termination can begin.
+
 ## EZSP integration
 
 Enable the `ezsp` feature to get typed EZSP adapters:
 
 ```toml
 [dependencies]
-ashv2 = { version = "10", features = ["ezsp"] }
+ashv2 = { version = "11", features = ["ezsp"] }
 ```
 
 With the feature enabled:
 
-- `ashv2::ezsp::Transmitter` wraps an [`ashv2::Handle`](https://docs.rs/ashv2/latest/ashv2/struct.Handle.html)
-  and implements `ezsp::Transmit`.
+- `ashv2::ezsp::Transmitter` is an alias for
+  [`ashv2::Handle`](https://docs.rs/ashv2/latest/ashv2/struct.Handle.html), which implements
+  `ezsp::Transmit`.
 - `ashv2::ezsp::Receiver` owns the inbound ASHv2 payload receiver and implements
-  `ezsp::Receive`.
+  `ezsp::Receive`. The EZSP layer supplies the currently negotiated protocol version to each
+  receive call.
 
 The same payload channel connects the core ASHv2 actor to the EZSP receiver:
 
@@ -119,7 +126,7 @@ use tokio::sync::mpsc::channel;
 let (payload_tx, payload_rx) = channel(64);
 let (ash_handle, futures) = start(reader, writer, payload_tx);
 
-let ezsp_transmitter = EzspTransmitter::new(ash_handle);
+let ezsp_transmitter: EzspTransmitter = ash_handle;
 let ezsp_receiver = EzspReceiver::new(payload_rx);
 
 // Spawn or otherwise poll futures.transmitter and futures.receiver.

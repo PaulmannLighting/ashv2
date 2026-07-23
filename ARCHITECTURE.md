@@ -52,14 +52,14 @@ flowchart TD
     Rx -->|inbound payload| RespQ
     RespQ --> App
     Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
-    Handle -->|Message::Terminate| MsgQ
+    Handle -.->|last handle dropped closes queue| MsgQ
     Tx -->|sets running=false on exit| Rx
 ```
 
 ## Core Modules and Responsibilities
 
 - `src/actor/*`
-  - `start(...)`, internal message bus, future lifecycle, graceful termination signaling.
+  - `start(...)`, internal message bus, and caller-owned future lifecycle.
 - `src/actor/receiver/buffer.rs`
   - Receive-side chunk buffering, byte scanning, control-byte handling, unstuffing, and frame parsing.
 - `src/actor/transmitter/buffer.rs`
@@ -86,7 +86,7 @@ On startup it sends `RST`, waits for `RST-ACK`, and only then handles payload tr
 stateDiagram-v2
     [*] --> Uninitialized
     Uninitialized --> Connected: valid RST-ACK (version=2, in time)
-    Uninitialized --> Uninitialized: resend RST / reject messages
+    Uninitialized --> Uninitialized: resend RST / requeue messages
     Connected --> Failed: I/O error or inbound RST/ERROR
     Failed --> Uninitialized: reset() sends RST
     Connected --> Connected: DATA/ACK/NAK exchange
@@ -174,10 +174,11 @@ flowchart TD
 The `ezsp` feature enables the public `ashv2::ezsp` module and its optional `ezsp` and
 `le-stream` dependencies. It does not change the core transport or actor API.
 
-- `ashv2::ezsp::Transmitter` wraps `Handle`, encodes typed EZSP headers and parameters into
-  `Payload`, and implements `ezsp::Transmit`.
+- `ashv2::ezsp::Transmitter` aliases `Handle`, whose `ezsp::Transmit` implementation encodes typed
+  EZSP headers and parameters into `Payload`.
 - `ashv2::ezsp::Receiver` owns the response channel's receiver, decodes each inbound `Payload`
-  into a typed EZSP frame, tracks the negotiated EZSP version, and implements `ezsp::Receive`.
+  into a typed EZSP frame, and implements `ezsp::Receive`. The EZSP layer passes its negotiated
+  protocol version into each receive call.
 
 ```mermaid
 flowchart LR
@@ -196,13 +197,32 @@ flowchart LR
     EzspRx -->|typed response| EzspApi
 ```
 
-## Shutdown Path
+## Termination Path
 
-`Handle::terminate().await` asks the transmitter to terminate. When the transmitter exits
-its main loop, it clears the shared running flag observed by the receiver. The caller owns
-the returned futures and is responsible for joining or otherwise observing them on their
-async runtime. Transport resource cleanup is also the caller's responsibility. Termination
-failures are reported as Tokio message-send errors.
+The actor does not use a terminate message. Each clone of the user-facing `Handle` keeps the
+outbound message queue open. After every handle has been dropped, the queue closes. The
+transmitter drains any messages already in the queue and then exits its main loop.
+
+When the transmitter exits, it clears the shared running flag observed by the receiver, causing
+the receiver to terminate. The caller must continue polling or awaiting both returned futures
+during this process. Their transport halves are dropped when the futures complete; any additional
+transport resource cleanup is the caller's responsibility.
+
+```mermaid
+sequenceDiagram
+    participant A as Application
+    participant H as Handle clones
+    participant Q as Message queue
+    participant T as Transmitter
+    participant R as Receiver
+
+    A->>H: drop every handle
+    H-->>Q: last sender dropped
+    Q-->>T: queue drained and closed
+    T->>T: exit transmit loop
+    T-->>R: running = false
+    R->>R: exit receive loop
+```
 
 ## Frame Types and Purpose
 

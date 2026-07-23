@@ -1,5 +1,3 @@
-use core::fmt::Debug;
-
 use ezsp::ezsp::{Error as EzspError, Status};
 use ezsp::{Commands, Error, Frame, Header, Transmit};
 use heapless::LenType;
@@ -8,19 +6,8 @@ use log::trace;
 
 use crate::{Handle, Payload};
 
-/// Encodes EZSP headers and parameters into `ASHv2` DATA payloads.
-#[derive(Debug)]
-pub struct Transmitter {
-    ash_v2: Handle,
-}
-
-impl Transmitter {
-    /// Creates an EZSP transmitter around an `ASHv2` actor handle.
-    #[must_use]
-    pub const fn new(ash_v2: Handle) -> Self {
-        Self { ash_v2 }
-    }
-}
+/// EZSP transmitter implemented directly by the `ASHv2` actor handle.
+pub type Transmitter = Handle;
 
 impl Transmit for Transmitter {
     async fn transmit(&mut self, frame: Frame<Commands>) -> Result<(), Error> {
@@ -35,7 +22,7 @@ impl Transmit for Transmitter {
 
         payload.try_extend(parameters.to_le_stream())?;
         trace!("Sending EZSP frame (bytes): {payload:#04X?}");
-        Ok(self.ash_v2.send(payload).await?)
+        Ok(self.send(payload).await?)
     }
 }
 

@@ -37,6 +37,12 @@ criteria = "safe-to-deploy"
 delta = "10.0.0 -> 10.0.2"
 notes = "AI-assisted review: delta 10.0.0 -> 10.0.2. Changes are limited to the crate version bump and transmitter behavior before connection establishment: non-RST-ACK messages are requeued immediately and the reset path is driven instead of rejecting them with NotConnected. No dependency changes, unsafe code, build script changes, filesystem/network/process behavior, or new ambient capabilities were introduced."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "10.0.2 -> 11.0.0"
+notes = "AI-assisted review: delta 10.0.2 -> 11.0.0 removes serialport and async-serialport integration in favor of caller-provided AsyncRead and AsyncWrite transports, replaces the private three-bit Seq type with masked u8 sequence and acknowledgement values, removes handle-driven termination in favor of caller-owned future cancellation, and adds optional EZSP Transmit/Receive adapters. Reviewed frame-header masking, wraparound, actor I/O bounds and lifecycle, EZSP encoding/decoding, and feature gating. The crate denies unsafe code; transport ownership moves to the caller and no filesystem, network, process, or build-script capability is introduced. Dependency changes are audited separately."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -73,6 +79,12 @@ criteria = "safe-to-deploy"
 delta = "2.11.0 -> 2.13.0"
 notes = "AI-assisted review: delta 2.11.0 -> 2.13.0. Changes are primarily macro/docs/test updates plus new named-flag helpers (all_named, iter_equal_names, flag_name attribute processing). No new runtime I/O/network/process behavior and no new unsafe blocks in crate implementation path."
 
+[[audits.bitflags]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.13.0 -> 2.13.1"
+notes = "AI-assisted review: flag aggregation moved to an equivalent const computation to reduce generated LLVM IR; no unsafe or ambient-capability changes."
+
 [[audits.bytes]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -91,6 +103,12 @@ criteria = "safe-to-deploy"
 delta = "1.0.0 -> 1.0.4"
 notes = "Changes are minor and relate to documentation, CI configuration and bug fixes. No unsafe code."
 
+[[audits.chacha20]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "0.10.1"
+notes = "AI-assisted full-source review: inspected ChaCha state/counter handling, RNG serialization, soft and SIMD backend dispatch, target-feature gates, pointer bounds, register transmutations, and known-answer tests. Unsafe code is confined to feature-checked SIMD intrinsics over fixed-size state/output buffers; the no_std crate has no ambient capabilities."
+
 [[audits.const_env]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -108,6 +126,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.10.1"
 notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
+
+[[audits.cpufeatures]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "0.3.0"
+notes = "AI-assisted full-source review: the crate is no_std and limited to cached CPU-feature detection. Inspected x86 CPUID/XGETBV, AArch64 getauxval/sysctl, and LoongArch64 CPUCFG paths; unsafe instructions and FFI are gated by target/OS invariants and expose only feature booleans, with no filesystem, network, or process capability."
 
 [[audits.crc]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -144,17 +168,47 @@ The changes from 1.15.0 to 1.16.0 in the `either` crate are:
 The changes are all additions of new features and do not contain any `unsafe` code. The changes are safe.
 """
 
+[[audits.enum-iterator]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "2.3.0"
+notes = "AI-assisted full-source review: no_std sequence trait and iterator helpers with no unsafe code, build script, or ambient capabilities."
+
+[[audits.enum-iterator-derive]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "1.5.0"
+notes = "AI-assisted full-source review: procedural macro parses enum/struct syntax and emits safe Sequence implementations; no unsafe code, build script, or ambient capabilities."
+
 [[audits.futures-core]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.3.32"
 notes = "AI-assisted review: audited futures-core 0.3.32 full source from the local Cargo registry. Core futures traits and AtomicWaker implementation only; no build script and no filesystem/network/process behavior. Unsafe code is limited to AtomicWaker synchronization, pinned stream projection, and Send/Sync impls with documented atomic-state invariants."
 
+[[audits.futures-core]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.3.32 -> 0.3.33"
+notes = "AI-assisted review: version metadata only; no source, unsafe-code, build-script, or ambient-capability changes."
+
 [[audits.futures-sink]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.3.32"
 notes = "AI-assisted review: audited futures-sink 0.3.32 full source from the local Cargo registry. Defines the Sink trait and standard container impls; no build script and no filesystem/network/process behavior. Unsafe code is limited to pinned Vec/VecDeque get_unchecked_mut uses where those containers do not rely on pinning."
+
+[[audits.futures-sink]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.3.32 -> 0.3.33"
+notes = "AI-assisted review: version metadata only; no source, unsafe-code, build-script, or ambient-capability changes."
+
+[[audits.getrandom]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "0.4.3"
+notes = "AI-assisted full-source review: inspected backend selection and OS, firmware, hardware, WASI, WebCrypto, and custom entropy paths. Syscall/FFI buffers are length-bounded; success paths fully initialize MaybeUninit slices; partial reads, errno, dynamic symbols, feature detection, sanitizer hooks, file-descriptor initialization, and fallback synchronization are validated. The build script only detects MemorySanitizer configuration. Ambient access is limited to the documented system entropy sources."
 
 [[audits.hash32]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -173,6 +227,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.4.1"
 notes = "This crate provides FFI bindings to the I/O Kit framework on macOS. The crate consists almost entirely of unsafe code, as it is a sys crate. The code is a direct translation of the C headers, and there is no logic in the crate itself. It is safe to deploy."
+
+[[audits.libc]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.2.186 -> 0.2.189"
+notes = "AI-assisted review: inspected the platform-binding expansion, 64-bit time configuration, build-script changes, extern-type soundness fix, helper macros, target-specific ABI corrections, and newly unsafe VxWorks shims. Changes are declarations, constants, repr(C) layouts, or explicit wrappers matching platform APIs; the build script only queries compiler/target tooling and environment, with no network access."
 
 [[audits.libudev]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -204,6 +264,12 @@ criteria = "safe-to-deploy"
 delta = "0.4.32 -> 0.4.33"
 notes = "AI-assisted review: delta 0.4.32 -> 0.4.33. Changes are narrowly scoped to key equality semantics in structured logging (MaybeStaticStr Eq/Ord/Hash consistency), plus tests/changelog/version bumps. No new unsafe code paths or ambient-capability changes."
 
+[[audits.macaddr]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "1.0.1"
+notes = "AI-assisted full-source review: fixed-size MAC address types and pure parsing/formatting; crate forbids unsafe code and has no build script or ambient capabilities."
+
 [[audits.mach2]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -215,6 +281,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.26.4"
 notes = "Reviewed source code. This crate provides friendly bindings to Unix APIs. The crate contains a lot of unsafe code, which is necessary for FFI. The crate is widely used and has a good reputation. The unsafe code is well-documented and appears to be correct. It is safe to deploy."
+
+[[audits.num-derive]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.4.2 -> 0.5.1"
+notes = "AI-assisted review: updates to Syn 3 and MSRV plus metadata/docs; deployed proc-macro implementation is otherwise unchanged, with no unsafe or ambient capabilities."
 
 [[audits.once_cell_polyfill]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -234,6 +306,30 @@ criteria = "safe-to-deploy"
 version = "0.3.33"
 notes = "AI-assisted review: audited pkg-config 0.3.33 full source from the local Cargo registry. Build-time helper that reads Cargo/pkg-config environment variables and invokes pkg-config/pkgconf as documented; no unsafe code. Command execution is the crate's intended behavior and is constrained to configured pkg-config probes."
 
+[[audits.proc-macro2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "1.0.106 -> 1.0.107"
+notes = "AI-assisted review: MSRV/docs/CI updates, equivalent parser predicate rewrite, and equivalent unreachable-branch cleanup; no unsafe or ambient-capability changes."
+
+[[audits.r-efi]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "6.0.0"
+notes = "AI-assisted full-source review: this no_std crate consists of UEFI ABI constants, repr(C) data structures, and explicitly unsafe efiapi function-pointer types; it does not invoke firmware services itself. Executable unsafe code only reinterprets the exactly 16-byte Guid representation, whose layout is fixed by repr(C, align(4)); no build script or ambient capability is present."
+
+[[audits.rand]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.8.6 -> 0.10.2"
+notes = "AI-assisted review: inspected the major RNG/distribution redesign, ChaCha-based thread RNG, range and sequence algorithms, serde validation, and all unsafe sites. UnsafeCell access is thread-local and non-reentrant by contract; byte/SIMD conversions use all-bit-pattern-valid types; character and String operations validate Unicode/ASCII invariants. Version 0.10.2 additionally rejects malformed UniformChar deserialization. No unexpected ambient capabilities were added."
+
+[[audits.rand_core]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.6.4 -> 0.10.1"
+notes = "AI-assisted review: the major update reorganizes and renames RNG traits, seeding, block buffering, word conversion, and error adapters. Current deployed source is no_std, contains no unsafe code or ambient capabilities, and bounds buffer indexes and byte conversions with sealed word types and checked slice operations."
+
 [[audits.serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -252,17 +348,59 @@ criteria = "safe-to-deploy"
 delta = "2.0.117 -> 2.0.118"
 notes = "AI-assisted review: delta 2.0.117 -> 2.0.118. Changes are minor parser/docs/test maintenance (doc wording, lint attribute updates, small literal parsing match simplification, test fixture sync with rustc AST churn). No new runtime I/O/process/network capability; no new unsafe behavior surfaced for this update."
 
+[[audits.syn]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.118 -> 2.0.119"
+notes = "AI-assisted review: parser changes preserve verbatim token ranges with cursor markers, extend supported Rust syntax, and update tests/metadata. No new unsafe code, build scripts, or ambient capabilities were introduced."
+
+[[audits.syn]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.118 -> 3.0.3"
+notes = "AI-assisted review: inspected the major AST/parser update, generated traversal implementations, token cursor operations, span ranges, and all unsafe sites. Unsafe code remains confined to documented parser lifetime, cursor, token-representation, and thread-bound invariants; no build script or ambient runtime capabilities are present."
+
+[[audits.thiserror]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.18 -> 2.0.19"
+notes = "AI-assisted review: MSRV/dependency updates and equivalent build-script predicate rewrite plus tests/docs; no new unsafe code or ambient capabilities."
+
+[[audits.thiserror-impl]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.18 -> 2.0.19"
+notes = "AI-assisted review: Syn 3/MSRV update and equivalent map_or-to-is_some_and rewrites only; generated behavior and capabilities are unchanged, with no unsafe additions."
+
+[[audits.tokio]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "1.52.3 -> 1.53.1"
+notes = "AI-assisted review: inspected runtime, synchronization, signal, filesystem, networking, platform-credential, and io-uring changes. New unsafe operations retain syscall buffers and paths for operation lifetimes, validate initialized outputs, preserve pinning, and uphold task-state exclusivity; no unexpected capabilities were introduced."
+
 [[audits.tokio-stream]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.1.18"
 notes = "AI-assisted review: audited tokio-stream 0.1.18 full source from the local Cargo registry. Tokio stream adapters and wrappers; no build script and no direct filesystem/process behavior in the enabled dependency path. Unsafe code is limited to marker Send/Sync impls for zero-state empty/pending stream types; network wrappers are thin adapters over Tokio types behind features."
 
+[[audits.tokio-stream]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.1.18 -> 0.1.19"
+notes = "AI-assisted review: cooperative scheduling, fused-stream behavior, collection conversions, JoinSetStream, and size-hint changes are safe abstractions over Tokio streams. No new unsafe code or ambient capabilities were introduced."
+
 [[audits.tokio-util]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 version = "0.7.18"
 notes = "AI-assisted review: audited tokio-util 0.7.18 full source from the local Cargo registry. Tokio utility crate with no build script; enabled dependency path uses io utilities such as ReaderStream. Unsafe code reviewed in buffer initialization, Arc read initialization, manual pin projection, cancellation/reusable future helpers, and mpsc glue; unsafe blocks are localized and paired with documented pinning/initialization/ownership invariants. No unexpected filesystem/network/process behavior beyond feature-gated Tokio adapters."
+
+[[audits.tokio-util]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.7.18 -> 0.7.19"
+notes = "AI-assisted review: inspected cancellation/task helpers, codec changes, vectored writes, and unsafe additions. memchr pointer arithmetic is bounded by the input slice, and vectored-write lifetime extension retains the original backing buffers; no unexpected ambient capabilities were added."
 
 [[audits.unescaper]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -354,11 +492,32 @@ user-id = 6743
 start = "2023-04-13"
 end = "2026-05-15"
 
+[[trusted.ezsp]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2025-07-04"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
+
 [[trusted.is_terminal_polyfill]]
 criteria = "safe-to-deploy"
 user-id = 6743
 start = "2024-05-02"
 end = "2026-05-15"
+
+[[trusted.le-stream]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2024-09-18"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
+
+[[trusted.le-stream-derive]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2024-09-18"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
 
 [[trusted.libc]]
 criteria = "safe-to-deploy"
@@ -390,11 +549,32 @@ user-id = 3618 # David Tolnay (dtolnay)
 start = "2019-04-09"
 end = "2027-05-06"
 
+[[trusted.repr-discriminant]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2025-07-16"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
+
+[[trusted.repr-discriminant-derive]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2025-11-04"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
+
 [[trusted.scopeguard]]
 criteria = "safe-to-deploy"
-user-id = 2915 # Amanieu d'Antras (Amanieu)
+user-id = 2915
 start = "2020-02-16"
 end = "2026-05-15"
+
+[[trusted.silizium]]
+criteria = "safe-to-deploy"
+user-id = 290593 # Richard Neumann (neumann-paulmann)
+start = "2025-07-04"
+end = "2027-07-23"
+notes = "Trusted project publisher per supply-chain policy."
 
 [[trusted.syn]]
 criteria = "safe-to-deploy"
@@ -422,60 +602,60 @@ end = "2026-05-15"
 
 [[trusted.windows-sys]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-11-15"
 end = "2026-05-15"
 
 [[trusted.windows-targets]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2022-09-09"
 end = "2026-05-15"
 
 [[trusted.windows_aarch64_gnullvm]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2022-09-01"
 end = "2026-05-15"
 
 [[trusted.windows_aarch64_msvc]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-11-05"
 end = "2026-05-15"
 
 [[trusted.windows_i686_gnu]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-10-28"
 end = "2026-05-15"
 
 [[trusted.windows_i686_gnullvm]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2024-04-02"
 end = "2026-05-15"
 
 [[trusted.windows_i686_msvc]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-10-27"
 end = "2026-05-15"
 
 [[trusted.windows_x86_64_gnu]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-10-28"
 end = "2027-05-28"
 
 [[trusted.windows_x86_64_gnullvm]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2022-09-01"
 end = "2027-05-28"
 
 [[trusted.windows_x86_64_msvc]]
 criteria = "safe-to-deploy"
-user-id = 64539 # Kenny Kerr (kennykerr)
+user-id = 64539
 start = "2021-10-27"
 end = "2027-05-28"

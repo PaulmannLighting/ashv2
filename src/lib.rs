@@ -13,16 +13,24 @@
 //! The returned [`Futures`] contains the transmitter and receiver futures. The caller must spawn
 //! or otherwise poll both futures on an async runtime.
 //!
+//! # Termination
+//!
+//! The actor does not use a terminate message. Drop every clone of [`Handle`] to close the
+//! outbound message queue. The transmitter drains queued messages and then terminates. It clears
+//! the shared running state when it exits, which causes the receiver to terminate as well.
+//! Continue polling or awaiting both actor futures until they complete.
+//!
 //! # EZSP integration
 //!
 //! The optional `ezsp` feature provides [`ezsp::Transmitter`] and [`ezsp::Receiver`] adapters.
-//! They implement `ezsp::Transmit` and `ezsp::Receive`, respectively. The transmitter wraps a
-//! [`Handle`], while the receiver consumes the channel of inbound [`Payload`] values passed to
-//! [`start`].
+//! [`ezsp::Transmitter`] is an alias for [`Handle`], which implements `ezsp::Transmit`.
+//! [`ezsp::Receiver`] consumes the channel of inbound [`Payload`] values passed to [`start`] and
+//! implements `ezsp::Receive`.
 //!
 //! You can find the protocol's definition on [siliconlabs.com](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-reference/).
 //!
 //! This library is free software and is not affiliated with Silicon Labs.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(unsafe_code)]
 
 use const_env::env_item;
@@ -52,6 +60,7 @@ const SEQ_MASK: u8 = 0b0000_0111;
 mod actor;
 mod code;
 #[cfg(feature = "ezsp")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ezsp")))]
 pub mod ezsp;
 mod frame;
 mod hex_slice;

@@ -2,7 +2,6 @@ use std::io;
 
 use log::trace;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::oneshot::channel;
 
 use crate::Payload;
@@ -10,6 +9,10 @@ use crate::actor::message::Message;
 use crate::hex_slice::HexSlice;
 
 /// User-facing handle for sending payloads to the `ASHv2` actor.
+///
+/// Cloning a handle keeps the transmitter's message queue open. After every handle clone has been
+/// dropped, the transmitter drains the queue and terminates. There is no explicit terminate
+/// message.
 #[derive(Clone, Debug)]
 pub struct Handle {
     inner: Sender<Message>,
@@ -35,16 +38,6 @@ impl Handle {
             .map_err(io::Error::other)?;
 
         response_rx.await.map_err(io::Error::other)?
-    }
-
-    /// Request actor termination.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SendError`] if sending the termination message to the transmitter fails.
-    pub async fn terminate(&self) -> Result<(), SendError<Message>> {
-        self.inner.send(Message::Terminate).await?;
-        Ok(())
     }
 }
 

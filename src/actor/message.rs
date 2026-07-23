@@ -39,9 +39,6 @@ pub enum Message {
 
     /// Negative Acknowledgement sent frames up to the given frame number.
     NakSentFrame(u8),
-
-    /// Terminate the receiver.
-    Terminate,
 }
 
 impl Display for Message {
@@ -55,7 +52,6 @@ impl Display for Message {
             Self::Error(error) => write!(f, "Error({error})"),
             Self::AckSentFrame(ack_num) => write!(f, "AckSentFrame({ack_num})"),
             Self::NakSentFrame(ack_num) => write!(f, "NakSentFrame({ack_num})"),
-            Self::Terminate => write!(f, "Terminate"),
         }
     }
 }

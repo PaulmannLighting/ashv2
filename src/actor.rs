@@ -26,7 +26,9 @@ mod transmitter;
 /// it into reader and writer values when necessary.
 ///
 /// Returns the user-facing [`Handle`] and named [`Futures`] that the caller must spawn or
-/// otherwise poll on their async runtime.
+/// otherwise poll on their async runtime. Drop every clone of the handle to close the outbound
+/// queue and terminate the transmitter after queued messages have been drained. The transmitter
+/// then signals the receiver to terminate.
 pub fn start<R, W>(
     reader: R,
     writer: W,

@@ -72,11 +72,6 @@ where
         while let Some(message) = self.messages.recv().await {
             trace!("Received message: {message}");
 
-            if matches!(message, Message::Terminate) {
-                debug!("Terminating transmitter");
-                break;
-            }
-
             if let Err(error) = self.handle_message(message).await {
                 error!("Resetting connection due to I/O error: {error}");
                 self.status = Status::Failed;
@@ -119,12 +114,6 @@ where
                 Ok(())
             }
             Message::NakSentFrame(frame_num) => self.nak_sent_frames(frame_num).await,
-            Message::Terminate => {
-                error!(
-                    "Termination signal received. This should have already been handed in the main loop ."
-                );
-                Ok(())
-            }
         }
     }
 

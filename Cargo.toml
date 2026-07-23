@@ -1,6 +1,6 @@
 [package]
 name = "ashv2"
-description = "Implementation of the Asynchronous Serial Host (ASH) protocol."
+description = "Asynchronous Serial Host protocol version 2 (ASHv2)."
 authors = ["Richard Neumann <neumann@paulmann.de>"]
 license = "MIT"
 repository = "https://github.com/PaulmannLighting/ashv2"
@@ -19,7 +19,7 @@ bitflags = "2"
 bytes = "1"
 const_env = "0.1"
 crc = "3"
-ezsp = { version = "13", optional = true }
+ezsp = { version = "14", optional = true }
 heapless = "0.9"
 le-stream = { version = "10", optional = true }
 log = "0.4"
