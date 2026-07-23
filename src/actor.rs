@@ -17,10 +17,13 @@ mod message;
 mod receiver;
 mod transmitter;
 
-/// Create the `ASHv2` actor futures for the given serial port.
+/// Create the `ASHv2` actor futures for the given asynchronous reader and writer.
 ///
 /// The response channel receives inbound `DATA` payloads from the NCP. Its capacity is also
 /// used for the actor's internal message queue.
+///
+/// The caller is responsible for opening and configuring the underlying transport and splitting
+/// it into reader and writer values when necessary.
 ///
 /// Returns the user-facing [`Handle`] and named [`Futures`] that the caller must spawn or
 /// otherwise poll on their async runtime.

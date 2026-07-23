@@ -19,7 +19,9 @@ bitflags = "2"
 bytes = "1"
 const_env = "0.1"
 crc = "3"
+ezsp = { version = "13", path = "../ezsp", optional = true }
 heapless = "0.9"
+le-stream = { version = "10", optional = true }
 log = "0.4"
 num-derive = "0.4"
 num-traits = "0.2"
@@ -29,6 +31,9 @@ tokio-util = { version = "0.7", features = ["io"] }
 
 [dev-dependencies]
 tokio = { version = "1", default-features = false, features = ["rt"] }
+
+[features]
+ezsp = ["dep:ezsp", "dep:le-stream"]
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"

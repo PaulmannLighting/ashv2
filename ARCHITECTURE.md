@@ -3,53 +3,50 @@
 ## Scope
 
 This document describes the internal architecture of this crate as currently implemented.
-The crate implements the host side of ASHv2 over a serial link to an NCP.
+The crate implements the host side of ASHv2 over caller-provided asynchronous byte streams.
+The transport is commonly a serial link to an NCP, but the core architecture is independent of
+how that stream is opened and configured.
 
 ## High-Level Runtime Structure
 
 At runtime, the crate is centered around `start(...)`, which creates two asynchronous
 actor futures:
 
-- `Transmitter`: owns serial writes and connection state.
-- `Receiver`: owns serial reads and inbound frame handling.
+- `Transmitter`: owns the supplied `AsyncWrite` implementation and connection state.
+- `Receiver`: owns the supplied `AsyncRead` implementation and inbound frame handling.
 
-`start(...)` splits the native serial port into an `async-serialport` reader, writer,
-and worker future. It returns `Handle`, the user-facing send handle, and a `Futures`
-container with the worker, transmitter, and receiver futures that the caller must spawn
-or poll on their async runtime. Incoming payloads are pushed to a user-provided response
-channel.
+`start(reader, writer, response)` takes transport halves that the caller has already opened,
+configured, and split. It returns `Handle`, the user-facing send handle, and a `Futures`
+container with transmitter and receiver futures that the caller must spawn or poll on their async
+runtime. Incoming payloads are pushed to the user-provided response channel.
 
 ```mermaid
 flowchart TD
     App[Application]
+    Transport[Caller-owned transport setup]
     Start[start]
     Handle[Handle]
     Futures[Futures]
-    Worker[Serial worker future]
     Tx[Transmitter future]
     Rx[Receiver future]
-    Split[async-serialport split]
-    Reader[Reader + ReaderStream]
-    Writer[Writer]
+    Reader[AsyncRead implementation]
+    Writer[AsyncWrite implementation]
     MsgQ[(tokio mpsc Message queue)]
     RespQ[(tokio mpsc Payload queue)]
-    Serial[(SerialPort)]
 
-    App -->|serial port + response channel| Start
+    App --> Transport
+    Transport --> Reader
+    Transport --> Writer
+    App -->|reader + writer + response channel| Start
+    Reader --> Start
+    Writer --> Start
     Start -->|returns| Handle
     Start -->|returns| Futures
-    Futures --> Worker
     Futures --> Tx
     Futures --> Rx
-    Start --> Serial
     App -->|send payload| Handle
-    Serial --> Split
-    Split --> Reader
-    Split --> Writer
-    Split --> Worker
     Handle -->|Message::Payload| MsgQ
     MsgQ --> Tx
-    Writer --> Tx
     Tx -->|write frames| Writer
     Reader -->|read frames| Rx
     Rx -->|inbound payload| RespQ
@@ -66,7 +63,7 @@ flowchart TD
 - `src/actor/receiver/buffer.rs`
   - Receive-side chunk buffering, byte scanning, control-byte handling, unstuffing, and frame parsing.
 - `src/actor/transmitter/buffer.rs`
-  - Transmit-side frame serialization, byte stuffing, frame termination, and serial writes.
+  - Transmit-side frame serialization, byte stuffing, frame termination, and asynchronous writes.
 - `src/frame/*`
   - Frame data structures and binary conversion for `DATA`, `ACK`, `NAK`, `RST`, `RST-ACK`, `ERROR`.
 - `src/frame/headers/*`
@@ -77,8 +74,8 @@ flowchart TD
   - Byte stuffing and unstuffing around control bytes.
 - `src/validate.rs`
   - CRC-16-IBM-3740 validation.
-- `src/seq.rs`
-  - 3-bit sequence number type with modulo-8 wraparound.
+- `src/ezsp/*` (feature `ezsp`)
+  - Optional adapters from typed EZSP frames to ASHv2 payloads and back.
 
 ## Connection and Future Lifecycle
 
@@ -102,7 +99,7 @@ stateDiagram-v2
 1. App calls `Handle::send(payload).await`.
 2. `Handle` sends `Message::Payload` into the transmitter queue with a oneshot response channel.
 3. Transmitter creates a `DATA` frame:
-   - sets frame number (`Seq`, modulo 8),
+   - sets frame number (`u8`, masked to 3 bits for modulo-8 behavior),
    - sets current ACK number,
    - masks payload bytes,
    - computes CRC.
@@ -110,14 +107,14 @@ stateDiagram-v2
    - convert frame to bytes,
    - stuff reserved control bytes,
    - append `FLAG (0x7E)`,
-   - write to serial port.
+   - write to the caller-provided `AsyncWrite` implementation.
 5. Transmitter stores transmission metadata for ACK/NAK-based completion/retransmission.
 
 ### Inbound path (NCP -> App)
 
-1. `async-serialport` provides the receiver's async `Reader`.
-2. `ReaderStream` provides chunks, and the receiver buffer retains any unconsumed bytes.
-3. Receiver reads serial bytes until `FLAG`.
+1. The caller-provided `AsyncRead` implementation supplies inbound bytes.
+2. The receiver buffer retains any unconsumed bytes between reads.
+3. Receiver reads bytes until `FLAG`.
 4. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
 5. Parsed bytes are converted into a typed frame and CRC-validated.
 6. Receiver behavior by frame type:
@@ -131,7 +128,7 @@ sequenceDiagram
     participant A as Application
     participant H as Handle
     participant T as Transmitter
-    participant S as Serial Link
+    participant S as Byte Stream
     participant R as Receiver
     participant Q as Response Channel
 
@@ -144,36 +141,59 @@ sequenceDiagram
     Q->>A: Payload
 ```
 
-## Async Serial I/O Path
+## Async I/O Path
 
-The serial port is split by `async-serialport` into a `Reader`, a `Writer`, and a `Worker`
-future that yields the original serial port when the worker command channel closes. The
-receiver side wraps the `Reader` in `ReaderStream` and stores the current chunk iterator in
-the receive buffer, so bytes after a completed frame remain available for the next read. The
-transmitter side writes fully encoded and stuffed frames through the async `Writer`.
+The core API is generic over separate Tokio `AsyncRead` and `AsyncWrite` implementations. It does
+not depend on `serialport` or `async-serialport`, and does not open, configure, or split a serial
+port. Those transport-specific operations belong to the calling application.
+
+The receiver buffer reads chunks directly from the supplied reader and retains bytes after a
+completed frame for the next read. The transmitter buffer writes fully encoded and stuffed frames
+through the supplied writer.
 
 ```mermaid
 flowchart TD
-    Port[(SerialPort)]
-    Split[async-serialport split]
-    Reader[Reader]
-    Writer[Writer]
-    Worker[Worker]
-    Chunks[ReaderStream]
+    Setup[Caller transport setup]
+    Reader[AsyncRead]
+    Writer[AsyncWrite]
     RxBuffer[Receiver Buffer]
     TxBuffer[Transmitter Buffer]
     Receiver[Receiver future]
     Transmitter[Transmitter future]
 
-    Port --> Split
-    Split --> Reader
-    Split --> Writer
-    Split --> Worker
-    Reader --> Chunks
-    Chunks --> RxBuffer
+    Setup --> Reader
+    Setup --> Writer
+    Reader --> RxBuffer
     RxBuffer --> Receiver
     Transmitter --> TxBuffer
     TxBuffer --> Writer
+```
+
+## Optional EZSP Integration
+
+The `ezsp` feature enables the public `ashv2::ezsp` module and its optional `ezsp` and
+`le-stream` dependencies. It does not change the core transport or actor API.
+
+- `ashv2::ezsp::Transmitter` wraps `Handle`, encodes typed EZSP headers and parameters into
+  `Payload`, and implements `ezsp::Transmit`.
+- `ashv2::ezsp::Receiver` owns the response channel's receiver, decodes each inbound `Payload`
+  into a typed EZSP frame, tracks the negotiated EZSP version, and implements `ezsp::Receive`.
+
+```mermaid
+flowchart LR
+    EzspApi[EZSP API]
+    EzspTx[EZSP Transmitter]
+    Handle[ASHv2 Handle]
+    Actors[ASHv2 actors]
+    PayloadQ[(Payload channel)]
+    EzspRx[EZSP Receiver]
+
+    EzspApi -->|typed request| EzspTx
+    EzspTx -->|encoded Payload| Handle
+    Handle --> Actors
+    Actors -->|inbound Payload| PayloadQ
+    PayloadQ --> EzspRx
+    EzspRx -->|typed response| EzspApi
 ```
 
 ## Shutdown Path
@@ -181,9 +201,8 @@ flowchart TD
 `Handle::terminate().await` asks the transmitter to terminate. When the transmitter exits
 its main loop, it clears the shared running flag observed by the receiver. The caller owns
 the returned futures and is responsible for joining or otherwise observing them on their
-async runtime. The serial worker future resolves with the original serial port after the
-reader and writer handles have been dropped. Termination failures are reported as Tokio
-message-send errors.
+async runtime. Transport resource cleanup is also the caller's responsibility. Termination
+failures are reported as Tokio message-send errors.
 
 ## Frame Types and Purpose
 
@@ -198,16 +217,16 @@ message-send errors.
 
 ### DATA header bit layout
 
-- bits `6..4`: frame number (`Seq`)
+- bits `6..4`: frame number (`u8`, lower 3 significant bits)
 - bit `3`: retransmit flag
-- bits `2..0`: ACK number (`Seq`)
+- bits `2..0`: ACK number (`u8`, lower 3 significant bits)
 
 ### ACK/NAK header bit layout
 
 - ACK base: `0b1000_0000`
 - NAK base: `0b1010_0000`
 - bit `3`: `nRDY`
-- bits `2..0`: ACK number (`Seq`)
+- bits `2..0`: ACK number (`u8`, lower 3 significant bits)
 
 ## Reliability and Retransmission Model
 

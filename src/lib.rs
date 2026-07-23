@@ -1,7 +1,24 @@
 //! Asynchronous Serial Host version 2 (`ASHv2`)
 //!
 //! This library implements the Asynchronous Serial Host version 2, `ASHv2` for short.
-//! It provides frame parsing and actor futures that manage the host-side serial link.
+//! It provides frame parsing and actor futures that manage the host-side link.
+//!
+//! # Transport API
+//!
+//! [`start`] accepts separate types implementing [`tokio::io::AsyncRead`] and
+//! [`tokio::io::AsyncWrite`]. The caller opens, configures, and, when necessary, splits the
+//! underlying transport before starting the actor futures. The core API has no dependency on
+//! `serialport` or `async-serialport`.
+//!
+//! The returned [`Futures`] contains the transmitter and receiver futures. The caller must spawn
+//! or otherwise poll both futures on an async runtime.
+//!
+//! # EZSP integration
+//!
+//! The optional `ezsp` feature provides [`ezsp::Transmitter`] and [`ezsp::Receiver`] adapters.
+//! They implement `ezsp::Transmit` and `ezsp::Receive`, respectively. The transmitter wraps a
+//! [`Handle`], while the receiver consumes the channel of inbound [`Payload`] values passed to
+//! [`start`].
 //!
 //! You can find the protocol's definition on [siliconlabs.com](https://docs.silabs.com/zigbee/latest/uart-gateway-protocol-reference/).
 //!
@@ -34,6 +51,8 @@ const SEQ_MASK: u8 = 0b0000_0111;
 
 mod actor;
 mod code;
+#[cfg(feature = "ezsp")]
+pub mod ezsp;
 mod frame;
 mod hex_slice;
 mod protocol;
