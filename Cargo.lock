@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ashv2"
-version = "14.0.0"
+version = "15.0.0"
 dependencies = [
  "bitflags",
  "bytes",
@@ -128,9 +128,9 @@ dependencies = [
 
 [[package]]
 name = "ezsp"
-version = "18.0.0"
+version = "19.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "443c27429b09d799dd402ad4086c7cd57c423923051c78ae62e008c9622b6769"
+checksum = "c8721f63a133ea00cbb3ef5763ed205fbbb4960951e0022f9c2e8df3fe68a6a9"
 dependencies = [
  "bitflags",
  "const_env",

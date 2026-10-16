@@ -7,7 +7,7 @@ repository = "https://github.com/PaulmannLighting/ashv2"
 keywords = ["ASH", "async", "serial", "host"]
 categories = ["hardware-support", "network-programming"]
 documentation = "https://docs.rs/ashv2"
-version = "14.0.0"
+version = "15.0.0"
 edition = "2024"
 exclude = [".gitignore", ".github", "ARCHITECTURE.md", "TODO.md"]
 
@@ -19,7 +19,7 @@ bitflags = "2"
 bytes = "1"
 const_env = "0.1"
 crc = "3"
-ezsp = { version = "18", optional = true }
+ezsp = { version = "19", optional = true }
 heapless = "0.9"
 le-stream = { version = "10", optional = true }
 log = "0.4"

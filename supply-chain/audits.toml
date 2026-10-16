@@ -61,6 +61,12 @@ criteria = "safe-to-deploy"
 delta = "13.0.0 -> 14.0.0"
 notes = "AI-assisted review: delta 13.0.0 -> 14.0.0 updates the optional ezsp dependency from 17 to 18, bumps the crate's major version and README dependency example, and refreshes lockfile and supply-chain metadata. No ashv2 source, unsafe-code, build-script, or ambient-capability behavior changed; ezsp 18.0.0 is covered by the project's trusted-publisher policy."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "14.0.0 -> 15.0.0"
+notes = "AI-assisted review: delta 14.0.0 -> 15.0.0 updates the optional ezsp dependency from 18 to 19, bumps the crate's major version and README dependency example, and refreshes lockfile and supply-chain metadata. No ashv2 source, unsafe-code, build-script, or ambient-capability behavior changed; ezsp 19.0.0 is covered by the project's trusted-publisher policy."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
