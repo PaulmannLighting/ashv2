@@ -67,6 +67,12 @@ criteria = "safe-to-deploy"
 delta = "14.0.0 -> 15.0.0"
 notes = "AI-assisted review: delta 14.0.0 -> 15.0.0 updates the optional ezsp dependency from 18 to 19, bumps the crate's major version and README dependency example, and refreshes lockfile and supply-chain metadata. No ashv2 source, unsafe-code, build-script, or ambient-capability behavior changed; ezsp 19.0.0 is covered by the project's trusted-publisher policy."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "15.0.0 -> 16.0.0"
+notes = "AI-assisted review: compared against the published ashv2 15.0.0 crate. The manifest switches the optional ezsp dependency from 19 to 20 and bumps the ashv2 major version because its public adapters implement ezsp traits. The README example follows the version bump. The Rust source is identical, with no build script or new ambient capabilities in ashv2. The dependency is covered by the trusted-publisher policy."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -109,6 +115,12 @@ criteria = "safe-to-deploy"
 delta = "2.13.0 -> 2.13.1"
 notes = "AI-assisted review: flag aggregation moved to an equivalent const computation to reduce generated LLVM IR; no unsafe or ambient-capability changes."
 
+[[audits.bitflags]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.13.1 -> 2.13.2"
+notes = "AI-assisted review. Moves generated public flag constants outside an internal const block to avoid a compiler error. The constant expressions and types are preserved. Other changes cover lint allowances, tests, examples, and metadata. The deployed macro changes introduce no unsafe operations or I/O."
+
 [[audits.bytes]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -121,17 +133,35 @@ criteria = "safe-to-deploy"
 delta = "1.12.0 -> 1.12.1"
 notes = "AI-assisted review: delta 1.12.0 -> 1.12.1. Changes are focused on panic-safety for vector-backed shared state by allocating MaybeUninit<Shared> before rebuilding/owning vector buffers, then initializing in place. No new ambient filesystem/network/process/FFI behavior; unsafe changes remain localized to existing buffer ownership/allocation invariants."
 
+[[audits.bytes]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "1.12.1 -> 1.12.2"
+notes = "AI-assisted review. Checked signed reads, chained vectored slices, partial writes, and buffer ownership. Zero-length truncation releases the old owner and uses the existing empty representation. Vec-backed extension is capped at spare capacity and keeps ownership with BytesMut. Direct appends reserve and initialize bytes before increasing the length. No new ambient capabilities."
+
 [[audits.cfg-if]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "1.0.0 -> 1.0.4"
 notes = "Changes are minor and relate to documentation, CI configuration and bug fixes. No unsafe code."
 
+[[audits.cfg-if]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "1.0.4 -> 1.0.5"
+notes = "AI-assisted review. The macro implementation is identical. Changes document the standard alternative and update release metadata and repository CI actions. No deployed code or build script changed."
+
 [[audits.chacha20]]
 who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
 version = "0.10.1"
 notes = "AI-assisted full-source review: inspected ChaCha state/counter handling, RNG serialization, soft and SIMD backend dispatch, target-feature gates, pointer bounds, register transmutations, and known-answer tests. Unsafe code is confined to feature-checked SIMD intrinsics over fixed-size state/output buffers; the no_std crate has no ambient capabilities."
+
+[[audits.chacha20]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.10.1 -> 0.10.2"
+notes = "AI-assisted review. Reviewed the SSE2 backend refactor for the cipher and RNG paths. Both enter through the existing target-feature dispatch. Four unaligned 16-byte loads span the 16-word state, and counter writeback stays within the final register of that state. No new ambient capabilities."
 
 [[audits.const_env]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -258,6 +288,12 @@ criteria = "safe-to-deploy"
 version = "0.9.3"
 notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
+[[audits.heapless]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.9.3 -> 0.9.4"
+notes = "AI-assisted review. Reviewed bounds and ownership in heap removal, deque truncation and rotation, IndexMap slot encoding and removal, vector drains and iteration, and SPSC wraparound. Checked that history and vector iterator state is updated before a destructor may unwind. Static pool nodes separate atomic linkage from payload storage. These changes add no ambient I/O capabilities. The new BinaryHeap::retain can leave a parent-child ordering violation when a replacement should sift above the removal position."
+
 [[audits.io-kit-sys]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -300,6 +336,12 @@ criteria = "safe-to-deploy"
 delta = "0.4.32 -> 0.4.33"
 notes = "AI-assisted review: delta 0.4.32 -> 0.4.33. Changes are narrowly scoped to key equality semantics in structured logging (MaybeStaticStr Eq/Ord/Hash consistency), plus tests/changelog/version bumps. No new unsafe code paths or ambient-capability changes."
 
+[[audits.log]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.4.33 -> 0.4.35"
+notes = "AI-assisted review. An alloc feature enables boxed loggers without std, and std implies alloc. The boxed logger still uses the existing atomic installation path and the same Box ownership transfer. The changes add no new logger sinks, build script, or ambient capabilities."
+
 [[audits.macaddr]]
 who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
@@ -336,6 +378,12 @@ criteria = "safe-to-deploy"
 version = "0.2.17"
 notes = "Audited for security vulnerabilities. No unsafe code that could be exploited. The crate is safe to deploy."
 
+[[audits.pin-project-lite]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.2.17 -> 0.2.18"
+notes = "AI-assisted review. Extends the generated conflicting-Drop check to unsized types by relaxing the blanket impl bound to ?Sized. The actual pin projection and destructor implementation are unchanged. Other changes are diagnostics, documentation, and test fixtures. No build script or ambient capabilities."
+
 [[audits.pkg-config]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -359,6 +407,12 @@ who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
 delta = "0.8.6 -> 0.10.2"
 notes = "AI-assisted review: inspected the major RNG/distribution redesign, ChaCha-based thread RNG, range and sequence algorithms, serde validation, and all unsafe sites. UnsafeCell access is thread-local and non-reentrant by contract; byte/SIMD conversions use all-bit-pattern-valid types; character and String operations validate Unicode/ASCII invariants. Version 0.10.2 additionally rejects malformed UniformChar deserialization. No unexpected ambient capabilities were added."
+
+[[audits.rand]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.10.2 -> 0.10.4"
+notes = "AI-assisted review. Reviewed float sampling bounds, validation of deserialized duration samplers, weighted sampling errors, and weighted iterator counts. Distribution state is validated before replacing it and fallible constructors propagate errors. RNG seeding and entropy access are unchanged. The update adds no unsafe operations or ambient capabilities."
 
 [[audits.rand_core]]
 who = "OpenAI Codex (AI-assisted)"
@@ -396,6 +450,12 @@ criteria = "safe-to-deploy"
 delta = "2.0.118 -> 3.0.3"
 notes = "AI-assisted review: inspected the major AST/parser update, generated traversal implementations, token cursor operations, span ranges, and all unsafe sites. Unsafe code remains confined to documented parser lifetime, cursor, token-representation, and thread-bound invariants; no build script or ambient runtime capabilities are present."
 
+[[audits.syn]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "3.0.3 -> 3.0.10"
+notes = "AI-assisted review. Reviewed operator and label parsing, grouped lifetime handling, expression precedence scanning, foreign signatures, literal spans, and Punctuated::retain. The changes operate on existing token cursors and owned AST collections. No new unsafe operations, build scripts, or ambient capabilities."
+
 [[audits.thiserror]]
 who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
@@ -408,6 +468,12 @@ criteria = "safe-to-deploy"
 delta = "2.0.19 -> 2.0.20"
 notes = "AI-assisted review: version and dependency metadata, documentation links, CI MSRV coverage, and expected diagnostic snapshots only. No deployed source logic, unsafe-code, build-script, or ambient-capability behavior changed."
 
+[[audits.thiserror]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.20 -> 2.0.21"
+notes = "AI-assisted review. Reviewed the manifest and package diff. The wrapper updates MSRV and derive dependency metadata, documentation, and test fixtures. The library and build-script logic are unchanged."
+
 [[audits.thiserror-impl]]
 who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
@@ -419,6 +485,12 @@ who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
 delta = "2.0.19 -> 2.0.20"
 notes = "AI-assisted review: adds only allow attributes for Clippy's redundant_field_names lint to generated From implementations, plus version metadata. Generated runtime behavior is unchanged; no unsafe code, build script, or ambient capabilities were introduced."
+
+[[audits.thiserror-impl]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "2.0.20 -> 2.0.21"
+notes = "AI-assisted review. The format expression parser tracks angle bracket depth after a path separator and distinguishes an arrow from a closing bracket. The change is confined to token parsing and introduces no unsafe operations or ambient capabilities."
 
 [[audits.tokio]]
 who = "OpenAI Codex (AI-assisted)"
@@ -450,6 +522,12 @@ criteria = "safe-to-deploy"
 delta = "0.7.18 -> 0.7.19"
 notes = "AI-assisted review: inspected cancellation/task helpers, codec changes, vectored writes, and unsafe additions. memchr pointer arithmetic is bounded by the input slice, and vectored-write lifetime extension retains the original backing buffers; no unexpected ambient capabilities were added."
 
+[[audits.tokio-util]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "0.7.19 -> 0.7.20"
+notes = "AI-assisted review. Reviewed codec length clipping, sticky StreamReader EOF, interrupted I/O retries, timer wheel lookup, cancellation tree updates, and the switch to LocalRuntime for pinned worker threads. Wake callbacks occur after releasing the cancellation tree lock. Existing pinning and I/O buffer invariants are preserved."
+
 [[audits.unescaper]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -467,6 +545,12 @@ who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
 delta = "1.0.18 -> 1.0.24"
 notes = "Changes are mostly related to updating the Unicode tables to a newer version. The core logic of the crate has not changed. No unsafe code."
+
+[[audits.unicode-ident]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "1.0.24 -> 1.0.27"
+notes = "AI-assisted review. Reviewed the Unicode 18 table update and changed trie indexing. Verified that both unchecked leaf indexes are in bounds for every scalar input and that out-of-range trie indexes map to zero blocks. The lookup remains pure and the package adds no build script."
 
 [[audits.windows-link]]
 who = "Richard Neumann <neumann@paulmann.de>"
@@ -569,9 +653,16 @@ notes = "Trusted project publisher per supply-chain policy."
 
 [[trusted.libc]]
 criteria = "safe-to-deploy"
-user-id = 55123 # rust-lang-owner
+user-id = 55123
 start = "2024-08-15"
 end = "2026-05-15"
+
+[[trusted.libc]]
+criteria = "safe-to-deploy"
+trusted-publisher = "github:rust-lang/libc"
+start = "2026-10-16"
+end = "2026-10-17"
+notes = "The libc project now publishes through its official repository using crates.io trusted publishing. Registry metadata confirms this identity for 0.2.191. This entry is limited to the publication date of the locked release."
 
 [[trusted.memchr]]
 criteria = "safe-to-deploy"
@@ -647,6 +738,13 @@ criteria = "safe-to-deploy"
 user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2020-12-25"
 end = "2026-05-15"
+
+[[trusted.tokio]]
+criteria = "safe-to-deploy"
+user-id = 6741 # Alice Ryhl (Darksonn)
+start = "2026-10-21"
+end = "2026-10-22"
+notes = "The existing Tokio publisher policy identifies Alice Ryhl. Registry metadata confirms that the same account published 1.54.1. This entry is limited to the publication date of the locked release."
 
 [[trusted.windows-sys]]
 criteria = "safe-to-deploy"

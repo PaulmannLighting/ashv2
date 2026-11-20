@@ -9,15 +9,15 @@ user-login = "cuviper"
 user-name = "Josh Stone"
 
 [[publisher.ezsp]]
-version = "19.0.0"
-when = "2026-10-16"
+version = "20.0.0"
+when = "2026-11-20"
 user-id = 290593
 user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
 
 [[publisher.le-stream]]
-version = "10.2.0"
-when = "2026-07-10"
+version = "10.2.1"
+when = "2026-10-16"
 user-id = 290593
 user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
@@ -30,10 +30,9 @@ user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
 
 [[publisher.libc]]
-version = "0.2.186"
-when = "2026-04-23"
-user-id = 55123
-user-login = "rust-lang-owner"
+version = "0.2.191"
+when = "2026-10-16"
+trusted-publisher = "github:rust-lang/libc"
 
 [[publisher.proc-macro2]]
 version = "1.0.106"
@@ -50,15 +49,15 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.repr-discriminant]]
-version = "3.0.1"
-when = "2025-11-14"
+version = "3.1.1"
+when = "2026-09-29"
 user-id = 290593
 user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
 
 [[publisher.repr-discriminant-derive]]
-version = "2.0.0"
-when = "2025-11-14"
+version = "2.0.1"
+when = "2026-09-29"
 user-id = 290593
 user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
@@ -92,8 +91,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.tokio]]
-version = "1.52.3"
-when = "2026-05-08"
+version = "1.54.1"
+when = "2026-10-21"
 user-id = 6741
 user-login = "Darksonn"
 user-name = "Alice Ryhl"
@@ -289,6 +288,15 @@ who = "Benjamin VanderSloot <bvandersloot@mozilla.com>"
 criteria = "safe-to-deploy"
 delta = "2.9.4 -> 2.10.0"
 aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.cpufeatures]]
+who = "Alex Franchuk <afranchuk@mozilla.com>"
+criteria = "safe-to-deploy"
+version = "0.3.1"
+notes = """
+No dependencies aside from libc, and no use of std. Unsafe code is minimal and necessary.
+"""
+aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.num-derive]]
 who = "Josh Stone <jistone@redhat.com>"

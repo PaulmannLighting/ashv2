@@ -104,7 +104,7 @@ Enable the `ezsp` feature to get typed EZSP adapters:
 
 ```toml
 [dependencies]
-ashv2 = { version = "15", features = ["ezsp"] }
+ashv2 = { version = "16", features = ["ezsp"] }
 ```
 
 With the feature enabled:
