@@ -147,9 +147,15 @@ The core API is generic over separate Tokio `AsyncRead` and `AsyncWrite` impleme
 not depend on `serialport` or `async-serialport`, and does not open, configure, or split a serial
 port. Those transport-specific operations belong to the calling application.
 
+The transport values must be `Send + Unpin` and may contain borrows. The caller polls both
+futures within the lifetime of any borrowed I/O. Both opaque return types capture both transport
+type parameters, so spawning either future with `tokio::spawn` requires both types to be `'static`.
+
 The receiver buffer reads chunks directly from the supplied reader and retains bytes after a
 completed frame for the next read. The transmitter buffer writes fully encoded and stuffed frames
-through the supplied writer.
+through the supplied writer. The receiver stores its channels and acknowledgement state in
+`FrameHandler`, which its async methods can borrow independently of the read buffer. Requeueing
+on the transmit side borrows the queue sender independently of the write buffer.
 
 ```mermaid
 flowchart TD

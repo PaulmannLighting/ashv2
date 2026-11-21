@@ -26,7 +26,8 @@ The crate currently provides:
 Important behavior details:
 
 - `start(reader, writer, response)` accepts separate async reader and writer values. The caller is
-  responsible for opening and configuring the transport and splitting it when necessary.
+  responsible for opening and configuring the transport and splitting it when necessary. Both
+  transport values must be `Send + Unpin` and may borrow from the caller.
 - The core crate does not depend on `serialport` or `async-serialport`. Serial ports, sockets,
   in-memory streams, and other transports can be used when they implement the required Tokio I/O
   traits.
@@ -52,6 +53,10 @@ Compile-time tunables (via `const_env`):
 
 ## Usage
 
+To run the actors as separate Tokio tasks, pass transport types that are both `'static`.
+Each returned future's opaque type captures both transport types, so this applies when spawning
+either future.
+
 ```rust
 use ashv2::start;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -59,8 +64,8 @@ use tokio::sync::mpsc::channel;
 
 async fn run<R, W>(reader: R, writer: W)
 where
-    R: AsyncRead + Send + Sync + Unpin + 'static,
-    W: AsyncWrite + Send + Sync + Unpin + 'static,
+    R: AsyncRead + Send + Unpin + 'static,
+    W: AsyncWrite + Send + Unpin + 'static,
 {
     // Channel for inbound ASH DATA payloads from the NCP.
     let (response_tx, mut response_rx) = channel(64);
@@ -94,6 +99,9 @@ where
 The reader and writer can come from any transport integration. For a bidirectional type that
 implements both traits, use that transport's split operation (for example,
 `tokio::io::split`) before calling `start(...)`.
+
+To use borrowed I/O, pass values such as `&mut reader` and `&mut writer` to `start` and poll
+both actor futures concurrently with the application work in the scope of the borrows.
 
 Every clone of `Handle`, including a handle used through the optional EZSP transmitter adapter,
 must be dropped before termination can begin.

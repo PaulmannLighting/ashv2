@@ -73,6 +73,12 @@ criteria = "safe-to-deploy"
 delta = "15.0.0 -> 16.0.0"
 notes = "AI-assisted review: compared against the published ashv2 15.0.0 crate. The manifest switches the optional ezsp dependency from 19 to 20 and bumps the ashv2 major version because its public adapters implement ezsp traits. The README example follows the version bump. The Rust source is identical, with no build script or new ambient capabilities in ashv2. The dependency is covered by the trusted-publisher policy."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "16.0.0 -> 16.1.0"
+notes = "AI-assisted review: compared the workspace against the published ashv2 16.0.0 crate. The public start function accepts borrowed and Send-only transports. Examined the receiver's move of frame handling and acknowledgement state into a private handler and the transmitter's narrower borrow of the weak queue sender. Both preserve frame processing, channel error handling, and task shutdown. The manifest and lockfile change only the workspace version. The Rust changes introduce no unsafe code, build scripts, or additional ambient capabilities."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"

@@ -10,8 +10,9 @@
 //! underlying transport before starting the actor futures. The core API has no dependency on
 //! `serialport` or `async-serialport`.
 //!
-//! The returned [`Futures`] contains the transmitter and receiver futures. The caller must spawn
-//! or otherwise poll both futures on an async runtime.
+//! The returned [`Futures`] contains the transmitter and receiver futures. Poll both concurrently.
+//! The futures can borrow the transport for in-scope polling. To spawn either future with Tokio,
+//! pass transport types that are both `'static`.
 //!
 //! # Termination
 //!

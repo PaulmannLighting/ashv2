@@ -23,9 +23,7 @@ const INITIAL_ACK_NUMBER: u8 = 0;
 #[derive(Debug)]
 pub struct Receiver<R> {
     buffer: Buffer<R>,
-    response: Sender<Payload>,
-    transmitter: Sender<Message>,
-    last_received_frame_num: Option<u8>,
+    handler: FrameHandler,
 }
 
 impl<R> Receiver<R>
@@ -36,16 +34,18 @@ where
     pub fn new(reader: R, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
         Self {
             buffer: Buffer::new(reader),
-            response,
-            transmitter,
-            last_received_frame_num: None,
+            handler: FrameHandler {
+                response,
+                transmitter,
+                last_received_frame_num: None,
+            },
         }
     }
 }
 
 impl<R> Receiver<R>
 where
-    R: AsyncRead + Sync + Unpin,
+    R: AsyncRead + Unpin,
 {
     /// Runs the receiver loop.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
@@ -62,7 +62,7 @@ where
 
             trace!("Received frame: {frame:#04X}");
 
-            if let Err(error) = self.handle_frame(frame).await {
+            if let Err(error) = self.handler.handle_frame(frame).await {
                 info!("Transmitter channel closed, receiver exiting: {error}");
                 break;
             }
@@ -70,7 +70,17 @@ where
 
         debug!("Receiver loop terminated.");
     }
+}
 
+/// Handles decoded frames and tracks the receiver's acknowledgement state.
+#[derive(Debug)]
+struct FrameHandler {
+    response: Sender<Payload>,
+    transmitter: Sender<Message>,
+    last_received_frame_num: Option<u8>,
+}
+
+impl FrameHandler {
     /// Returns the ACK number.
     ///
     /// This is equal to the last received frame number plus one.
@@ -132,6 +142,7 @@ where
         Ok(())
     }
 
+    /// Handle an incoming `ERROR` frame.
     async fn handle_error(&self, error: Error) -> Result<(), SendError<Message>> {
         if let Ok(error) = error.validate() {
             self.transmitter.send(Message::Error(error)).await
@@ -151,6 +162,7 @@ where
         }
     }
 
+    /// Handle an incoming `RST` frame.
     async fn handle_rst(&self, rst: Rst) -> Result<(), SendError<Message>> {
         if let Ok(rst) = rst.validate() {
             self.transmitter.send(Message::Rst(rst)).await
@@ -160,6 +172,7 @@ where
         }
     }
 
+    /// Handle an incoming `RST-ACK` frame.
     async fn handle_rst_ack(&self, rst_ack: RstAck) -> Result<(), SendError<Message>> {
         if let Ok(rst_ack) = rst_ack.validate() {
             self.transmitter.send(Message::RstAck(rst_ack)).await

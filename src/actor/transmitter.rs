@@ -61,7 +61,7 @@ impl<T> Transmitter<T> {
 
 impl<T> Transmitter<T>
 where
-    T: AsyncWrite + Sync + Unpin,
+    T: AsyncWrite + Unpin,
 {
     /// Runs the transmitter, processing messages from the channel.
     pub async fn run(mut self, running: Arc<AtomicBool>) {
@@ -90,7 +90,7 @@ where
             }
 
             trace!("Received message before connection was established. Re-queueing.");
-            self.requeue(message).await?;
+            Self::requeue(&self.requeue, message).await?;
 
             // Only log if the connection has failed, not if it hasn't been established yet.
             if self.status == Status::Failed {
@@ -125,12 +125,14 @@ where
     ) -> io::Result<()> {
         if self.transmissions.is_full() {
             warn!("Insufficient space in transmission queue for payload, requeueing.");
-            return self
-                .requeue(Message::Payload {
+            return Self::requeue(
+                &self.requeue,
+                Message::Payload {
                     payload,
                     response_tx: response,
-                })
-                .await;
+                },
+            )
+            .await;
         }
 
         let data = Data::new(self.next_frame_number(), self.ack_number, *payload);
@@ -280,8 +282,9 @@ where
         io::Error::new(kind, reason)
     }
 
-    async fn requeue(&self, message: Message) -> io::Result<()> {
-        let Some(sender) = self.requeue.upgrade() else {
+    /// Put a message back on the transmitter's queue.
+    async fn requeue(weak_sender: &WeakSender<Message>, message: Message) -> io::Result<()> {
+        let Some(sender) = weak_sender.upgrade() else {
             return Err(Self::reject_message(
                 message,
                 ErrorKind::BrokenPipe,
