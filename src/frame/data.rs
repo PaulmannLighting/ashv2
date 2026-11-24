@@ -62,9 +62,9 @@ impl Data {
         self.header.contains(Header::RETRANSMIT)
     }
 
-    /// Sets the retransmit flag.
-    pub fn set_is_retransmission(&mut self, is_retransmission: bool) {
-        self.header.set(Header::RETRANSMIT, is_retransmission);
+    /// Updates the reverse acknowledgement and retransmit flag and recomputes the CRC.
+    pub fn set_transmission_fields(&mut self, ack_num: u8, retransmit: bool) {
+        self.header = Header::new(self.frame_num(), retransmit, ack_num);
         self.crc = self.calculate_crc();
     }
 
@@ -240,7 +240,7 @@ mod tests {
             crc: 0x1AAD,
         };
         assert!(!data.is_retransmission());
-        data.set_is_retransmission(true);
+        data.set_transmission_fields(data.ack_num(), true);
         assert!(data.is_retransmission());
         assert!(data.validate().is_ok());
 
@@ -254,7 +254,7 @@ mod tests {
             crc: 0x6316,
         };
         assert!(!data.is_retransmission());
-        data.set_is_retransmission(true);
+        data.set_transmission_fields(data.ack_num(), true);
         assert!(data.is_retransmission());
         assert!(data.validate().is_ok());
     }

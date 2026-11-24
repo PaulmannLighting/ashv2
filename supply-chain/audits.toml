@@ -85,6 +85,12 @@ criteria = "safe-to-deploy"
 delta = "16.1.0 -> 17.0.0"
 notes = "AI-assisted delta audit. ASHv2 transport sources are unchanged. The public EZSP adapter selects the audited EZSP 21 release, and the same transport implementations are exercised by the all-feature suite."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "17.0.0 -> 18.0.0"
+notes = "AI-assisted review against the published 17.0.0 source. Reviewed the separate bounded application and frame queues, readiness signalling, modulo-eight cumulative ACK validation, retransmission order and CRC updates, and reset and transport write deadlines. Terminal failures close both actors and resolve pending writes. Applications establish a fresh session, and queued commands are never replayed across sessions. Caller-provided I/O remains the only transport access. The crate adds no unsafe Rust or build script. The executor-independent deadlines use the separately audited futures-timer shared native thread, and the Tokio selection macros are separately audited."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
@@ -281,6 +287,12 @@ who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
 delta = "0.3.33 -> 0.3.34"
 notes = "AI-assisted review: version metadata only; no source, unsafe-code, build-script, or ambient-capability changes."
+
+[[audits.futures-timer]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "3.0.4"
+notes = "AI-assisted review of the published source and manifest. Native delays share a lazily initialized helper thread. Reviewed timer generation checks, cancelled-delay removal, heap slot ownership, and wake registration. Atomic state guards waker storage, and raw references in the pending-update list, global timer handle, and thread waker are backed by Arc or Weak reference counts. The enabled path uses the standard library and has no build script, filesystem, process spawning, or network operations."
 
 [[audits.getrandom]]
 who = "OpenAI Codex (AI-assisted)"
@@ -509,6 +521,12 @@ who = "OpenAI Codex (AI-assisted)"
 criteria = "safe-to-deploy"
 delta = "1.52.3 -> 1.53.1"
 notes = "AI-assisted review: inspected runtime, synchronization, signal, filesystem, networking, platform-credential, and io-uring changes. New unsafe operations retain syscall buffers and paths for operation lifetimes, validate initialized outputs, preserve pinning, and uphold task-state exclusivity; no unexpected capabilities were introduced."
+
+[[audits.tokio-macros]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+version = "2.7.2"
+notes = "AI-assisted review of the published proc-macro source and manifest. The runtime attributes parse literal configuration and emit a Tokio runtime builder around the caller's async body. The select helpers generate a bounded output enum and bit mask and normalize Rust patterns. Compared 2.7.1 to 2.7.2, where the implementation change follows Syn 3 parenthesized argument types when detecting impl Trait. The crate has no build script, unsafe blocks, or direct filesystem, environment, process, or network calls."
 
 [[audits.tokio-stream]]
 who = "Richard Neumann <neumann@paulmann.de>"

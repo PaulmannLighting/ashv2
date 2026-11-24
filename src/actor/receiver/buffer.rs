@@ -13,8 +13,8 @@ use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 
-use crate::frame::Frame;
-use crate::hex_slice::HexSlice;
+use super::Received;
+use crate::frame::{Data, Frame};
 use crate::protocol::{ControlByte, Unstuff};
 use crate::types::MAX_FRAME_SIZE;
 
@@ -48,17 +48,20 @@ impl<T> Buffer<T>
 where
     T: AsyncRead + Unpin,
 {
-    /// Read the next complete `ASHv2` [`Frame`].
+    /// Read and parse the next complete `ASHv2` frame.
     ///
     /// The method waits until a complete frame is terminated by `FLAG`, then applies byte
     /// unstuffing and frame parsing before returning.
     ///
     /// # Errors
     ///
-    /// Returns an error if serial I/O fails, the byte stream ends before another frame is
-    /// available, or the completed frame cannot be parsed.
-    pub async fn read_frame(&mut self) -> Result<Frame> {
-        self.read_raw_frame().await?.try_into()
+    /// Returns an error if serial I/O fails or the byte stream ends.
+    pub async fn read_frame(&mut self) -> Result<Received> {
+        let raw = self.read_raw_frame().await?;
+        if raw.len() > Data::BUFFER_SIZE {
+            return Ok(Received::Invalid);
+        }
+        Ok(Frame::try_from(raw).map_or(Received::Invalid, Received::Frame))
     }
 
     async fn read_raw_frame(&mut self) -> Result<Drain<'_, u8>> {
@@ -77,17 +80,13 @@ where
                         trace!("Received flag byte.");
 
                         if !error && !self.frame.is_empty() {
-                            debug!("Received frame.");
-                            trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
                             self.frame.unstuff();
-                            trace!("Unstuffed buffer: {:#04X}", HexSlice::new(&self.frame));
                             self.warn_if_frame_exceeds_max_frame_size();
                             return Ok(self.frame.drain(..));
                         }
 
                         trace!("Resetting buffer due to error or empty buffer.");
                         trace!("Error condition was: {error}");
-                        trace!("Buffer: {:#04X}", HexSlice::new(&self.frame));
                         self.reset_frame();
                         error = false;
                     }
@@ -115,7 +114,6 @@ where
             }
         }
 
-        trace!("Buffer state: {:#04X}", HexSlice::new(&self.frame));
         self.warn_if_frame_exceeds_max_frame_size();
         Err(ErrorKind::UnexpectedEof.into())
     }

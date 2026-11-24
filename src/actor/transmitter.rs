@@ -1,60 +1,82 @@
-use std::io;
-use std::io::ErrorKind;
-use std::ops::BitAnd;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
+use std::future::ready;
+use std::io::{self, ErrorKind};
 use std::time::{Duration, Instant};
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, info, warn};
 use tokio::io::AsyncWrite;
-use tokio::sync::mpsc::{Receiver, WeakSender};
+use tokio::select;
+use tokio::sync::mpsc::error::TrySendError;
+use tokio::sync::mpsc::{Receiver, Sender};
 
 use self::buffer::Buffer;
 use self::transmission::Transmission;
 use crate::actor::message::Message;
-use crate::frame::{Ack, Data, Error, Nak, RST, Rst, RstAck};
-use crate::protocol::next_sequence_number;
-use crate::status::Status;
-use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::{SEQ_MASK, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
+use crate::actor::receiver::Received;
+use crate::actor::timer::{timeout, wait_until};
+use crate::frame::{Ack, Data, Frame, Nak};
+use crate::protocol::{Mask, next_sequence_number};
+use crate::validate::Validate;
+use crate::{Payload, SEQ_MASK, T_RSTACK_MAX_MILLIS, T_RX_ACK_MAX_MILLIS, TX_K};
 
 mod buffer;
 mod transmission;
 
-/// Maximum time to wait for RST ACK frame after sending RST frame.
+/// Time to wait for each reset acknowledgement.
 const T_RSTACK_MAX: Duration = Duration::from_millis(T_RSTACK_MAX_MILLIS);
 
+/// Time to wait for acknowledgement of the oldest outstanding DATA frame.
 const T_RX_ACK_MAX: Duration = Duration::from_millis(T_RX_ACK_MAX_MILLIS);
 
-const TRANSMITTER_CHANNEL_CLOSED: &str = "ASHv2 transmitter channel is closed";
+/// Refresh nRdy before the NCP's default one-second callback pause expires.
+const NOT_READY_REFRESH: Duration = Duration::from_millis(500);
 
-/// `ASHv2` transmitter.
+/// One initial reset attempt plus five retries.
+const RESET_ATTEMPTS: usize = 6;
+
+const INITIAL_SEQUENCE_NUMBER: u8 = 0;
+
+const RECEIVE_TRANSPORT_CLOSED: &str = "ASHv2 receive transport closed";
+const RESPONSE_CHANNEL_CLOSED: &str = "ASHv2 response channel closed";
+
+const _: () = assert!(
+    TX_K > 0 && TX_K <= SEQ_MASK as usize,
+    "ASHV2_TX_K must be between 1 and 7"
+);
+
+/// Sends frames and owns both directions of the ASH link state.
 #[derive(Debug)]
 pub struct Transmitter<T> {
     buffer: Buffer<T>,
-    messages: Receiver<Message>,
-    requeue: WeakSender<Message>,
-    status: Status,
-    last_rst_sent: Option<Instant>,
+    requests: Receiver<Message>,
+    frames: Receiver<Received>,
+    response: Sender<Payload>,
     transmissions: heapless::Vec<Transmission, TX_K>,
+    retries_remaining: usize,
     frame_number: u8,
     ack_number: u8,
+    rejecting: bool,
+    not_ready_until: Option<Instant>,
 }
 
 impl<T> Transmitter<T> {
-    /// Creates a new `ASHv2` transmitter.
-    #[must_use]
-    pub const fn new(writer: T, messages: Receiver<Message>, requeue: WeakSender<Message>) -> Self {
+    /// Creates a transmitter with independent queues for application writes and serial input.
+    pub const fn new(
+        writer: T,
+        requests: Receiver<Message>,
+        frames: Receiver<Received>,
+        response: Sender<Payload>,
+    ) -> Self {
         Self {
             buffer: Buffer::new(writer),
-            messages,
-            requeue,
-            status: Status::Uninitialized,
-            last_rst_sent: None,
+            requests,
+            frames,
+            response,
             transmissions: heapless::Vec::new(),
-            frame_number: 0,
-            ack_number: 0,
+            retries_remaining: 0,
+            frame_number: INITIAL_SEQUENCE_NUMBER,
+            ack_number: INITIAL_SEQUENCE_NUMBER,
+            rejecting: false,
+            not_ready_until: None,
         }
     }
 }
@@ -63,237 +85,264 @@ impl<T> Transmitter<T>
 where
     T: AsyncWrite + Unpin,
 {
-    /// Runs the transmitter, processing messages from the channel.
-    pub async fn run(mut self, running: Arc<AtomicBool>) {
-        trace!("Starting transmitter with frame size: {MAX_FRAME_SIZE}");
-        self.reset().await.unwrap_or_else(|error| {
-            error!("Failed to send initial RST frame: {error}");
-        });
+    /// Drives the link until normal shutdown or a terminal error.
+    pub async fn run(mut self) {
+        let result = self.run_link().await;
+        self.frames.close();
 
-        while let Some(message) = self.messages.recv().await {
-            trace!("Received message: {message}");
-
-            if let Err(error) = self.handle_message(message).await {
-                error!("Resetting connection due to I/O error: {error}");
-                self.status = Status::Failed;
+        if let Err(error) = result {
+            warn!("ASHv2 link stopped: {error}");
+            self.requests.close();
+            let reason = error.to_string();
+            while let Some(request) = self.requests.recv().await {
+                let _ = request
+                    .response_tx
+                    .send(Err(io::Error::new(error.kind(), reason.clone())));
             }
         }
-
-        running.store(false, Relaxed);
-        info!("Transmitter loop terminated.");
     }
 
-    async fn handle_message(&mut self, message: Message) -> io::Result<()> {
-        if self.status != Status::Connected {
-            if let Message::RstAck(ack) = message {
-                return self.handle_rst_ack(ack).await;
-            }
+    async fn run_link(&mut self) -> io::Result<()> {
+        self.connect().await?;
 
-            trace!("Received message before connection was established. Re-queueing.");
-            Self::requeue(&self.requeue, message).await?;
-
-            // Only log if the connection has failed, not if it hasn't been established yet.
-            if self.status == Status::Failed {
-                warn!("ASHv2 Connection failed. Resetting...");
-            }
-
-            return self.reset().await;
-        }
-
-        match message {
-            Message::Payload {
-                payload,
-                response_tx: response,
-            } => self.handle_payload(payload, response).await,
-            Message::SendAck(ack_num) => self.send_ack(ack_num).await,
-            Message::SendNak(ack_num) => self.send_nak(ack_num).await,
-            Message::Rst(rst) => self.handle_rst(rst).await,
-            Message::RstAck(rst_ack) => self.handle_rst_ack(rst_ack).await,
-            Message::Error(error) => self.handle_error(error).await,
-            Message::ReceivedAck(ack_num) => {
-                self.ack_sent_frames(ack_num);
-                Ok(())
-            }
-            Message::ReceivedNak(ack_num) => self.nak_sent_frames(ack_num).await,
-        }
-    }
-
-    async fn handle_payload(
-        &mut self,
-        payload: Box<Payload>,
-        response: tokio::sync::oneshot::Sender<io::Result<()>>,
-    ) -> io::Result<()> {
-        if self.transmissions.is_full() {
-            warn!("Insufficient space in transmission queue for payload, requeueing.");
-            return Self::requeue(
-                &self.requeue,
-                Message::Payload {
-                    payload,
-                    response_tx: response,
-                },
-            )
-            .await;
-        }
-
-        let data = Data::new(self.next_frame_number(), self.ack_number, *payload);
-        // With a sliding windows size > 1 the NCP may enter an "ERROR: Assert" state when sending
-        // fragmented messages if each DATA frame's ACK number is not increased.
-        self.ack_number = next_sequence_number(self.ack_number);
-        response
-            .send(self.transmit(data.into()).await)
-            .unwrap_or_else(|_| {
-                error!("Failed to send transmit result through response channel.");
-            });
-        Ok(())
-    }
-
-    async fn send_ack(&mut self, ack_num: u8) -> io::Result<()> {
-        self.ack_number = ack_num;
-        self.buffer.write_frame(Ack::new(ack_num, false)).await
-    }
-
-    async fn send_nak(&mut self, ack_num: u8) -> io::Result<()> {
-        self.buffer.write_frame(Nak::new(ack_num, false)).await
-    }
-
-    /// Handle RST frame received from the NCP.
-    async fn handle_rst(&mut self, rst: Rst) -> io::Result<()> {
-        error!("Received RST frame: {rst}, resetting connection.");
-        self.status = Status::Failed;
-        self.reset().await
-    }
-
-    /// Handle RST ACK frame received from the NCP.
-    async fn handle_rst_ack(&mut self, rst_ack: RstAck) -> io::Result<()> {
-        trace!("Received RST ACK frame: {rst_ack}, connection reset acknowledged.");
-
-        if !rst_ack.is_ash_v2() {
-            error!("Received RST ACK frame with invalid ASH version: {rst_ack}.");
-            return Ok(());
-        }
-
-        if let Some(timestamp) = self.last_rst_sent.take() {
-            if timestamp.elapsed() < T_RSTACK_MAX {
-                debug!("Connection established successfully.");
-                self.status = Status::Connected;
-                Ok(())
+        while !(self.requests.is_closed() && self.requests.is_empty()) {
+            let retrying = self.retries_remaining > 0;
+            let ack_deadline = if retrying {
+                None
             } else {
-                warn!("RST ACK received after timeout. Resetting connection again.");
-                self.reset().await
+                self.transmissions
+                    .first()
+                    .map(|oldest| oldest.sent_at() + T_RX_ACK_MAX)
+            };
+
+            select! {
+                biased;
+                () = wait_until(ack_deadline) => {
+                    debug!("ASHv2 DATA acknowledgement timed out");
+                    self.start_retransmission();
+                }
+                () = wait_until(self.not_ready_until) => self.send_readiness_ack().await?,
+                available = async { self.response.reserve().await.map(drop) },
+                    if self.not_ready_until.is_some() =>
+                {
+                    available.map_err(|_| io::Error::new(ErrorKind::BrokenPipe, RESPONSE_CHANNEL_CLOSED))?;
+                    self.send_readiness_ack().await?;
+                }
+                received = self.frames.recv() => {
+                    let frame = received.ok_or_else(|| {
+                        io::Error::new(ErrorKind::BrokenPipe, RECEIVE_TRANSPORT_CLOSED)
+                    })?;
+                    self.handle_frame(frame).await?;
+                }
+                () = ready(()), if retrying => self.retransmit_next().await?,
+                request = self.requests.recv(), if !retrying && !self.transmissions.is_full() => {
+                    let Some(request) = request else { break };
+                    self.handle_request(request).await?;
+                }
             }
-        } else {
-            warn!("Received unexpected RST ACK frame: {rst_ack}.");
-            Ok(())
         }
-    }
-
-    /// Handle errors received from the NCP.
-    async fn handle_error(&mut self, error: Error) -> io::Result<()> {
-        warn!("Transmitter encountered error: {error}, resetting connection.");
-        self.status = Status::Failed;
-        self.reset().await
-    }
-
-    /// Remove `DATA` frames from the queue that have been acknowledged by the NCP.
-    fn ack_sent_frames(&mut self, ack_num: u8) {
-        self.remove_timed_out_transmissions();
-
-        // Remove acknowledged transmissions.
-        while let Some(transmission) = self
-            .transmissions
-            .iter()
-            .position(|transmission| {
-                next_sequence_number(transmission.frame_num()) == ack_num.bitand(SEQ_MASK)
-            })
-            .map(|index| self.transmissions.remove(index))
-        {
-            trace!(
-                "ACKed frame {transmission} after {:?}",
-                transmission.elapsed()
-            );
-        }
-    }
-
-    /// Retransmit `DATA` frames that have been `NAK`ed by the NCP.
-    async fn nak_sent_frames(&mut self, nak_num: u8) -> io::Result<()> {
-        self.remove_timed_out_transmissions();
-
-        // Retransmit NAK'ed transmission.
-        if let Some(transmission) = self
-            .transmissions
-            .iter()
-            .position(|transmission| transmission.frame_num() == nak_num)
-            .map(|index| self.transmissions.remove(index))
-        {
-            debug!("Retransmitting NAK'ed frame #{}", transmission.frame_num());
-            self.transmit(transmission).await?;
-        }
-
         Ok(())
     }
 
-    /// Removes transmissions that have exceeded the acknowledgement timeout.
-    fn remove_timed_out_transmissions(&mut self) {
-        self.transmissions
-            .retain(|transmission| !transmission.is_timed_out(T_RX_ACK_MAX));
-    }
+    /// Completes the initial reset handshake before taking application requests.
+    async fn connect(&mut self) -> io::Result<()> {
+        for attempt in 1..=RESET_ATTEMPTS {
+            if self.requests.is_closed() && self.requests.is_empty() {
+                return Ok(());
+            }
+            debug!("ASHv2 RST attempt {attempt}/{RESET_ATTEMPTS}");
+            self.buffer.write_reset().await?;
 
-    /// Send a `DATA` frame.
-    async fn transmit(&mut self, mut transmission: Transmission) -> io::Result<()> {
-        let data = transmission.data_for_transmit()?;
-        trace!("Transmitting frame {data:#04X}");
-        self.buffer.write_frame(data).await?;
-        self.transmissions
-            .insert(0, transmission)
-            .map_err(|_| io::Error::new(ErrorKind::OutOfMemory, "Failed to enqueue retransmit"))
-    }
-
-    /// Send RST frame to reset the connection.
-    async fn reset(&mut self) -> io::Result<()> {
-        if let Some(timestamp) = self.last_rst_sent.take()
-            && timestamp.elapsed() < T_RSTACK_MAX
-        {
-            debug!("Last RST sent {timestamp:?} ago, waiting before sending another...");
-            self.last_rst_sent.replace(timestamp);
-            return Ok(());
+            if let Ok(result) = timeout(T_RSTACK_MAX, self.wait_for_reset_ack()).await {
+                result?;
+                info!("ASHv2 link connected");
+                return Ok(());
+            }
         }
-
-        self.last_rst_sent.replace(Instant::now());
-        self.buffer.write_frame(RST).await
+        Err(io::Error::new(
+            ErrorKind::TimedOut,
+            "ASHv2 reset acknowledgement timed out",
+        ))
     }
 
-    /// Returns the next frame number.
-    pub const fn next_frame_number(&mut self) -> u8 {
-        let frame_number = self.frame_number;
-        self.frame_number = next_sequence_number(self.frame_number);
-        frame_number
-    }
-
-    /// Rejects a queued payload and returns the same failure to the transmitter.
-    fn reject_message(message: Message, kind: ErrorKind, reason: &'static str) -> io::Error {
-        if let Message::Payload { response_tx, .. } = message {
-            response_tx
-                .send(Err(io::Error::new(kind, reason)))
-                .unwrap_or_else(|_| {
-                    error!("Failed to send transmit result through response channel.");
-                });
+    async fn wait_for_reset_ack(&mut self) -> io::Result<()> {
+        while let Some(received) = self.frames.recv().await {
+            if let Received::Frame(Frame::RstAck(ack)) = received
+                && ack.validate().is_ok()
+            {
+                return if ack.is_ash_v2() {
+                    Ok(())
+                } else {
+                    Err(io::Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unsupported ASH version {} in RSTACK", ack.version()),
+                    ))
+                };
+            }
         }
-
-        io::Error::new(kind, reason)
+        Err(io::Error::new(
+            ErrorKind::BrokenPipe,
+            RECEIVE_TRANSPORT_CLOSED,
+        ))
     }
 
-    /// Put a message back on the transmitter's queue.
-    async fn requeue(weak_sender: &WeakSender<Message>, message: Message) -> io::Result<()> {
-        let Some(sender) = weak_sender.upgrade() else {
-            return Err(Self::reject_message(
-                message,
-                ErrorKind::BrokenPipe,
-                TRANSMITTER_CHANNEL_CLOSED,
-            ));
+    async fn handle_frame(&mut self, received: Received) -> io::Result<()> {
+        let Received::Frame(frame) = received else {
+            return self.reject_frame().await;
+        };
+        let Ok(frame) = frame.validate() else {
+            return self.reject_frame().await;
         };
 
-        sender.send(message).await.map_err(|error| {
-            Self::reject_message(error.0, ErrorKind::BrokenPipe, TRANSMITTER_CHANNEL_CLOSED)
-        })
+        debug!("Received {frame}");
+        match frame {
+            Frame::Ack(ack) => {
+                if !self.acknowledge(ack.ack_num()) {
+                    self.reject_frame().await?;
+                }
+            }
+            Frame::Nak(nak) => {
+                if self.acknowledge(nak.ack_num()) {
+                    self.start_retransmission();
+                } else {
+                    self.reject_frame().await?;
+                }
+            }
+            Frame::Data(data) => {
+                if self.acknowledge(data.ack_num()) {
+                    self.handle_data(*data).await?;
+                } else {
+                    self.reject_frame().await?;
+                }
+            }
+            Frame::Error(error) if !error.is_ash_v2() => self.reject_frame().await?,
+            Frame::Rst(_) | Frame::RstAck(_) | Frame::Error(_) => {
+                return Err(io::Error::new(
+                    ErrorKind::ConnectionReset,
+                    format!("Received {frame} on an established ASHv2 link"),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Applies a cumulative ACK to the ordered window, including modulo-eight wraparound.
+    fn acknowledge(&mut self, ack_num: u8) -> bool {
+        let first = self
+            .transmissions
+            .first()
+            .map_or(self.frame_number, Transmission::frame_num);
+        let count = usize::from(ack_num.wrapping_sub(first) & SEQ_MASK);
+        if count > self.transmissions.len() {
+            debug!("ASHv2 ACK {ack_num} outside transmit window at {first}");
+            return false;
+        }
+        for _ in 0..count {
+            self.transmissions.remove(0);
+        }
+        self.retries_remaining = self.retries_remaining.min(self.transmissions.len());
+        if count > 0 {
+            debug!(
+                "ASHv2 ACK {ack_num} released {count} frames, {} outstanding",
+                self.transmissions.len()
+            );
+        }
+        true
+    }
+
+    /// Advances the receive sequence after buffering in-order DATA.
+    async fn handle_data(&mut self, data: Data) -> io::Result<()> {
+        if data.frame_num() != self.ack_number {
+            return if data.is_retransmission() {
+                self.send_readiness_ack().await
+            } else {
+                self.reject_frame().await
+            };
+        }
+
+        let mut payload = data.into_payload();
+        payload.mask();
+        match self.response.try_send(payload) {
+            Ok(()) => {
+                self.ack_number = next_sequence_number(self.ack_number);
+                self.rejecting = false;
+            }
+            Err(TrySendError::Full(_)) => return self.reject_frame().await,
+            Err(TrySendError::Closed(_)) => {
+                return Err(io::Error::new(
+                    ErrorKind::BrokenPipe,
+                    RESPONSE_CHANNEL_CLOSED,
+                ));
+            }
+        }
+        self.send_readiness_ack().await
+    }
+
+    async fn reject_frame(&mut self) -> io::Result<()> {
+        if !self.rejecting {
+            self.rejecting = true;
+            let not_ready = self.response.capacity() == 0;
+            self.buffer
+                .write_frame(Nak::new(self.ack_number, not_ready))
+                .await?;
+            self.update_readiness_deadline(not_ready);
+        }
+        Ok(())
+    }
+
+    async fn send_readiness_ack(&mut self) -> io::Result<()> {
+        let not_ready = self.response.capacity() == 0;
+        self.buffer
+            .write_frame(Ack::new(self.ack_number, not_ready))
+            .await?;
+        self.update_readiness_deadline(not_ready);
+        Ok(())
+    }
+
+    fn update_readiness_deadline(&mut self, not_ready: bool) {
+        self.not_ready_until = not_ready.then(|| Instant::now() + NOT_READY_REFRESH);
+    }
+
+    async fn handle_request(&mut self, request: Message) -> io::Result<()> {
+        if request.response_tx.is_closed() {
+            return Ok(());
+        }
+
+        let data = Data::new(self.frame_number, self.ack_number, *request.payload);
+        let mut transmission = Transmission::from(data);
+        if let Err(error) = self
+            .buffer
+            .write_data(&mut transmission, self.ack_number)
+            .await
+        {
+            let _ = request
+                .response_tx
+                .send(Err(io::Error::new(error.kind(), error.to_string())));
+            return Err(error);
+        }
+
+        self.transmissions
+            .push(transmission)
+            .map_err(|_| io::Error::other("ASHv2 transmit window exceeded"))?;
+        self.frame_number = next_sequence_number(self.frame_number);
+        let _ = request.response_tx.send(Ok(()));
+        Ok(())
+    }
+
+    fn start_retransmission(&mut self) {
+        if self.retries_remaining == 0 {
+            self.retries_remaining = self.transmissions.len();
+        }
+    }
+
+    async fn retransmit_next(&mut self) -> io::Result<()> {
+        let index = self.transmissions.len() - self.retries_remaining;
+        let transmission = &mut self.transmissions[index];
+        debug!("Retransmitting ASHv2 frame {}", transmission.frame_num());
+        self.buffer
+            .write_data(transmission, self.ack_number)
+            .await?;
+        self.retries_remaining -= 1;
+        Ok(())
     }
 }

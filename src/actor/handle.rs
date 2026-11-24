@@ -1,43 +1,41 @@
 use std::io;
+use std::io::ErrorKind;
 
-use log::trace;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::oneshot::channel;
 
 use crate::Payload;
 use crate::actor::message::Message;
-use crate::hex_slice::HexSlice;
 
 /// User-facing handle for sending payloads to the `ASHv2` actor.
 ///
 /// Cloning a handle keeps the transmitter's message queue open. After every handle clone has been
-/// dropped, the transmitter drains the queue and terminates. There is no explicit terminate
-/// message.
+/// dropped, the transmitter drains the queue and terminates. A link failure ends the session
+/// and fails queued requests.
 #[derive(Clone, Debug)]
 pub struct Handle {
     inner: Sender<Message>,
 }
 
 impl Handle {
-    /// Send data to the `ASHv2` actor.
+    /// Send data to the `ASHv2` actor and wait for the local transport write.
     ///
     /// # Errors
     ///
-    /// Returns an error if the actor futures are no longer accepting messages or if the
-    /// transmitter fails to write the payload.
+    /// Returns an error if the session ends before the payload can be written or if the
+    /// transport write fails.
     pub async fn send(&self, payload: Payload) -> io::Result<()> {
         let (response_tx, response_rx) = channel();
 
-        trace!("Sending chunk: {:#04X}", HexSlice::new(&payload));
         self.inner
-            .send(Message::Payload {
+            .send(Message {
                 payload: Box::new(payload),
                 response_tx,
             })
             .await
-            .map_err(io::Error::other)?;
+            .map_err(|_| ErrorKind::BrokenPipe)?;
 
-        response_rx.await.map_err(io::Error::other)?
+        response_rx.await.map_err(|_| ErrorKind::BrokenPipe)?
     }
 }
 

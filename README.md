@@ -18,9 +18,8 @@ The crate currently provides:
 - Async actor futures created with `start(...)`, with caller-owned transmitter/receiver execution.
 - Transport-independent async I/O over caller-provided `tokio::io::AsyncRead` and
   `tokio::io::AsyncWrite` implementations.
-- Automatic initial reset handshake (`RST` -> `RST-ACK`) before normal traffic.
-- Automatic handling of inbound `ACK`/`NAK` and retransmission of queued `DATA` frames.
-- Automatic reset/recovery on protocol errors (`ERROR`, `RST`, and selected I/O failures).
+- Bounded initial reset handshake (`RST` -> `RST-ACK`) before normal traffic.
+- Cumulative acknowledgements and timed retransmission of unacknowledged `DATA` frames.
 - Optional EZSP adapters implementing `ezsp::Transmit` and `ezsp::Receive`.
 
 Important behavior details:
@@ -31,25 +30,30 @@ Important behavior details:
 - The core crate does not depend on `serialport` or `async-serialport`. Serial ports, sockets,
   in-memory streams, and other transports can be used when they implement the required Tokio I/O
   traits.
-- `start(...)` returns transmitter and receiver futures in a named `Futures` container for the
-  caller to spawn or poll.
+- `start(...)` returns transmitter and receiver futures for the caller to poll concurrently on
+  an executor compatible with the transport. On native targets, ASH deadlines use a shared
+  timer thread.
 - The crate does not spawn Tokio tasks internally.
-- The transmitter terminates after every `Handle` clone has been dropped and the outbound message
-  queue has been drained. There is no terminate message.
-- When the transmitter terminates, it signals the receiver to terminate as well.
-- `Handle::send(payload).await` confirms local transmission attempt (I/O success), not the remote ASH response payload.
-- Payload requests made before the ASH link is established remain queued while the initial reset
-  handshake is driven.
-- When the transmit window is full, the transmitter requeues the payload request without delay.
-- Incoming `DATA` payloads are delivered through the response channel passed to `start(...)`.
+- Dropping every `Handle` clone closes the outbound queue. Both futures end after queued writes
+  drain or the link fails.
+- `Handle::send(payload).await` acknowledges completion of the local transport write. The
+  response channel delivers inbound `DATA` payloads.
+- During the initial handshake or while the transmit window is full, requests wait in the
+  bounded queue. When that queue fills, further calls to `Handle::send` wait for capacity.
+  Incoming control frames and retry deadlines remain active.
+- The host acknowledges inbound `DATA` after buffering it. A full response channel sets the
+  ASH not-ready flag to pause NCP callbacks.
+- An exhausted retry budget, transport failure, or unexpected NCP reset ends the session and
+  fails queued sends. Start a fresh ASH session and renegotiate EZSP before sending more
+  commands. Commands already written can have an unknown remote outcome.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
 
 Compile-time tunables (via `const_env`):
 
 - `ASHV2_MAX_PAYLOAD_SIZE` (default: `128`)
 - `ASHV2_T_RSTACK_MAX_MILLIS` (default: `3200`)
-- `ASHV2_TX_K` (default: `5`)
-- `ASHV2_T_RX_ACK_MAX_MILLIS` (default: `3200`)
+- `ASHV2_TX_K` (default: `5`, range: `1` to `7`)
+- `ASHV2_T_RX_ACK_MAX_MILLIS` (default: `3200`, also bounds each transport write)
 
 ## Usage
 
@@ -103,8 +107,8 @@ implements both traits, use that transport's split operation (for example,
 To use borrowed I/O, pass values such as `&mut reader` and `&mut writer` to `start` and poll
 both actor futures concurrently with the application work in the scope of the borrows.
 
-Every clone of `Handle`, including a handle used through the optional EZSP transmitter adapter,
-must be dropped before termination can begin.
+For graceful shutdown, drop every clone of `Handle`, including handles used through the
+optional EZSP transmitter adapter.
 
 ## EZSP integration
 
@@ -112,7 +116,7 @@ Enable the `ezsp` feature to get typed EZSP adapters:
 
 ```toml
 [dependencies]
-ashv2 = { version = "16", features = ["ezsp"] }
+ashv2 = { version = "18", features = ["ezsp"] }
 ```
 
 With the feature enabled:

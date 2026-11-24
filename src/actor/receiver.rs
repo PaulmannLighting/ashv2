@@ -1,44 +1,37 @@
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
-
-use log::{debug, error, info, trace, warn};
+use log::{debug, warn};
 use tokio::io::AsyncRead;
+use tokio::select;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::error::SendError;
 
 use self::buffer::Buffer;
-use crate::actor::message::Message;
-use crate::frame::{Ack, Data, Error, Frame, Nak, Rst, RstAck};
-use crate::protocol::{Mask, next_sequence_number};
-use crate::types::{MAX_FRAME_SIZE, Payload};
-use crate::validate::Validate;
+use crate::frame::Frame;
 
 mod buffer;
 
-/// Expected frame number before the first DATA frame arrives.
-const INITIAL_ACK_NUMBER: u8 = 0;
+/// An inbound frame or a framing error to handle in wire order.
+#[derive(Debug)]
+pub enum Received {
+    Frame(Frame),
 
-/// `ASHv2` receiver.
+    Invalid,
+}
+
+/// Reads serial frames and forwards them to the actor that owns link state.
 #[derive(Debug)]
 pub struct Receiver<R> {
     buffer: Buffer<R>,
-    handler: FrameHandler,
+    frames: Sender<Received>,
 }
 
 impl<R> Receiver<R>
 where
     R: AsyncRead,
 {
-    /// Creates a new `ASHv2` receiver.
-    pub fn new(reader: R, response: Sender<Payload>, transmitter: Sender<Message>) -> Self {
+    /// Creates a reader for the receive half of the transport.
+    pub fn new(reader: R, frames: Sender<Received>) -> Self {
         Self {
             buffer: Buffer::new(reader),
-            handler: FrameHandler {
-                response,
-                transmitter,
-                last_received_frame_num: None,
-            },
+            frames,
         }
     }
 }
@@ -47,170 +40,26 @@ impl<R> Receiver<R>
 where
     R: AsyncRead + Unpin,
 {
-    /// Runs the receiver loop.
-    pub async fn run(mut self, running: Arc<AtomicBool>) {
-        trace!("Starting receiver with frame size: {MAX_FRAME_SIZE}");
-
-        while running.load(Relaxed) {
-            let frame = match self.buffer.read_frame().await {
-                Ok(frame) => frame,
-                Err(error) => {
-                    error!("Error receiving frame: {error}");
-                    continue;
-                }
+    /// Forwards frames until the link ends or the transport can no longer be read.
+    pub async fn run(mut self) {
+        loop {
+            let received = select! {
+                biased;
+                () = self.frames.closed() => break,
+                frame = self.buffer.read_frame() => frame,
             };
-
-            trace!("Received frame: {frame:#04X}");
-
-            if let Err(error) = self.handler.handle_frame(frame).await {
-                info!("Transmitter channel closed, receiver exiting: {error}");
-                break;
+            match received {
+                Ok(frame) => {
+                    if self.frames.send(frame).await.is_err() {
+                        break;
+                    }
+                }
+                Err(error) => {
+                    warn!("ASHv2 receive transport closed: {error}");
+                    break;
+                }
             }
         }
-
-        debug!("Receiver loop terminated.");
-    }
-}
-
-/// Handles decoded frames and tracks the receiver's acknowledgement state.
-#[derive(Debug)]
-struct FrameHandler {
-    response: Sender<Payload>,
-    transmitter: Sender<Message>,
-    last_received_frame_num: Option<u8>,
-}
-
-impl FrameHandler {
-    /// Returns the ACK number.
-    ///
-    /// This is equal to the last received frame number plus one.
-    fn ack_number(&self) -> u8 {
-        self.last_received_frame_num
-            .map_or(INITIAL_ACK_NUMBER, next_sequence_number)
-    }
-
-    async fn handle_frame(&mut self, frame: Frame) -> Result<(), SendError<Message>> {
-        match frame {
-            Frame::Ack(ack) => self.handle_ack(ack).await,
-            Frame::Data(data) => self.handle_data(*data).await,
-            Frame::Error(error) => self.handle_error(error).await,
-            Frame::Nak(nak) => self.handle_nak(nak).await,
-            Frame::Rst(rst) => self.handle_rst(rst).await,
-            Frame::RstAck(rst_ack) => self.handle_rst_ack(rst_ack).await,
-        }
-    }
-
-    /// Handle an incoming `ACK` frame.
-    async fn handle_ack(&self, ack: Ack) -> Result<(), SendError<Message>> {
-        if let Ok(ack) = ack.validate() {
-            self.ack_sent_frames(ack.ack_num()).await
-        } else {
-            warn!("Received ACK with invalid CRC.");
-            Ok(())
-        }
-    }
-
-    /// Handle an incoming `DATA` frame.
-    async fn handle_data(&mut self, data: Data) -> Result<(), SendError<Message>> {
-        trace!("Handling data frame: {data:#04X}");
-
-        let Ok(data) = data.validate() else {
-            warn!("Received data frame with invalid CRC.");
-            self.send_nak().await?;
-            return Ok(());
-        };
-
-        if data.frame_num() == self.ack_number() {
-            trace!("Received in-sequence data frame: {data}");
-            self.last_received_frame_num.replace(data.frame_num());
-            self.send_ack().await?;
-            self.ack_sent_frames(data.ack_num()).await?;
-            self.handle_payload(data.into_payload()).await;
-            return Ok(());
-        }
-
-        if data.is_retransmission() {
-            debug!("Received retransmission of data frame: {data}");
-            self.send_ack().await?;
-            self.ack_sent_frames(data.ack_num()).await?;
-            self.handle_payload(data.into_payload()).await;
-            return Ok(());
-        }
-
-        warn!("Received out-of-sequence data frame: {data}");
-        self.send_nak().await?;
-        Ok(())
-    }
-
-    /// Handle an incoming `ERROR` frame.
-    async fn handle_error(&self, error: Error) -> Result<(), SendError<Message>> {
-        if let Ok(error) = error.validate() {
-            self.transmitter.send(Message::Error(error)).await
-        } else {
-            warn!("Received ERROR with invalid CRC.");
-            Ok(())
-        }
-    }
-
-    /// Handle an incoming `NAK` frame.
-    async fn handle_nak(&self, nak: Nak) -> Result<(), SendError<Message>> {
-        if let Ok(nak) = nak.validate() {
-            self.nak_sent_frames(nak.ack_num()).await
-        } else {
-            warn!("Received NAK with invalid CRC.");
-            Ok(())
-        }
-    }
-
-    /// Handle an incoming `RST` frame.
-    async fn handle_rst(&self, rst: Rst) -> Result<(), SendError<Message>> {
-        if let Ok(rst) = rst.validate() {
-            self.transmitter.send(Message::Rst(rst)).await
-        } else {
-            warn!("Received RST with invalid CRC.");
-            Ok(())
-        }
-    }
-
-    /// Handle an incoming `RST-ACK` frame.
-    async fn handle_rst_ack(&self, rst_ack: RstAck) -> Result<(), SendError<Message>> {
-        if let Ok(rst_ack) = rst_ack.validate() {
-            self.transmitter.send(Message::RstAck(rst_ack)).await
-        } else {
-            warn!("Received RST-ACK with invalid CRC.");
-            Ok(())
-        }
-    }
-
-    /// Send the response frame's payload through the response channel.
-    async fn handle_payload(&self, mut payload: Payload) {
-        payload.mask();
-        self.response.send(payload).await.unwrap_or_else(|error| {
-            error!("Failed to send payload through response channel: {error}");
-        });
-    }
-
-    /// Send an `ACK` frame.
-    async fn send_ack(&self) -> Result<(), SendError<Message>> {
-        self.transmitter
-            .send(Message::SendAck(self.ack_number()))
-            .await
-    }
-
-    /// Send a `NAK` frame.
-    async fn send_nak(&self) -> Result<(), SendError<Message>> {
-        self.transmitter
-            .send(Message::SendNak(self.ack_number()))
-            .await
-    }
-
-    /// Acknowledge sent frames up to `ack_num`.
-    async fn ack_sent_frames(&self, ack_num: u8) -> Result<(), SendError<Message>> {
-        self.transmitter.send(Message::ReceivedAck(ack_num)).await
-    }
-
-    /// Negative acknowledge sent frames up to `ack_num`.
-    async fn nak_sent_frames(&self, ack_num: u8) -> Result<(), SendError<Message>> {
-        self.transmitter.send(Message::ReceivedNak(ack_num)).await
+        debug!("ASHv2 receiver stopped");
     }
 }

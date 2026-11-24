@@ -12,13 +12,14 @@ how that stream is opened and configured.
 At runtime, the crate is centered around `start(...)`, which creates two asynchronous
 actor futures:
 
-- `Transmitter`: owns the supplied `AsyncWrite` implementation and connection state.
-- `Receiver`: owns the supplied `AsyncRead` implementation and inbound frame handling.
+- `Transmitter` owns the writer, both sequence counters, the transmit window, and link timers.
+- `Receiver` owns the reader and forwards parsed frames and framing errors in wire order.
 
 `start(reader, writer, response)` takes transport halves that the caller has already opened,
 configured, and split. It returns `Handle`, the user-facing send handle, and a `Futures`
-container with transmitter and receiver futures that the caller must spawn or poll on their async
-runtime. Incoming payloads are pushed to the user-provided response channel.
+container with transmitter and receiver futures. The caller polls both concurrently on an
+executor compatible with the transport. A dedicated frame queue lets the transmitter keep
+handling incoming frames when the outbound request or application response queue is full.
 
 ```mermaid
 flowchart TD
@@ -31,8 +32,9 @@ flowchart TD
     Rx[Receiver future]
     Reader[AsyncRead implementation]
     Writer[AsyncWrite implementation]
-    MsgQ[(tokio mpsc Message queue)]
-    RespQ[(tokio mpsc Payload queue)]
+    MsgQ[(Outbound request queue)]
+    FrameQ[(Inbound frame queue)]
+    RespQ[(Application response queue)]
 
     App --> Transport
     Transport --> Reader
@@ -45,15 +47,16 @@ flowchart TD
     Futures --> Tx
     Futures --> Rx
     App -->|send payload| Handle
-    Handle -->|Message::Payload| MsgQ
+    Handle -->|write request| MsgQ
     MsgQ --> Tx
     Tx -->|write frames| Writer
     Reader -->|read frames| Rx
-    Rx -->|inbound payload| RespQ
+    Tx -->|accepted payload| RespQ
     RespQ --> App
-    Rx -->|ACK/NAK/RST/RST-ACK/ERROR as Message| MsgQ
+    Rx -->|parsed frames| FrameQ
+    FrameQ --> Tx
     Handle -.->|last handle dropped closes queue| MsgQ
-    Tx -->|sets running=false on exit| Rx
+    Tx -.->|closing frame queue wakes receiver| Rx
 ```
 
 ## Core Modules and Responsibilities
@@ -79,17 +82,19 @@ flowchart TD
 
 ## Connection and Future Lifecycle
 
-The transmitter is the owner of connection state (`Uninitialized`, `Connected`, `Failed`).
-On startup it sends `RST`, waits for `RST-ACK`, and only then handles payload traffic normally.
+On startup the transmitter sends `RST` and waits for a valid `RST-ACK` with ASH version 2.
+The reset timer allows five retries. While waiting, the transmitter discards other incoming
+frames and leaves application requests in their queue.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Uninitialized
-    Uninitialized --> Connected: valid RST-ACK (version=2, in time)
-    Uninitialized --> Uninitialized: resend RST / requeue messages
-    Connected --> Failed: I/O error or inbound RST/ERROR
-    Failed --> Uninitialized: reset() sends RST
+    [*] --> Resetting
+    Resetting --> Connected: valid RST-ACK
+    Resetting --> Resetting: reset acknowledgement deadline
+    Resetting --> Stopped: retry budget exhausted or transport failure
+    Connected --> Stopped: link failure or outbound queue drained and closed
     Connected --> Connected: DATA/ACK/NAK exchange
+    Stopped --> [*]
 ```
 
 ## Message Flow
@@ -97,18 +102,14 @@ stateDiagram-v2
 ### Outbound path (App -> NCP)
 
 1. App calls `Handle::send(payload).await`.
-2. `Handle` sends `Message::Payload` into the transmitter queue with a oneshot response channel.
-3. Transmitter creates a `DATA` frame:
-   - sets frame number (`u8`, masked to 3 bits for modulo-8 behavior),
-   - sets current ACK number,
-   - masks payload bytes,
-   - computes CRC.
-4. Transmitter writes via write buffer:
-   - convert frame to bytes,
-   - stuff reserved control bytes,
-   - append `FLAG (0x7E)`,
-   - write to the caller-provided `AsyncWrite` implementation.
-5. Transmitter stores transmission metadata for ACK/NAK-based completion/retransmission.
+2. `Handle` enqueues a write request with a oneshot for the result.
+3. When the link is connected and the window has room, the transmitter takes the request. It
+   assigns the next outbound frame number and the current inbound ACK number, masks the
+   payload, and calculates its CRC.
+4. The write buffer stuff-encodes the frame, appends `FLAG`, and writes and flushes the bytes
+   within the transport write deadline.
+5. The transmitter stores the written frame for retransmission and reports local write
+   completion through the oneshot.
 
 ### Inbound path (NCP -> App)
 
@@ -116,12 +117,12 @@ stateDiagram-v2
 2. The receiver buffer retains any unconsumed bytes between reads.
 3. Receiver reads bytes until `FLAG`.
 4. Receiver handles control bytes (`CANCEL`, `SUBSTITUTE`, `XON`, `XOFF`, `WAKE`) and un-stuffs payload bytes.
-5. Parsed bytes are converted into a typed frame and CRC-validated.
-6. Receiver behavior by frame type:
-   - `DATA`: sequence check, send `ACK` or `NAK`, unmask payload, forward to response channel.
-   - `ACK`: notify transmitter to retire sent frames up to ACK number.
-   - `NAK`: notify transmitter to retransmit matching sent frame.
-   - `RST`, `RST-ACK`, `ERROR`: forward to transmitter for connection-state handling.
+5. The receiver forwards parsed frames to the transmitter for CRC and sequence validation.
+6. The transmitter processes the reverse ACK in valid `DATA`, `ACK`, and `NAK` frames.
+7. For in-sequence `DATA`, it advances the receive counter and sends a standalone `ACK` after
+   buffering the payload. While the response channel is full, it withholds acknowledgement of
+   unbuffered payloads and advertises `nRdy`. Duplicates can carry valid ACKs and are discarded
+   after acknowledgement processing.
 
 ```mermaid
 sequenceDiagram
@@ -133,11 +134,12 @@ sequenceDiagram
     participant Q as Response Channel
 
     A->>H: send(payload)
-    H->>T: Message::Payload
+    H->>T: write request
     T->>S: DATA(frame, masked payload)
     S->>R: inbound frame bytes
-    R->>T: Message::ReceivedAck / ReceivedNak
-    R->>Q: unmasked payload
+    R->>T: parsed ASH frame
+    T->>Q: unmasked payload
+    T->>S: ACK
     Q->>A: Payload
 ```
 
@@ -153,9 +155,9 @@ type parameters, so spawning either future with `tokio::spawn` requires both typ
 
 The receiver buffer reads chunks directly from the supplied reader and retains bytes after a
 completed frame for the next read. The transmitter buffer writes fully encoded and stuffed frames
-through the supplied writer. The receiver stores its channels and acknowledgement state in
-`FrameHandler`, which its async methods can borrow independently of the read buffer. Requeueing
-on the transmit side borrows the queue sender independently of the write buffer.
+through the supplied writer. The two actor futures communicate through a bounded inbound frame
+queue with capacity `TX_K`. The outbound request queue uses the configured response channel
+capacity.
 
 ```mermaid
 flowchart TD
@@ -205,20 +207,21 @@ flowchart LR
 
 ## Termination Path
 
-The actor does not use a terminate message. Each clone of the user-facing `Handle` keeps the
-outbound message queue open. After every handle has been dropped, the queue closes. The
-transmitter drains any messages already in the queue and then exits its main loop.
+Each `Handle` clone keeps the outbound request queue open. When it closes, the transmitter
+drains queued writes before exiting. On link failure it closes the queue and resolves pending
+requests with an I/O error. In both cases closing the inbound frame queue wakes the receiver,
+including when it is waiting for serial input.
 
-When the transmitter exits, it clears the shared running flag observed by the receiver, causing
-the receiver to terminate. The caller must continue polling or awaiting both returned futures
-during this process. Their transport halves are dropped when the futures complete; any additional
-transport resource cleanup is the caller's responsibility.
+The caller continues driving both actor futures until they complete. After link failure, the
+caller opens a fresh ASH session, renegotiates EZSP, and restores coordinator operation with
+the existing persisted network. A new session starts with an empty window and sequence numbers
+at zero. Previously written commands can have an unknown remote outcome.
 
 ```mermaid
 sequenceDiagram
     participant A as Application
     participant H as Handle clones
-    participant Q as Message queue
+    participant Q as Outbound request queue
     participant T as Transmitter
     participant R as Receiver
 
@@ -226,7 +229,7 @@ sequenceDiagram
     H-->>Q: last sender dropped
     Q-->>T: queue drained and closed
     T->>T: exit transmit loop
-    T-->>R: running = false
+    T-->>R: inbound frame queue closed
     R->>R: exit receive loop
 ```
 
@@ -256,24 +259,31 @@ sequenceDiagram
 
 ## Reliability and Retransmission Model
 
-- Sliding window capacity is `TX_K` (default `5`), stored in a fixed-capacity queue.
-- Payload requests are requeued without delay when the sliding window is full.
-- Payload requests remain queued until the initial reset handshake completes.
-- Each queued transmission tracks:
-  - send time (`Instant`),
-  - frame number,
-  - retransmit count.
-- On inbound `ACK`, matching transmitted frames are retired.
-- On inbound `NAK`, matching frame is removed and retransmitted with retransmit flag set.
-- Timed-out transmissions are dropped when processing ACK/NAK maintenance.
-- After too many retransmissions (`ACK_TIMEOUTS = 4` in current code), transmit returns timeout error.
+- The window holds `TX_K` frames in sequence order, from oldest to newest. The transmitter
+  pauses application dequeuing when the window is full. The bounded request channel suspends
+  additional senders until there is room.
+- A valid ACK number lies between the oldest outstanding frame and the next outbound frame,
+  inclusive, in modulo-eight order. It removes the whole acknowledged prefix.
+- A NAK or expiry of the oldest frame's deadline schedules the unacknowledged suffix for
+  retransmission in sequence order. The transmitter can process incoming acknowledgements
+  between retries and skip frames already acknowledged.
+- Retries keep the original frame number, refresh the reverse ACK field, and recompute the CRC.
+  Each completed write refreshes that frame's deadline.
+- A frame can be sent three times, including its original write. Retry exhaustion ends the
+  session with a timeout. Control and data writes share the configured transport write deadline.
+- Deadlines use the monotonic clock and an executor-independent timer. On native targets,
+  `futures-timer` wakes the actor from a shared timer thread.
+- The host refreshes `nRdy` every 500 ms while the response channel remains full and sends a
+  readiness ACK as soon as space is available. The NCP may still send command responses and
+  retries during a callback pause. The host leaves unbuffered payloads unacknowledged.
 
 ## CRC Validation
 
 - CRC algorithm: `CRC-16-IBM-3740`.
 - CRC is computed over frame bytes excluding the CRC field itself.
-- Receiver validates CRC per frame type before semantic handling.
-- Invalid CRC in inbound `DATA` triggers `NAK`; invalid control frames are ignored with warning logs.
+- The transmitter validates CRC before interpreting a parsed frame.
+- In the connected state, an invalid frame sets the reject condition and sends one NAK. A
+  valid in-sequence `DATA` frame clears the condition after buffering.
 
 ## Randomization (Masking) in Detail
 

@@ -36,7 +36,7 @@ impl Error {
     /// Verifies that this is indeed `ASHv2`.
     #[must_use]
     pub const fn is_ash_v2(self) -> bool {
-        self.version == crate::VERSION
+        self.version() == crate::VERSION
     }
 
     /// Returns the error code.
@@ -51,7 +51,10 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ERROR({:#04X}, {:#04X})", self.version, self.code)
+        match self.code() {
+            Ok(code) => write!(f, "ERROR({:#04X}, {code})", self.version()),
+            Err(code) => write!(f, "ERROR({:#04X}, {code:#04X})", self.version()),
+        }
     }
 }
 
@@ -147,7 +150,10 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-        assert_eq!(&ERROR.to_string(), "ERROR(0x02, 0x51)");
+        assert_eq!(
+            &ERROR.to_string(),
+            "ERROR(0x02, Error: Exceeded maximum ACK timeout count)"
+        );
     }
 
     #[test]

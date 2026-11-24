@@ -10,16 +10,17 @@
 //! underlying transport before starting the actor futures. The core API has no dependency on
 //! `serialport` or `async-serialport`.
 //!
-//! The returned [`Futures`] contains the transmitter and receiver futures. Poll both concurrently.
+//! The returned [`Futures`] contains the transmitter and receiver futures. Poll both concurrently
+//! on an executor compatible with your transport. ASH deadlines use an executor-independent timer.
 //! The futures can borrow the transport for in-scope polling. To spawn either future with Tokio,
 //! pass transport types that are both `'static`.
 //!
 //! # Termination
 //!
-//! The actor does not use a terminate message. Drop every clone of [`Handle`] to close the
-//! outbound message queue. The transmitter drains queued messages and then terminates. It clears
-//! the shared running state when it exits, which causes the receiver to terminate as well.
-//! Continue polling or awaiting both actor futures until they complete.
+//! Drop every clone of [`Handle`] to close the outbound request queue. Both futures terminate
+//! when queued writes are drained or the link fails. A failed link fails pending writes and
+//! closes the response stream after any buffered payloads. Start a fresh session and renegotiate
+//! EZSP before sending more commands.
 //!
 //! # EZSP integration
 //!
@@ -47,7 +48,6 @@ pub mod ezsp;
 mod frame;
 mod hex_slice;
 mod protocol;
-mod status;
 mod types;
 mod validate;
 

@@ -1,13 +1,13 @@
 //! Transmitted frame with metadata.
 
 use core::fmt::Display;
-use core::time::Duration;
 use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
 use crate::frame::Data;
 
-const ACK_TIMEOUTS: usize = 4;
+/// One initial send and two retries. The next attempt fails the session.
+const MAX_TRANSMISSIONS: usize = 3;
 
 /// A transmitted frame with metadata.
 #[derive(Debug)]
@@ -24,31 +24,24 @@ impl Transmission {
         self.data.frame_num()
     }
 
-    /// Return the duration since the frame was sent.
+    /// Return when the frame was last written.
     #[must_use]
-    pub fn elapsed(&self) -> Duration {
-        self.sent.elapsed()
+    pub const fn sent_at(&self) -> Instant {
+        self.sent
     }
 
-    /// Return `true` if the transmission has timed out given the threshold.
-    #[must_use]
-    pub fn is_timed_out(&self, threshold: Duration) -> bool {
-        self.elapsed() > threshold
+    /// Record a completed write for the acknowledgement timer.
+    pub fn mark_sent(&mut self) {
+        self.sent = Instant::now();
     }
 
-    /// Prepare the data for transmission, updating retransmission status and count.
+    /// Counts this send attempt and refreshes the header and CRC on retransmission.
     ///
     /// # Errors
     ///
     /// Returns an [`Error`] if the retransmission limit is exceeded.
-    pub fn data_for_transmit(&mut self) -> io::Result<&Data> {
-        self.transmits += 1;
-
-        if self.transmits > 1 {
-            self.data.set_is_retransmission(true);
-        }
-
-        if self.transmits >= ACK_TIMEOUTS {
+    pub fn data_for_transmit(&mut self, ack_num: u8) -> io::Result<&Data> {
+        if self.transmits >= MAX_TRANSMISSIONS {
             return Err(Error::new(
                 ErrorKind::TimedOut,
                 format!(
@@ -58,6 +51,10 @@ impl Transmission {
             ));
         }
 
+        if self.transmits > 0 {
+            self.data.set_transmission_fields(ack_num, true);
+        }
+        self.transmits += 1;
         Ok(&self.data)
     }
 }
@@ -95,7 +92,7 @@ mod tests {
     fn test_transmit() {
         let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
         let mut transmission: Transmission = data.into();
-        let data = transmission.data_for_transmit().unwrap();
+        let data = transmission.data_for_transmit(u8::default()).unwrap();
         assert!(!data.is_retransmission());
         assert_eq!(transmission.transmits, 1);
     }
@@ -104,8 +101,8 @@ mod tests {
     fn test_retransmit() {
         let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
         let mut transmission: Transmission = data.into();
-        let _transmit = transmission.data_for_transmit().unwrap();
-        let retransmit = transmission.data_for_transmit().unwrap();
+        let _transmit = transmission.data_for_transmit(u8::default()).unwrap();
+        let retransmit = transmission.data_for_transmit(u8::default()).unwrap();
         assert!(retransmit.is_retransmission());
         assert_eq!(transmission.transmits, 2);
     }
