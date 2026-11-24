@@ -79,6 +79,12 @@ criteria = "safe-to-deploy"
 delta = "16.0.0 -> 16.1.0"
 notes = "AI-assisted review: compared the workspace against the published ashv2 16.0.0 crate. The public start function accepts borrowed and Send-only transports. Examined the receiver's move of frame handling and acknowledgement state into a private handler and the transmitter's narrower borrow of the weak queue sender. Both preserve frame processing, channel error handling, and task shutdown. The manifest and lockfile change only the workspace version. The Rust changes introduce no unsafe code, build scripts, or additional ambient capabilities."
 
+[[audits.ashv2]]
+who = "Codex AI"
+criteria = "safe-to-deploy"
+delta = "16.1.0 -> 17.0.0"
+notes = "AI-assisted delta audit. ASHv2 transport sources are unchanged. The public EZSP adapter selects the audited EZSP 21 release, and the same transport implementations are exercised by the all-feature suite."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
