@@ -92,7 +92,7 @@ stateDiagram-v2
     Resetting --> Connected: valid RST-ACK
     Resetting --> Resetting: reset acknowledgement deadline
     Resetting --> Stopped: retry budget exhausted or transport failure
-    Connected --> Stopped: link failure or outbound queue drained and closed
+    Connected --> Stopped: link failure or closed request queue and empty window
     Connected --> Connected: DATA/ACK/NAK exchange
     Stopped --> [*]
 ```
@@ -106,10 +106,12 @@ stateDiagram-v2
 3. When the link is connected and the window has room, the transmitter takes the request. It
    assigns the next outbound frame number and the current inbound ACK number, masks the
    payload, and calculates its CRC.
-4. The write buffer stuff-encodes the frame, appends `FLAG`, and writes and flushes the bytes
-   within the transport write deadline.
-5. The transmitter stores the written frame for retransmission and reports local write
-   completion through the oneshot.
+4. The transmitter stores the frame and its oneshot in the transmit window. The write
+   buffer stuff-encodes the frame, appends `FLAG`, and writes and flushes the bytes within the
+   transport write deadline.
+5. A cumulative acknowledgement removes the acknowledged prefix of the window and completes
+   those requests through their oneshots. Unacknowledged frames retain their entries across
+   retries, even if their callers stop waiting.
 
 ### Inbound path (NCP -> App)
 
@@ -136,8 +138,12 @@ sequenceDiagram
     A->>H: send(payload)
     H->>T: write request
     T->>S: DATA(frame, masked payload)
-    S->>R: inbound frame bytes
+    S->>R: inbound frame with cumulative ACK
     R->>T: parsed ASH frame
+    T-->>H: send result
+    H-->>A: Ok
+    S->>R: inbound DATA
+    R->>T: parsed DATA
     T->>Q: unmasked payload
     T->>S: ACK
     Q->>A: Payload
@@ -208,9 +214,10 @@ flowchart LR
 ## Termination Path
 
 Each `Handle` clone keeps the outbound request queue open. When it closes, the transmitter
-drains queued writes before exiting. On link failure it closes the queue and resolves pending
-requests with an I/O error. In both cases closing the inbound frame queue wakes the receiver,
-including when it is waiting for serial input.
+drains the queue and finishes the in-flight transmissions before exiting. On link failure it
+closes the queue and sends the terminal I/O error to each in-flight and queued request. Calls
+waiting to enter the closed queue receive `BrokenPipe`. In both cases closing the inbound frame
+queue wakes the receiver, including when it is waiting for serial input.
 
 The caller continues driving both actor futures until they complete. After link failure, the
 caller opens a fresh ASH session, renegotiates EZSP, and restores coordinator operation with
@@ -227,7 +234,8 @@ sequenceDiagram
 
     A->>H: drop every handle
     H-->>Q: last sender dropped
-    Q-->>T: queue drained and closed
+    Q-->>T: queue closed
+    T->>T: drain queue and finish in-flight transmissions
     T->>T: exit transmit loop
     T-->>R: inbound frame queue closed
     R->>R: exit receive loop
@@ -263,7 +271,8 @@ sequenceDiagram
   pauses application dequeuing when the window is full. The bounded request channel suspends
   additional senders until there is room.
 - A valid ACK number lies between the oldest outstanding frame and the next outbound frame,
-  inclusive, in modulo-eight order. It removes the whole acknowledged prefix.
+  inclusive, in modulo-eight order. It removes the whole acknowledged prefix and resolves
+  those requests successfully.
 - A NAK or expiry of the oldest frame's deadline schedules the unacknowledged suffix for
   retransmission in sequence order. The transmitter can process incoming acknowledgements
   between retries and skip frames already acknowledged.

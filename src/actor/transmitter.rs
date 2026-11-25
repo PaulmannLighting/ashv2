@@ -37,11 +37,7 @@ const INITIAL_SEQUENCE_NUMBER: u8 = 0;
 
 const RECEIVE_TRANSPORT_CLOSED: &str = "ASHv2 receive transport closed";
 const RESPONSE_CHANNEL_CLOSED: &str = "ASHv2 response channel closed";
-
-const _: () = assert!(
-    TX_K > 0 && TX_K <= SEQ_MASK as usize,
-    "ASHV2_TX_K must be between 1 and 7"
-);
+const WINDOW_EXCEEDED: &str = "ASHv2 transmit window exceeded";
 
 /// Sends frames and owns both directions of the ASH link state.
 #[derive(Debug)]
@@ -50,7 +46,7 @@ pub struct Transmitter<T> {
     requests: Receiver<Message>,
     frames: Receiver<Received>,
     response: Sender<Payload>,
-    transmissions: heapless::Vec<Transmission, TX_K>,
+    transmissions: heapless::Vec<Transmission, { TX_K.get() }>,
     retries_remaining: usize,
     frame_number: u8,
     ack_number: u8,
@@ -94,10 +90,12 @@ where
             warn!("ASHv2 link stopped: {error}");
             self.requests.close();
             let reason = error.to_string();
+            let failure = || Err(io::Error::new(error.kind(), reason.clone()));
+            for transmission in self.transmissions.drain(..) {
+                transmission.complete(failure());
+            }
             while let Some(request) = self.requests.recv().await {
-                let _ = request
-                    .response_tx
-                    .send(Err(io::Error::new(error.kind(), reason.clone())));
+                let _ = request.response_tx.send(failure());
             }
         }
     }
@@ -105,7 +103,11 @@ where
     async fn run_link(&mut self) -> io::Result<()> {
         self.connect().await?;
 
-        while !(self.requests.is_closed() && self.requests.is_empty()) {
+        loop {
+            let requests_drained = self.requests.is_closed() && self.requests.is_empty();
+            if requests_drained && self.transmissions.is_empty() {
+                break;
+            }
             let retrying = self.retries_remaining > 0;
             let ack_deadline = if retrying {
                 None
@@ -135,9 +137,12 @@ where
                     self.handle_frame(frame).await?;
                 }
                 () = ready(()), if retrying => self.retransmit_next().await?,
-                request = self.requests.recv(), if !retrying && !self.transmissions.is_full() => {
-                    let Some(request) = request else { break };
-                    self.handle_request(request).await?;
+                request = self.requests.recv(),
+                    if !requests_drained && !retrying && !self.transmissions.is_full() =>
+                {
+                    if let Some(request) = request {
+                        self.handle_request(request).await?;
+                    }
                 }
             }
         }
@@ -237,8 +242,8 @@ where
             debug!("ASHv2 ACK {ack_num} outside transmit window at {first}");
             return false;
         }
-        for _ in 0..count {
-            self.transmissions.remove(0);
+        for transmission in self.transmissions.drain(..count) {
+            transmission.complete(Ok(()));
         }
         self.retries_remaining = self.retries_remaining.min(self.transmissions.len());
         if count > 0 {
@@ -309,23 +314,17 @@ where
         }
 
         let data = Data::new(self.frame_number, self.ack_number, *request.payload);
-        let mut transmission = Transmission::from(data);
-        if let Err(error) = self
-            .buffer
-            .write_data(&mut transmission, self.ack_number)
-            .await
-        {
-            let _ = request
-                .response_tx
-                .send(Err(io::Error::new(error.kind(), error.to_string())));
-            return Err(error);
-        }
-
+        let index = self.transmissions.len();
         self.transmissions
-            .push(transmission)
-            .map_err(|_| io::Error::other("ASHv2 transmit window exceeded"))?;
+            .push(Transmission::new(data, request.response_tx))
+            .map_err(|transmission| {
+                transmission.complete(Err(io::Error::other(WINDOW_EXCEEDED)));
+                io::Error::other(WINDOW_EXCEEDED)
+            })?;
+        self.buffer
+            .write_data(&mut self.transmissions[index], self.ack_number)
+            .await?;
         self.frame_number = next_sequence_number(self.frame_number);
-        let _ = request.response_tx.send(Ok(()));
         Ok(())
     }
 

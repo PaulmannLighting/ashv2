@@ -124,12 +124,10 @@ impl Link {
         }
     }
 
-    async fn send_data(&mut self, frame_num: u8, ack_num: u8) {
-        timeout(PROMPT, self.handle.send(payload()))
-            .await
-            .expect("send deadline")
-            .expect("local write");
+    async fn write_data(&mut self, frame_num: u8, ack_num: u8) -> JoinHandle<io::Result<()>> {
+        let send = self.queue_send();
         self.expect_data(PROMPT, frame_num, ack_num, false).await;
+        send
     }
 
     async fn expect_data(&mut self, limit: Duration, frame_num: u8, ack_num: u8, retransmit: bool) {
@@ -148,12 +146,13 @@ impl Link {
         tokio::spawn(async move { handle.send(payload()).await })
     }
 
-    async fn fill_window(&mut self) -> u8 {
-        let end = u8::try_from(TX_K).expect("three-bit window");
+    async fn fill_window(&mut self) -> (u8, Vec<JoinHandle<io::Result<()>>>) {
+        let end = u8::try_from(TX_K.get()).expect("three-bit window");
+        let mut sends = Vec::with_capacity(TX_K.get());
         for frame in INITIAL..end {
-            self.send_data(frame, INITIAL).await;
+            sends.push(self.write_data(frame, INITIAL).await);
         }
-        end
+        (end, sends)
     }
 
     async fn stopped(self) {
@@ -205,20 +204,51 @@ fn start_accepts_send_only_io() {
 #[tokio::test]
 async fn cumulative_ack_reopens_the_window_without_advancing_the_reverse_ack() {
     let mut link = Link::connected().await;
-    let end = link.fill_window().await;
+    let (end, sends) = link.fill_window().await;
     let send = link.queue_send();
     assert!(timeout(PROMPT, link.read_frame()).await.is_err());
+    assert!(sends.iter().all(|send| !send.is_finished()));
     assert!(!send.is_finished());
 
     link.send_frame(Ack::new(end, false)).await;
     link.expect_data(PROMPT, end, INITIAL, false).await;
-    send_result(send).await.expect("write after cumulative ACK");
+    for send in sends {
+        send_result(send).await.expect("cumulative ACK");
+    }
+    let mut sends = vec![send];
     for frame in NEXT..end {
-        link.send_data(end.wrapping_add(frame) & SEQ_MASK, INITIAL)
-            .await;
+        sends.push(
+            link.write_data(end.wrapping_add(frame) & SEQ_MASK, INITIAL)
+                .await,
+        );
     }
     link.send_frame(Ack::new(end.wrapping_add(end) & SEQ_MASK, false))
         .await;
+    for send in sends {
+        send_result(send).await.expect("second cumulative ACK");
+    }
+    link.stopped().await;
+}
+
+#[tokio::test]
+async fn dropping_a_send_waiter_keeps_its_frame_in_the_window_until_ack() {
+    let mut link = Link::connected().await;
+    let (end, mut sends) = link.fill_window().await;
+    let abandoned = sends.remove(usize::from(INITIAL));
+    abandoned.abort();
+    assert!(abandoned.await.expect_err("send cancelled").is_cancelled());
+
+    let queued = link.queue_send();
+    assert!(timeout(PROMPT, link.read_frame()).await.is_err());
+    link.send_frame(Ack::new(end, false)).await;
+    link.expect_data(PROMPT, end, INITIAL, false).await;
+    for send in sends {
+        send_result(send).await.expect("cumulative ACK");
+    }
+
+    link.send_frame(Ack::new(end.wrapping_add(NEXT) & SEQ_MASK, false))
+        .await;
+    send_result(queued).await.expect("ACK for queued send");
     link.stopped().await;
 }
 
@@ -226,10 +256,11 @@ async fn cumulative_ack_reopens_the_window_without_advancing_the_reverse_ack() {
 async fn acknowledgement_range_handles_wraparound_and_duplicate_control() {
     let mut link = Link::connected().await;
     for frame in INITIAL..SEQ_MASK {
-        link.send_data(frame, INITIAL).await;
+        let send = link.write_data(frame, INITIAL).await;
         link.send_frame(Ack::new(frame + NEXT, false)).await;
+        send_result(send).await.expect("peer ACK");
     }
-    link.send_data(SEQ_MASK, INITIAL).await;
+    let send = link.write_data(SEQ_MASK, INITIAL).await;
     link.send_frame(Ack::new(SEQ_MASK, false)).await;
     assert!(timeout(PROMPT, link.read_frame()).await.is_err());
     // Neither a stale ACK nor an ACK for unsent DATA can release frame 7.
@@ -242,17 +273,20 @@ async fn acknowledgement_range_handles_wraparound_and_duplicate_control() {
     assert!(timeout(PROMPT, link.read_frame()).await.is_err());
     link.expect_data(ACK_TIMEOUT + PROMPT, SEQ_MASK, INITIAL, true)
         .await;
+    assert!(!send.is_finished());
 
     link.send_frame(Ack::new(INITIAL, false)).await;
-    link.send_data(INITIAL, INITIAL).await;
+    send_result(send).await.expect("wraparound ACK");
+    let send = link.write_data(INITIAL, INITIAL).await;
     link.send_frame(Ack::new(NEXT, false)).await;
+    send_result(send).await.expect("peer ACK");
     link.stopped().await;
 }
 
 #[tokio::test]
 async fn data_ack_is_processed_when_both_application_queues_are_full() {
     let mut link = Link::connected().await;
-    let end = link.fill_window().await;
+    let (end, sends) = link.fill_window().await;
     let send = link.queue_send();
     yield_now().await;
 
@@ -263,7 +297,10 @@ async fn data_ack_is_processed_when_both_application_queues_are_full() {
     link.send_frame(&make_data(NEXT, end, false)).await;
     assert_eq!(link.read(PROMPT).await, Frame::Nak(Nak::new(NEXT, true)));
     link.expect_data(PROMPT, end, NEXT, false).await;
-    send_result(send).await.expect("write after reverse ACK");
+    for send in sends {
+        send_result(send).await.expect("reverse ACK");
+    }
+    assert!(!send.is_finished());
     assert_eq!(link.responses.try_recv().expect("first payload"), payload());
     assert_eq!(link.read(PROMPT).await, Frame::Ack(Ack::new(NEXT, false)));
 
@@ -273,6 +310,9 @@ async fn data_ack_is_processed_when_both_application_queues_are_full() {
         link.read(PROMPT).await,
         Frame::Ack(Ack::new(NEXT + NEXT, true))
     );
+    send_result(send)
+        .await
+        .expect("reverse ACK for queued send");
     link.send_frame(&make_data(NEXT, host_ack, true)).await;
     assert_eq!(
         link.read(PROMPT).await,
@@ -289,21 +329,29 @@ async fn data_ack_is_processed_when_both_application_queues_are_full() {
 #[tokio::test]
 async fn nak_retransmits_the_unacknowledged_suffix_in_order() {
     let mut link = Link::connected().await;
-    let end = link.fill_window().await;
-    let ack = if TX_K > 1 { NEXT } else { INITIAL };
+    let (end, mut acknowledged) = link.fill_window().await;
+    let ack = if TX_K.get() > 1 { NEXT } else { INITIAL };
+    let pending = acknowledged.split_off(usize::from(ack));
     link.send_frame(Nak::new(ack, false)).await;
     for frame in ack..end {
         link.expect_data(PROMPT, frame, INITIAL, true).await;
     }
+    for send in acknowledged {
+        send_result(send).await.expect("NAK acknowledged prefix");
+    }
+    assert!(pending.iter().all(|send| !send.is_finished()));
     link.send_frame(Ack::new(end, false)).await;
+    for send in pending {
+        send_result(send).await.expect("ACK after retransmission");
+    }
     link.stopped().await;
 }
 
 #[tokio::test]
-async fn missing_ack_retries_then_resolves_queued_sends_and_stops_both_actors() {
+async fn missing_ack_fails_in_flight_and_queued_sends_and_stops_both_actors() {
     let mut link = Link::connected().await;
-    let end = link.fill_window().await;
-    let send = link.queue_send();
+    let (end, in_flight) = link.fill_window().await;
+    let queued = link.queue_send();
     for _ in 0..RETRIES {
         assert!(timeout(PROMPT, link.read_frame()).await.is_err());
         for frame in INITIAL..end {
@@ -311,12 +359,17 @@ async fn missing_ack_retries_then_resolves_queued_sends_and_stops_both_actors() 
                 .await;
         }
     }
-    let error = timeout(ACK_TIMEOUT + PROMPT, send)
+    let error = timeout(ACK_TIMEOUT + PROMPT, queued)
         .await
         .expect("retry limit")
         .expect("send task")
         .expect_err("link failed");
     assert_eq!(error.kind(), ErrorKind::TimedOut);
+    for send in in_flight {
+        let in_flight_error = send_result(send).await.expect_err("unacknowledged frame");
+        assert_eq!(in_flight_error.kind(), error.kind());
+        assert_eq!(in_flight_error.to_string(), error.to_string());
+    }
     assert_eq!(
         link.handle
             .send(payload())
@@ -331,7 +384,7 @@ async fn missing_ack_retries_then_resolves_queued_sends_and_stops_both_actors() 
 #[tokio::test]
 async fn retransmission_refreshes_the_reverse_ack_and_crc() {
     let mut link = Link::connected().await;
-    link.send_data(INITIAL, INITIAL).await;
+    let send = link.write_data(INITIAL, INITIAL).await;
     link.send_frame(&make_data(INITIAL, INITIAL, false)).await;
     assert_eq!(link.read(PROMPT).await, Frame::Ack(Ack::new(NEXT, true)));
     assert_eq!(link.responses.try_recv().expect("received DATA"), payload());
@@ -339,13 +392,14 @@ async fn retransmission_refreshes_the_reverse_ack_and_crc() {
     link.expect_data(ACK_TIMEOUT + PROMPT, INITIAL, NEXT, true)
         .await;
     link.send_frame(Ack::new(NEXT, false)).await;
+    send_result(send).await.expect("ACK after retransmission");
     link.stopped().await;
 }
 
 #[tokio::test]
 async fn out_of_order_data_and_duplicates_can_acknowledge_outbound_frames() {
     let mut link = Link::connected().await;
-    link.send_data(INITIAL, INITIAL).await;
+    let send = link.write_data(INITIAL, INITIAL).await;
     link.send_frame(&make_data(INITIAL, INITIAL, false)).await;
     assert_eq!(link.read(PROMPT).await, Frame::Ack(Ack::new(NEXT, true)));
     assert_eq!(
@@ -356,15 +410,17 @@ async fn out_of_order_data_and_duplicates_can_acknowledge_outbound_frames() {
 
     link.send_frame(&make_data(NEXT + NEXT, NEXT, false)).await;
     assert_eq!(link.read(PROMPT).await, Frame::Nak(Nak::new(NEXT, false)));
+    send_result(send).await.expect("ACK on out-of-order DATA");
     assert!(
         timeout(ACK_TIMEOUT + PROMPT, link.read_frame())
             .await
             .is_err()
     );
-    link.send_data(NEXT, NEXT).await;
+    let send = link.write_data(NEXT, NEXT).await;
     link.send_frame(&make_data(INITIAL, NEXT + NEXT, true))
         .await;
     assert_eq!(link.read(PROMPT).await, Frame::Ack(Ack::new(NEXT, false)));
+    send_result(send).await.expect("ACK on duplicate DATA");
     assert!(
         timeout(ACK_TIMEOUT + PROMPT, link.read_frame())
             .await
@@ -406,10 +462,8 @@ async fn startup_retries_rst_and_ignores_old_frames_before_rstack() {
     assert!(link.responses.try_recv().is_err());
     link.reset_ack().await;
     link.expect_data(PROMPT, INITIAL, INITIAL, false).await;
-    send_result(send)
-        .await
-        .expect("write after handshake retry");
     link.send_frame(Ack::new(NEXT, false)).await;
+    send_result(send).await.expect("ACK after handshake retry");
     link.stopped().await;
 }
 
@@ -482,8 +536,8 @@ async fn a_blocked_transport_write_resolves_queued_sends() {
 #[tokio::test]
 async fn ncp_error_stops_the_session_with_a_full_window() {
     let mut link = Link::connected().await;
-    link.fill_window().await;
-    let send = link.queue_send();
+    let (_, mut sends) = link.fill_window().await;
+    sends.push(link.queue_send());
     yield_now().await;
     link.send_control([
         Error::HEADER,
@@ -491,9 +545,11 @@ async fn ncp_error_stops_the_session_with_a_full_window() {
         Code::ExceededMaximumAckTimeoutCount as u8,
     ])
     .await;
-    assert_eq!(
-        send_result(send).await.expect_err("peer failed").kind(),
-        ErrorKind::ConnectionReset
-    );
+    for send in sends {
+        assert_eq!(
+            send_result(send).await.expect_err("peer failed").kind(),
+            ErrorKind::ConnectionReset
+        );
+    }
     link.stopped().await;
 }

@@ -18,9 +18,9 @@
 //! # Termination
 //!
 //! Drop every clone of [`Handle`] to close the outbound request queue. Both futures terminate
-//! when queued writes are drained or the link fails. A failed link fails pending writes and
-//! closes the response stream after any buffered payloads. Start a fresh session and renegotiate
-//! EZSP before sending more commands.
+//! when queued and in-flight transmissions finish or the link fails. A link failure resolves
+//! pending sends with an I/O error and closes the response stream after any buffered payloads.
+//! Start a fresh session and renegotiate EZSP before sending more commands.
 //!
 //! # EZSP integration
 //!
@@ -35,7 +35,9 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(unsafe_code)]
 
-use const_env::env_item;
+use std::num::NonZeroUsize;
+
+use const_env::{env_item, env_lit};
 
 pub use self::actor::{Futures, Handle, start};
 pub use self::types::Payload;
@@ -58,10 +60,11 @@ pub const MAX_PAYLOAD_SIZE: usize = 128;
 #[env_item("ASHV2_T_RSTACK_MAX_MILLIS")]
 const T_RSTACK_MAX_MILLIS: u64 = 3200;
 
-/// The amount of maximum unacknowledged frames that the NCP (or Host) can hold.
-/// Also amounts to the so-called *sliding window size*.
-#[env_item("ASHV2_TX_K")]
-const TX_K: usize = 5;
+/// Maximum number of unacknowledged frames in the transmit window.
+const TX_K: NonZeroUsize = match NonZeroUsize::new(env_lit!("ASHV2_TX_K", 5)) {
+    Some(size) if size.get() <= SEQ_MASK as usize => size,
+    _ => panic!("ASHV2_TX_K must be between 1 and 7"),
+};
 
 #[env_item("ASHV2_T_RX_ACK_MAX_MILLIS")]
 const T_RX_ACK_MAX_MILLIS: u64 = 3200;

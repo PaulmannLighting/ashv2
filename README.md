@@ -34,18 +34,19 @@ Important behavior details:
   an executor compatible with the transport. On native targets, ASH deadlines use a shared
   timer thread.
 - The crate does not spawn Tokio tasks internally.
-- Dropping every `Handle` clone closes the outbound queue. Both futures end after queued writes
-  drain or the link fails.
-- `Handle::send(payload).await` acknowledges completion of the local transport write. The
-  response channel delivers inbound `DATA` payloads.
+- Dropping every `Handle` clone closes the outbound queue. Both futures end once queued and
+  in-flight transmissions finish or the link fails.
+- `Handle::send(payload).await` completes when the NCP acknowledges the ASH frame. The inbound
+  response channel delivers `DATA` payloads, including any EZSP response.
 - During the initial handshake or while the transmit window is full, requests wait in the
   bounded queue. When that queue fills, further calls to `Handle::send` wait for capacity.
   Incoming control frames and retry deadlines remain active.
 - The host acknowledges inbound `DATA` after buffering it. A full response channel sets the
   ASH not-ready flag to pause NCP callbacks.
 - An exhausted retry budget, transport failure, or unexpected NCP reset ends the session and
-  fails queued sends. Start a fresh ASH session and renegotiate EZSP before sending more
-  commands. Commands already written can have an unknown remote outcome.
+  fails queued and in-flight sends with the terminal I/O error. Retry exhaustion returns
+  `TimedOut`. Start a fresh ASH session and renegotiate EZSP before sending more commands.
+  Commands already written can have an unknown remote outcome.
 - Payload type is `heapless::Vec<u8, MAX_PAYLOAD_SIZE>` (`MAX_PAYLOAD_SIZE` defaults to `128`).
 
 Compile-time tunables (via `const_env`):
@@ -93,7 +94,7 @@ where
     }
 
     // Dropping the final Handle closes the outbound queue. The transmitter
-    // drains that queue, terminates, and signals the receiver to terminate.
+    // finishes outstanding transmissions and signals the receiver to terminate.
     drop(handle);
     transmitter.await.expect("Transmitter task failed");
     receiver.await.expect("Receiver task failed");

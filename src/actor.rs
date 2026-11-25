@@ -34,9 +34,9 @@ mod transmitter;
 /// Each opaque future type captures both `R` and `W`, so both transport types must be `'static`
 /// to pass either future to `tokio::spawn`.
 ///
-/// Drop every clone of the handle to close the outbound queue. Both futures terminate after
-/// queued writes are drained or the link fails. On link failure, start a fresh ASH session
-/// and renegotiate EZSP before sending more commands.
+/// Drop every clone of the handle to close the outbound queue. Both futures terminate once
+/// queued and in-flight transmissions finish, or when the link fails. On link failure, start
+/// a fresh ASH session and renegotiate EZSP before sending more commands.
 pub fn start<R, W>(
     reader: R,
     writer: W,
@@ -50,7 +50,7 @@ where
     W: AsyncWrite + Send + Unpin,
 {
     let (sender, inbox) = channel(response.max_capacity());
-    let (frames, incoming) = channel(TX_K);
+    let (frames, incoming) = channel(TX_K.get());
     let receiver = Receiver::new(reader, frames).run();
     let transmitter = Transmitter::new(writer, inbox, incoming, response).run();
     let futures = Futures {

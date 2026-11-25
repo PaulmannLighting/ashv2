@@ -4,20 +4,38 @@ use core::fmt::Display;
 use std::io::{self, Error, ErrorKind};
 use std::time::Instant;
 
+use tokio::sync::oneshot::Sender;
+
 use crate::frame::Data;
 
 /// One initial send and two retries. The next attempt fails the session.
 const MAX_TRANSMISSIONS: usize = 3;
 
-/// A transmitted frame with metadata.
+/// An outbound frame and the caller waiting for its acknowledgement.
 #[derive(Debug)]
 pub struct Transmission {
     sent: Instant,
     data: Data,
     transmits: usize,
+    response_tx: Sender<io::Result<()>>,
 }
 
 impl Transmission {
+    /// Create a transmission that owns the request's completion channel.
+    pub fn new(data: Data, response_tx: Sender<io::Result<()>>) -> Self {
+        Self {
+            sent: Instant::now(),
+            data,
+            transmits: 0,
+            response_tx,
+        }
+    }
+
+    /// Report the final outcome to the caller if it is still waiting.
+    pub fn complete(self, result: io::Result<()>) {
+        let _ = self.response_tx.send(result);
+    }
+
     /// Return the frame number of the transmitted data.
     #[must_use]
     pub const fn frame_num(&self) -> u8 {
@@ -65,33 +83,29 @@ impl Display for Transmission {
     }
 }
 
-impl From<Data> for Transmission {
-    fn from(data: Data) -> Self {
-        Self {
-            sent: Instant::now(),
-            data,
-            transmits: 0,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use tokio::sync::oneshot::channel;
+
     use super::Transmission;
     use crate::frame::Data;
 
+    fn transmission() -> Transmission {
+        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
+        let (sender, _) = channel();
+        Transmission::new(data, sender)
+    }
+
     #[test]
     fn test_new() {
-        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
-        let transmission: Transmission = data.into();
+        let transmission = transmission();
         assert_eq!(transmission.transmits, 0);
         assert!(!transmission.data.is_retransmission());
     }
 
     #[test]
     fn test_transmit() {
-        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
-        let mut transmission: Transmission = data.into();
+        let mut transmission = transmission();
         let data = transmission.data_for_transmit(u8::default()).unwrap();
         assert!(!data.is_retransmission());
         assert_eq!(transmission.transmits, 1);
@@ -99,8 +113,7 @@ mod tests {
 
     #[test]
     fn test_retransmit() {
-        let data = Data::new(u8::default(), u8::default(), heapless::Vec::new());
-        let mut transmission: Transmission = data.into();
+        let mut transmission = transmission();
         let _transmit = transmission.data_for_transmit(u8::default()).unwrap();
         let retransmit = transmission.data_for_transmit(u8::default()).unwrap();
         assert!(retransmit.is_retransmission());
