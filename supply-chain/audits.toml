@@ -91,6 +91,12 @@ criteria = "safe-to-deploy"
 delta = "17.0.0 -> 18.0.0"
 notes = "AI-assisted review against the published 17.0.0 source. Reviewed the separate bounded application and frame queues, readiness signalling, modulo-eight cumulative ACK validation, retransmission order and CRC updates, and reset and transport write deadlines. Terminal failures close both actors and resolve pending writes. Applications establish a fresh session, and queued commands are never replayed across sessions. Caller-provided I/O remains the only transport access. The crate adds no unsafe Rust or build script. The executor-independent deadlines use the separately audited futures-timer shared native thread, and the Tokio selection macros are separately audited."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "18.0.0 -> 19.0.0"
+notes = "AI-assisted review against the published 18.0.0 source. Reviewed ownership of request completion channels in the bounded transmit window, cumulative ACK completion, terminal I/O error propagation to queued and in-flight sends, and shutdown after outstanding frames finish. The event-loop refactor preserves inbound frame processing and retry deadlines while the transmit window is full. Numeric window overrides are checked at compile time against the range 1 through 7. The delta adds no unsafe Rust, dependencies, build scripts, or ambient capabilities."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"
