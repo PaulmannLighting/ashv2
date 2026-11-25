@@ -100,6 +100,7 @@ where
         }
     }
 
+    /// Establishes the link and drives it until shutdown or failure.
     async fn run_link(&mut self) -> io::Result<()> {
         self.connect().await?;
 
@@ -108,41 +109,44 @@ where
             if requests_drained && self.transmissions.is_empty() {
                 break;
             }
-            let retrying = self.retries_remaining > 0;
-            let ack_deadline = if retrying {
-                None
-            } else {
-                self.transmissions
-                    .first()
-                    .map(|oldest| oldest.sent_at() + T_RX_ACK_MAX)
-            };
+            self.handle_next_event(requests_drained).await?;
+        }
+        Ok(())
+    }
 
-            select! {
-                biased;
-                () = wait_until(ack_deadline) => {
-                    debug!("ASHv2 DATA acknowledgement timed out");
-                    self.start_retransmission();
-                }
-                () = wait_until(self.not_ready_until) => self.send_readiness_ack().await?,
-                available = async { self.response.reserve().await.map(drop) },
-                    if self.not_ready_until.is_some() =>
-                {
-                    available.map_err(|_| io::Error::new(ErrorKind::BrokenPipe, RESPONSE_CHANNEL_CLOSED))?;
-                    self.send_readiness_ack().await?;
-                }
-                received = self.frames.recv() => {
-                    let frame = received.ok_or_else(|| {
-                        io::Error::new(ErrorKind::BrokenPipe, RECEIVE_TRANSPORT_CLOSED)
-                    })?;
-                    self.handle_frame(frame).await?;
-                }
-                () = ready(()), if retrying => self.retransmit_next().await?,
-                request = self.requests.recv(),
-                    if !requests_drained && !retrying && !self.transmissions.is_full() =>
-                {
-                    if let Some(request) = request {
-                        self.handle_request(request).await?;
-                    }
+    /// Waits for and handles one event on the established link.
+    async fn handle_next_event(&mut self, requests_drained: bool) -> io::Result<()> {
+        let retrying = self.retries_remaining > 0;
+        let ack_deadline = self
+            .transmissions
+            .first()
+            .map(|oldest| oldest.sent_at() + T_RX_ACK_MAX);
+        let can_accept_request = !requests_drained && !self.transmissions.is_full();
+
+        select! {
+            biased;
+            () = wait_until(ack_deadline), if !retrying => {
+                debug!("ASHv2 DATA acknowledgement timed out");
+                self.start_retransmission();
+            }
+            () = wait_until(self.not_ready_until) => self.send_readiness_ack().await?,
+            available = async { self.response.reserve().await.map(drop) },
+                if self.not_ready_until.is_some() =>
+            {
+                available.map_err(|_| io::Error::new(ErrorKind::BrokenPipe, RESPONSE_CHANNEL_CLOSED))?;
+                self.send_readiness_ack().await?;
+            }
+            received = self.frames.recv() => {
+                let frame = received.ok_or_else(|| {
+                    io::Error::new(ErrorKind::BrokenPipe, RECEIVE_TRANSPORT_CLOSED)
+                })?;
+                self.handle_frame(frame).await?;
+            }
+            // Biased selection gives ready retransmissions priority over new requests.
+            () = ready(()), if retrying => self.retransmit_next().await?,
+            request = self.requests.recv(), if can_accept_request => {
+                if let Some(request) = request {
+                    self.handle_request(request).await?;
                 }
             }
         }
