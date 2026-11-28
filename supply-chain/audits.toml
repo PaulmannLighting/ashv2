@@ -97,6 +97,12 @@ criteria = "safe-to-deploy"
 delta = "18.0.0 -> 19.0.0"
 notes = "AI-assisted review against the published 18.0.0 source. Reviewed ownership of request completion channels in the bounded transmit window, cumulative ACK completion, terminal I/O error propagation to queued and in-flight sends, and shutdown after outstanding frames finish. The event-loop refactor preserves inbound frame processing and retry deadlines while the transmit window is full. Numeric window overrides are checked at compile time against the range 1 through 7. The delta adds no unsafe Rust, dependencies, build scripts, or ambient capabilities."
 
+[[audits.ashv2]]
+who = "OpenAI Codex (AI-assisted)"
+criteria = "safe-to-deploy"
+delta = "19.0.0 -> 20.0.0"
+notes = "AI-assisted review against the published ashv2 19.0.0 crate. Rust sources are identical, including the optional EZSP adapters. The manifest and lockfile select EZSP 22.0.0 and the README updates the dependency example. No build script or new ambient capabilities were introduced. EZSP is covered by the existing trusted-publisher policy."
+
 [[audits.async-serialport]]
 who = "Richard Neumann <neumann@paulmann.de>"
 criteria = "safe-to-deploy"

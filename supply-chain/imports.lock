@@ -9,8 +9,8 @@ user-login = "cuviper"
 user-name = "Josh Stone"
 
 [[publisher.ezsp]]
-version = "21.0.0"
-when = "2026-11-24"
+version = "22.0.0"
+when = "2026-11-28"
 user-id = 290593
 user-login = "neumann-paulmann"
 user-name = "Richard Neumann"
